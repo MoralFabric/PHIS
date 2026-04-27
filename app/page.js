@@ -2627,6 +2627,122 @@ function FullCVExporter({stories,experience,onClose}) {
   );
 }
 
+// ─── STEP 1: JD ANALYSIS ─────────────────────────────
+function compMatch(comp, profile) {
+  if (!comp) return {status:"not_specified"};
+  const hasAny=comp.base_from!=null||comp.base_to!=null||comp.total_from!=null||comp.total_to!=null;
+  if (!hasAny) return {status:"not_specified"};
+  const baseFloor=profile?.baseSalaryFrom??185000;
+  const tcFloor=profile?.totalCompFrom??285000;
+  const K=n=>n>=1000?(n/1000).toFixed(0)+"K":""+n;
+  if (comp.base_to!=null) {
+    if (comp.base_to<baseFloor) return {status:"below",msg:"Base top "+K(comp.base_to)+" below your "+K(baseFloor)+" floor"};
+    return {status:"match",msg:"Base "+(comp.base_from!=null?K(comp.base_from)+"–":"")+K(comp.base_to)};
+  }
+  if (comp.total_to!=null) {
+    if (comp.total_to<tcFloor) return {status:"below",msg:"Total comp "+K(comp.total_to)+" below your "+K(tcFloor)+" floor"};
+    return {status:"match",msg:"Total comp "+(comp.total_from!=null?K(comp.total_from)+"–":"")+K(comp.total_to)};
+  }
+  return {status:"not_specified"};
+}
+
+function JDAnalysisStep({active,jobTitle,company,jdText,profile,result,onComplete,onError}) {
+  const [loading,setLoading]=useState(!result);
+  const [data,setData]=useState(result||null);
+  const [err,setErr]=useState(null);
+
+  useEffect(()=>{
+    if(result){setData(result);setLoading(false);return;}
+    if(!active)return;
+    (async()=>{
+      setLoading(true);setErr(null);
+      try{
+        const raw=await callClaude(
+          "You are a senior recruiter. Extract key information from this job description. Return ONLY valid JSON—no markdown fences. Schema: {\"role\":\"string\",\"company\":\"string\",\"seniority\":\"string\",\"skills\":[{\"name\":\"string\",\"weight\":1,\"category\":\"domain|leadership|technical|soft\",\"required\":true}],\"responsibilities\":[\"string\"],\"comp\":{\"base_from\":null,\"base_to\":null,\"total_from\":null,\"total_to\":null}}. Extract 10-14 skills; weight 1-10 where 10=must-have; comp fields are numbers or null if not mentioned.",
+          "Job Title: "+jobTitle+" | Company: "+company+" | Job Description: "+jdText,
+          2000
+        );
+        const parsed=parseJSON(raw);
+        if(!parsed?.skills?.length) throw new Error("Could not extract skills—check the JD is complete.");
+        setData(parsed);
+      }catch(e){setErr(e.message);onError(e.message);}
+      setLoading(false);
+    })();
+  },[active,result]);
+
+  const cm=compMatch(data?.comp,profile);
+
+  if(loading)return(
+    <div style={S.card}>
+      <div style={{fontSize:14,fontWeight:500,marginBottom:4}}>Step 1 — JD Analysis</div>
+      <div style={{fontSize:13,color:"var(--color-text-secondary)"}}>Extracting skills and requirements…</div>
+    </div>
+  );
+  if(err&&!data)return(
+    <div style={S.card}>
+      <div style={{fontSize:14,fontWeight:500,marginBottom:"0.5rem"}}>Step 1 — JD Analysis</div>
+      <div style={{fontSize:12,color:"#A32D2D",padding:"8px 12px",background:"#FCEBEB",borderRadius:6}}>⚠ {err}</div>
+    </div>
+  );
+  if(!data)return null;
+
+  const mustHave=data.skills.filter(s=>s.weight>=8);
+  const others=data.skills.filter(s=>s.weight<8);
+
+  return(
+    <div style={S.card}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:"1rem"}}>
+        <div>
+          <div style={{fontSize:14,fontWeight:500}}>Step 1 — JD Analysis</div>
+          <div style={{fontSize:12,color:"var(--color-text-secondary)",marginTop:2}}>{data.role}{data.seniority?" · "+data.seniority:""}</div>
+        </div>
+        {result&&<span style={{fontSize:11,padding:"2px 8px",background:"#EAF3DE",color:"#3B6D11",borderRadius:4,fontWeight:500}}>✓ Complete</span>}
+      </div>
+
+      {cm.status==="below"&&(
+        <div style={{fontSize:12,padding:"8px 12px",background:"#FAEEDA",borderRadius:6,border:"1px solid #EF9F27",marginBottom:"1rem",color:"#854F0B"}}>
+          ⚠ Comp may be below target — {cm.msg}. You can still continue.
+        </div>
+      )}
+      {cm.status==="match"&&(
+        <div style={{fontSize:12,padding:"8px 12px",background:"#EAF3DE",borderRadius:6,border:"1px solid #90c552",marginBottom:"1rem",color:"#3B6D11"}}>
+          ✓ Comp in range — {cm.msg}
+        </div>
+      )}
+
+      <div style={{marginBottom:"1rem"}}>
+        <div style={{fontSize:11,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.05em",color:"var(--color-text-tertiary)",marginBottom:6}}>Must-have skills (weight 8–10)</div>
+        <div style={{display:"flex",flexWrap:"wrap",gap:5,marginBottom:"0.75rem"}}>
+          {mustHave.map(s=><span key={s.name} style={{...S.tag,background:"#EAF3DE",color:"#3B6D11",border:"1px solid #90c552"}}>{s.name}</span>)}
+        </div>
+        {others.length>0&&(
+          <>
+            <div style={{fontSize:11,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.05em",color:"var(--color-text-tertiary)",marginBottom:6}}>Secondary skills</div>
+            <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
+              {others.map(s=><span key={s.name} style={S.tag}>{s.name}</span>)}
+            </div>
+          </>
+        )}
+      </div>
+
+      {data.responsibilities?.length>0&&(
+        <div style={{marginBottom:"1rem"}}>
+          <div style={{fontSize:11,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.05em",color:"var(--color-text-tertiary)",marginBottom:6}}>Key responsibilities</div>
+          {data.responsibilities.slice(0,5).map((r,i)=>(
+            <div key={i} style={{fontSize:12,color:"var(--color-text-secondary)",marginBottom:4,display:"flex",gap:8}}>
+              <span style={{color:"#3b82f6",flexShrink:0}}>›</span><span>{r}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {!result&&(
+        <button onClick={()=>onComplete(data)} style={S.primary}>Score my profile →</button>
+      )}
+    </div>
+  );
+}
+
 // ─── APPLICATION ENGINE ───────────────────────────
 function ApplyView({stories,setStories,experience,profile}) {
   const [jobTitle,setJobTitle]=useState("");
@@ -2709,6 +2825,16 @@ function ApplyView({stories,setStories,experience,profile}) {
 
       {pastInput&&(
         <div style={{display:'flex',flexDirection:'column',gap:'1rem'}}>
+          {(app.currentStep==='jdAnalysis'||app.jdAnalysis)&&(
+            <JDAnalysisStep
+              active={app.currentStep==='jdAnalysis'}
+              jobTitle={jobTitle} company={company} jdText={jdText}
+              profile={profile}
+              result={app.jdAnalysis}
+              onComplete={jdAnalysis=>setApp(a=>({...a,jdAnalysis,currentStep:'cpsScore',cpsResult:null,gapResolutions:null,rescore:null,resume:null,coverLetter:null}))}
+              onError={setError}
+            />
+          )}
         </div>
       )}
     </div>
