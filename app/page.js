@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useMemo } from "react";
-import { seedAndGetStories, upsertStory, upsertStories, deleteStory as dbDeleteStory, getExperience, saveExperience } from '@/lib/data';
+import { seedAndGetStories, upsertStory, upsertStories, deleteStory as dbDeleteStory, getExperience, saveExperience, getProfile, saveProfile } from '@/lib/data';
 
 // ─── CONFIG ───────────────────────────────────────────────
 const MODEL   = "claude-sonnet-4-6";
@@ -2837,26 +2837,57 @@ function ApplyView({stories,setStories,experience}) {
 }
 
 // ─── PROFILE VIEW ─────────────────────────────────────────
+function SalaryInput({label, value, onChange}) {
+  const [raw, setRaw] = useState("");
+  const [focused, setFocused] = useState(false);
+  return (
+    <div style={{marginBottom:"1rem"}}>
+      <label style={S.label}>{label}</label>
+      <input
+        style={S.inp}
+        type="text"
+        inputMode="numeric"
+        value={focused ? raw : (value||0).toLocaleString()}
+        onFocus={()=>{ setRaw(String(value||"")); setFocused(true); }}
+        onChange={e=>setRaw(e.target.value)}
+        onBlur={()=>{ setFocused(false); const n=parseInt(raw.replace(/,/g,""),10); if(!isNaN(n)&&n>0)onChange(n); }}
+      />
+    </div>
+  );
+}
+
 function ProfileView({profile,setProfile}) {
   return(
     <div>
       <div style={{fontSize:22,fontWeight:500,marginBottom:4}}>Profile & Settings</div>
       <div style={{fontSize:13,color:"var(--color-text-secondary)",marginBottom:"1.5rem"}}>These preferences are applied to every resume and cover letter the engine generates.</div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"1.5rem",maxWidth:700}}>
-        <div style={S.card}>
-          <div style={{fontSize:14,fontWeight:500,marginBottom:"1rem"}}>Generation preferences</div>
-          {[
-            {key:"tone",label:"Cover letter tone",opts:[{v:"professional",l:"Professional & warm"},{v:"direct",l:"Direct & confident"},{v:"formal",l:"Formal"}]},
-            {key:"pageLimit",label:"Resume page limit",opts:[{v:2,l:"2 pages"},{v:3,l:"3 pages"},{v:4,l:"4 pages"}]},
-            {key:"seniority",label:"Target seniority",opts:[{v:"VP",l:"VP"},{v:"AVP",l:"AVP"},{v:"Director",l:"Director"},{v:"MD",l:"MD / Managing Director"}]},
-          ].map(f=>(
-            <div key={f.key} style={{marginBottom:"1rem"}}>
-              <label style={S.label}>{f.label}</label>
-              <select value={profile[f.key]} onChange={e=>setProfile(p=>({...p,[f.key]:e.target.value}))} style={S.inp}>
-                {f.opts.map(o=><option key={o.v} value={o.v}>{o.l}</option>)}
-              </select>
+        <div style={{display:"flex",flexDirection:"column",gap:"1.5rem"}}>
+          <div style={S.card}>
+            <div style={{fontSize:14,fontWeight:500,marginBottom:"1rem"}}>Generation preferences</div>
+            {[
+              {key:"tone",label:"Cover letter tone",opts:[{v:"professional",l:"Professional & warm"},{v:"direct",l:"Direct & confident"},{v:"formal",l:"Formal"}]},
+              {key:"pageLimit",label:"Resume page limit",opts:[{v:2,l:"2 pages"},{v:3,l:"3 pages"},{v:4,l:"4 pages"}]},
+              {key:"seniority",label:"Target seniority",opts:[{v:"VP",l:"VP"},{v:"AVP",l:"AVP"},{v:"Director",l:"Director"},{v:"MD",l:"MD / Managing Director"}]},
+            ].map(f=>(
+              <div key={f.key} style={{marginBottom:"1rem"}}>
+                <label style={S.label}>{f.label}</label>
+                <select value={profile[f.key]} onChange={e=>setProfile(p=>({...p,[f.key]:e.target.value}))} style={S.inp}>
+                  {f.opts.map(o=><option key={o.v} value={o.v}>{o.l}</option>)}
+                </select>
+              </div>
+            ))}
+          </div>
+          <div style={S.card}>
+            <div style={{fontSize:14,fontWeight:500,marginBottom:"0.25rem"}}>Salary targets</div>
+            <div style={{fontSize:12,color:"var(--color-text-secondary)",marginBottom:"1rem"}}>Used by the Application Engine to flag comp mismatches.</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"1rem"}}>
+              <SalaryInput label="Base salary — from" value={profile.baseSalaryFrom} onChange={v=>setProfile(p=>({...p,baseSalaryFrom:v}))}/>
+              <SalaryInput label="Base salary — to"   value={profile.baseSalaryTo}   onChange={v=>setProfile(p=>({...p,baseSalaryTo:v}))}/>
+              <SalaryInput label="Total comp — from"  value={profile.totalCompFrom}  onChange={v=>setProfile(p=>({...p,totalCompFrom:v}))}/>
+              <SalaryInput label="Total comp — to"    value={profile.totalCompTo}    onChange={v=>setProfile(p=>({...p,totalCompTo:v}))}/>
             </div>
-          ))}
+          </div>
         </div>
         <div style={S.card}>
           <div style={{fontSize:14,fontWeight:500,marginBottom:"1rem"}}>Candidate on file</div>
@@ -2882,7 +2913,7 @@ export default function App() {
   const [editing,setEditing]=useState(null);
   const [filters,setFilters]=useState({type:"",employer:"",search:""});
   const [showFullCV,setShowFullCV]=useState(false);
-  const [profile,setProfile]=useState({tone:"professional",pageLimit:3,seniority:"VP"});
+  const [profile,setProfile]=useState({tone:"professional",pageLimit:3,seniority:"VP",baseSalaryFrom:185000,baseSalaryTo:220000,totalCompFrom:285000,totalCompTo:350000});
   const [experience,setExperience]=useState(EXPERIENCE_DEFAULT);
 
   useEffect(()=>{
@@ -2896,12 +2927,22 @@ export default function App() {
         const exp=await getExperience();
         if(exp.length>0)setExperience(exp);
       }catch(e){}
+      try{
+        const prof=await getProfile();
+        if(prof)setProfile(p=>({...p,
+          baseSalaryFrom: prof.base_salary_from ?? p.baseSalaryFrom,
+          baseSalaryTo:   prof.base_salary_to   ?? p.baseSalaryTo,
+          totalCompFrom:  prof.total_comp_from   ?? p.totalCompFrom,
+          totalCompTo:    prof.total_comp_to     ?? p.totalCompTo,
+        }));
+      }catch(e){}
       setLoading(false);
     })();
   },[]);
 
   async function persist(d){try{await upsertStories(d);}catch(e){}}
   async function persistExp(d){try{await saveExperience(d);}catch(e){}}
+  async function persistProfile(p){try{await saveProfile({base_salary_from:p.baseSalaryFrom,base_salary_to:p.baseSalaryTo,total_comp_from:p.totalCompFrom,total_comp_to:p.totalCompTo});}catch(e){}}
   function saveStory(form){
     const exists=stories.find(s=>s.id===form.id);
     const updated=exists?stories.map(s=>s.id===form.id?form:s):[...stories,form];
@@ -3020,7 +3061,7 @@ export default function App() {
         {page==="experience"&&<ExperienceView experience={experience} setExperience={exp=>{setExperience(exp);persistExp(exp);}}/>}
         {page==="awards"&&<AwardsView/>}
         {page==="apply"&&<ApplyView stories={stories} setStories={updateStories} experience={experience}/>}
-        {page==="profile"&&<ProfileView profile={profile} setProfile={setProfile}/>}
+        {page==="profile"&&<ProfileView profile={profile} setProfile={p=>{const next=typeof p==='function'?p(profile):p;setProfile(next);persistProfile(next);}}/>}
       </div>
 
       {showFullCV&&<FullCVExporter stories={stories} experience={experience} onClose={()=>setShowFullCV(false)}/>}

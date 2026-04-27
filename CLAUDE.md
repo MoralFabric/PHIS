@@ -65,6 +65,18 @@ Columns are snake_case. The `year` column does **not** exist — it was removed 
 | notes | text |
 | date_added | text |
 
+**`profile` table** (singleton row, `id = 'adam'`)
+
+| Column | Type |
+|---|---|
+| id | text (PK, default 'adam') |
+| base_salary_from | integer (default 185000) |
+| base_salary_to | integer (default 220000) |
+| total_comp_from | integer (default 285000) |
+| total_comp_to | integer (default 350000) |
+
+Migration: `scripts/migration_001_profile.sql` — run in Supabase SQL editor.
+
 **`experience` table**
 
 | Column | Type |
