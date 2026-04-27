@@ -22,9 +22,15 @@ app/
 lib/
   supabase.js          # Browser Supabase client (NEXT_PUBLIC_ vars only)
   data.js              # All DB helpers: seedAndGetStories, upsertStory/ies, deleteStory,
-                       #   getExperience, saveExperience
+                       #   getExperience, saveExperience, getProfile, saveProfile
 scripts/
-  import-extra-soars.js  # One-time import: reads soar_*.json from root, upserts to Supabase
+  import-extra-soars.js   # One-time import: reads soar_*.json from root, upserts to Supabase
+  migration_001_profile.sql  # Run manually in Supabase SQL editor — adds profile salary columns
+  step1_block.txt         # JDAnalysisStep source (injected into page.js during Phase 3)
+  step3_gap.js            # GapCard + GapResolutionStep source
+  step4_rescore.js        # RescoreStep source
+  step5_resume.js         # ResumeStep source
+  step6_coverletter.js    # CoverLetterStep source
 SOAR_Library.json        # 50 canonical SOAR stories (seed source)
 soar_050_*.JSON … soar_2026_001.JSON  # Additional SOAR story files imported via script
 PHIS_v5.jsx              # Original single-file React app (kept for reference)
@@ -100,9 +106,55 @@ Migration: `scripts/migration_001_profile.sql` — run in Supabase SQL editor.
 
 **Story seeding** — `seedAndGetStories(inlineSeeds)` in `lib/data.js` is called on app boot. If the `stories` table is empty it seeds from all three sources (inline `SEEDS` array, inline `EXTENDED_SOAR` array, and `SOAR_Library.json`), deduplicated by `id`. On subsequent boots it only upserts inline seeds whose IDs are missing from the DB.
 
-**`buildStoryContext` (line ~1527) is Apply-only** — this helper slices to 30 stories and is used exclusively by `ApplyView` (Application Engine) for resume/CPS generation where token budget is tight. It is not called by `InterviewView` or `AskView`.
+**`buildStoryContext` is Apply-only with a 30-story cap** — used only in `ApplyView` for resume generation (Step 5) where token budget is tight. CPS scoring (Steps 2 and 4) skips this helper and passes the full story library directly via `stories.map(...)`.
 
 **Interview context uses all stories** — both `InterviewView.ask` and `AskView.ask` (interview branch) build their context inline with `stories.map(...)`, no cap.
+
+**`callClaude` maxTokens must match the call** — default is 1000 (fine for short JSON). CPS scoring and rescore pass 3000; resume generation passes 3000; cover letter passes 1200. Using the default for CPS causes JSON truncation mid-stream, which `parseJSON` cannot recover from. Always set maxTokens explicitly for multi-field JSON responses.
+
+**`parseJSON` strips markdown fences before parsing** — Claude sometimes wraps JSON in ` ```json ``` ` even when told not to. `parseJSON` handles this; no extra stripping needed at call sites.
+
+## Application Engine — stepped state machine
+
+`ApplyView` uses a linear 6-step state machine. Each step is an independent component with `active`, `result` (cached data from a previous run), `onComplete`, and `onError` props. Steps are mounted once their prerequisite data exists; completed steps stay mounted (collapsed) so the user can navigate back.
+
+**State shape** (`app` in `ApplyView`):
+
+```js
+{
+  currentStep: 'input' | 'jdAnalysis' | 'cpsScore' | 'gapResolutions' | 'rescore' | 'resume' | 'coverLetter',
+  jdAnalysis:     null | { role, company, seniority, skills, responsibilities, comp },
+  cpsResult:      null | { scores: [{skill, score, evidence, gap, improve}] },
+  gapResolutions: null | [{skill, score, improve, status: 'pending'|'confirmed_gap'|'story_added', story?}],
+  rescore:        null | { scores, probs: {p_interview, p_offer, p_overall, ...reasons} },
+  resume:         null | { content: string },
+  coverLetter:    null | { content: string },
+  error:          null | string,
+}
+```
+
+**Steps:**
+
+| # | `currentStep` | Component | Claude call | maxTokens |
+|---|---|---|---|---|
+| 1 | `jdAnalysis` | `JDAnalysisStep` | Extract skills/comp from JD → JSON | 2000 |
+| 2 | `cpsScore` | `CPSStep` | Score all skills against full story library → JSON | 3000 |
+| 3 | `gapResolutions` | `GapResolutionStep` | Per-gap: validate SOAR claims, generate structured story | 1500 |
+| 4 | `rescore` | `RescoreStep` | Re-score with new stories + 3 hire probabilities | 3000 + 800 |
+| 5 | `resume` | `ResumeStep` | Generate tailored resume (ALL CAPS headers, •, no em-dashes) | 3000 |
+| 6 | `coverLetter` | `CoverLetterStep` | Generate 4-paragraph cover letter (warm, human, no banned phrases) | 1200 |
+
+**CPS scoring threshold** — gaps are skills scoring `< 70`; strong is `>= 75`.
+
+**Em-dash rule** — every step that generates prose calls `stripEmDashes()` on the raw Claude output as a post-processing safety net, in addition to the hard rule stated in the system prompt.
+
+**Banned phrases list** — both resume and cover letter prompts include: `leveraged, spearheaded, passionate, synergy, in today's fast-paced, utilized, holistic, robust, transformative, cutting-edge, best-in-class, thought leader`.
+
+**Comp match** — `compMatch(comp, profile)` compares JD-extracted comp to profile salary targets (`baseSalaryFrom/To`, `totalCompFrom/To`). Shows a green banner (in range) or amber warning (below floor) in Step 1.
+
+**RTF export** — `buildResumeRTF(text, experience)` and the inline `buildCoverLetterRTF(text)` in `CoverLetterStep` both use `escRTF()` for escaping. Resume RTF appends AI content after the structured experience/education/awards sections. Cover letter RTF is a clean letter layout with the candidate header.
+
+**File injection pattern** — the `scripts/step*.js` files are the source-of-truth for each step component. They were injected into `page.js` before the `// ─── APPLICATION ENGINE ───────────────────────────` marker using `node -e "const inject = fs.readFileSync('scripts/stepN.js', 'utf8'); ..."` with line-based array surgery. Do not use heredoc injection — Node.js corrupts `\n` escape sequences inside strings when reading from stdin heredoc.
 
 ## App pages / navigation
 
