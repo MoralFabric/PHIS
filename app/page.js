@@ -2417,38 +2417,15 @@ function AwardsView() {
   );
 }
 
-// ─── PIPELINE COMPONENTS (v4) ─────────────────────────────
-const STEPS = [
-  { id:"analyze", label:"Analyze JD",   desc:"Extracting requirements…" },
-  { id:"score",   label:"Score (CPS)",  desc:"Scoring your experience…" },
-  { id:"draft",   label:"Draft Resume", desc:"Maximizing CPS content…"  },
-  { id:"letter",  label:"Cover Letter", desc:"Addressing key gaps…"     },
+// ─── APPLICATION ENGINE — step registry ───────────────────
+const APP_STEPS=[
+  {id:'jdAnalysis',    label:'JD Analysis'},
+  {id:'cpsResult',     label:'CPS Score'},
+  {id:'gapResolutions',label:'Gap Review'},
+  {id:'rescore',       label:'Re-score'},
+  {id:'resume',        label:'Resume'},
+  {id:'coverLetter',   label:'Cover Letter'},
 ];
-const STEP_IDX = { idle:-1, analyze:0, score:1, draft:2, letter:3, done:4 };
-
-function PipelineProgress({step}) {
-  const idx=STEP_IDX[step]??-1;
-  const running=["analyze","score","draft","letter"].includes(step);
-  const done=step==="done";
-  return(
-    <div style={{display:"flex",alignItems:"flex-start",gap:0,padding:"0.5rem 0"}}>
-      {STEPS.map((s,i)=>{
-        const isDone=i<idx||done;
-        const isActive=i===idx&&running;
-        return(
-          <div key={s.id} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",position:"relative"}}>
-            {i>0&&<div style={{position:"absolute",left:"-50%",top:12,width:"100%",height:2,background:isDone?"#639922":"var(--color-border-tertiary)",zIndex:0}}/>}
-            <div style={{width:24,height:24,borderRadius:"50%",zIndex:1,position:"relative",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:500,border:isActive?"2px solid #185FA5":"2px solid transparent",background:isDone?"#639922":isActive?"#185FA5":"var(--color-background-secondary)",color:isDone||isActive?"#fff":"var(--color-text-tertiary)"}}>
-              {isDone?"✓":i+1}
-            </div>
-            <div style={{fontSize:11,fontWeight:isActive?500:400,color:isDone?"#639922":isActive?"#185FA5":"var(--color-text-tertiary)",marginTop:4,textAlign:"center"}}>{s.label}</div>
-            {isActive&&<div style={{fontSize:10,color:"var(--color-text-tertiary)",textAlign:"center",marginTop:2}}>{s.desc}</div>}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
 
 function CPSScorecard({scores,onAddEvidence}) {
   const avg=scores?Math.round(scores.reduce((a,s)=>a+s.score,0)/scores.length):0;
@@ -2650,191 +2627,94 @@ function FullCVExporter({stories,experience,onClose}) {
   );
 }
 
-// ─── APPLICATION ENGINE (v4 CPS + RTF download) ───────────
-function ApplyView({stories,setStories,experience}) {
-  const [jd,setJd]=useState("");
-  const [pipe,setPipe]=useState({step:"idle",jdData:null,cps:null,resume:null,letter:null,error:null});
-  const [tab,setTab]=useState("resume");
-  const [addingFor,setAddingFor]=useState(null);
-  const [downloaded,setDownloaded]=useState(false);
+// ─── APPLICATION ENGINE ───────────────────────────
+function ApplyView({stories,setStories,experience,profile}) {
+  const [jobTitle,setJobTitle]=useState("");
+  const [company,setCompany]=useState("");
+  const [jdText,setJdText]=useState("");
+  const [app,setApp]=useState({
+    currentStep:'input',
+    jdAnalysis:null,
+    cpsResult:null,
+    gapResolutions:null,
+    rescore:null,
+    resume:null,
+    coverLetter:null,
+    error:null,
+  });
 
-  const isRunning=["analyze","score","draft","letter"].includes(pipe.step);
-  const isDone=pipe.step==="done";
-  const overall=pipe.cps?Math.round(pipe.cps.reduce((a,s)=>a+s.score,0)/pipe.cps.length):0;
+  const canAnalyze=jobTitle.trim()&&company.trim()&&jdText.trim();
+  const pastInput=app.currentStep!=='input';
+  const completedSteps=APP_STEPS.filter(s=>app[s.id]!==null);
 
-  const eduCtx=EDUCATION_DATA.map(e=>`${e.cred} — ${e.org}${e.year?" ("+e.year+")":""}: ${e.note}`).join("; ");
-  const awardsCtx=AWARDS_DATA.slice(0,6).map(a=>`${a.award} (${a.year})`).join("; ");
-
-  async function runPipeline(storyList) {
-    const sl=storyList||stories;
-    const expCtx=buildExpContext(experience);
-    const storyCtx=buildStoryContext(sl);
-    setDownloaded(false);
-    try{
-      setPipe(p=>({...p,step:"analyze",error:null}));
-      const jdText=await callClaude(
-        `You are a senior recruiter. Extract key skills from a job description. Return ONLY valid JSON — no markdown. Schema: {"role":"string","company":"string","skills":[{"name":"string","weight":1-10,"category":"domain|leadership|technical|soft","required":true}]}. Extract 10-14 skills. Weight 10 = must-have.`,
-        `JD:\n${jd}`
-      );
-      const jdData=parseJSON(jdText);
-      if(!jdData?.skills)throw new Error("Could not extract skills. Please check the JD is complete.");
-      setPipe(p=>({...p,step:"score",jdData}));
-
-      const cpsText=await callClaude(
-        `You are a career scoring expert. Score the candidate against each skill 0-100. Cite specific evidence. Return ONLY valid JSON — no markdown fences, no preamble, no trailing text. Schema: {"scores":[{"skill":"string","score":0-100,"evidence":"specific quote","gap":"what is missing","improve":"one actionable sentence"}]}`,
-        `Skills:\n${JSON.stringify(jdData.skills)}\n\nExperience:\n${expCtx}\n\nSOAR stories:\n${storyCtx}\n\nEducation: ${eduCtx}\n\nCompetencies: ${COMPETENCIES}`,
-        3000
-      );
-      console.log('[CPS] raw response:', cpsText.slice(0,500));
-      const cpsData=parseJSON(cpsText);
-      if(!cpsData?.scores){
-        console.error('[CPS] parseJSON failed. Full response:', cpsText);
-        throw new Error(`Could not calculate CPS scores. Raw response: ${cpsText.slice(0,200)}`);
-      }
-      setPipe(p=>({...p,step:"draft",cps:cpsData.scores}));
-
-      const topGaps=cpsData.scores.filter(s=>s.score<70).map(s=>s.skill).join(", ");
-      const resumeText=await callClaude(
-        `You are an expert resume writer. Generate resume CONTENT that maximizes CPS for the target role. Use ALL CAPS for section headers followed by a colon. Bullet points start with •. Strong action verbs, quantified outcomes. 3 pages max. Address gaps through framing where genuine experience exists.`,
-        `Target: ${jdData.role} at ${jdData.company}\nHigh-weight skills: ${jdData.skills.filter(s=>s.weight>=7).map(s=>s.name).join(", ")}\nGaps to address: ${topGaps}\n\nExperience:\n${expCtx}\n\nSOAR stories:\n${storyCtx}\n\nCompetencies: ${COMPETENCIES}\nCapital Markets: ${CM_EXPERTISE}\nEducation: ${eduCtx}\nAwards: ${awardsCtx}`,
-        2000
-      );
-      setPipe(p=>({...p,step:"letter",resume:resumeText}));
-
-      const scoreAvg=Math.round(cpsData.scores.reduce((a,s)=>a+s.score,0)/cpsData.scores.length);
-      const gapList=cpsData.scores.filter(s=>s.score<70).map(s=>`${s.skill}: ${s.gap}`).join("\n");
-      const letterText=await callClaude(
-        `Write a warm, confident, genuinely human cover letter. No clichés like "I am excited to apply." 4 paragraphs. Professional but conversational. Address key gaps directly and positively.`,
-        `Target: ${jdData.role} at ${jdData.company}\nOverall CPS: ${scoreAvg}/100\nKey gaps:\n${gapList}\n\nCandidate: Adam Waldman, CFA — 20 years in financial services. AVP Head of Business Insights (Manulife $800B+ W&AM), AVP Global CFO Reporting, internal strategy consultant to CFO (OMERS), launched BlackRock and Vanguard's first Canadian ETFs (State Street). Capital markets fluency: equities, fixed income, derivatives, private markets, cost of capital, duration modelling.`
-      );
-      setPipe(p=>({...p,step:"done",letter:letterText}));
-    }catch(err){
-      setPipe(p=>({...p,step:"idle",error:err.message}));
-    }
+  function resetAll(){
+    setApp({currentStep:'input',jdAnalysis:null,cpsResult:null,gapResolutions:null,rescore:null,resume:null,coverLetter:null,error:null});
   }
-
-  async function handleAddEvidence(rawStory) {
-    const newStory={...rawStory,id:Date.now(),dateAdded:new Date().toISOString().split("T")[0]};
-    const updated=[...stories,newStory];
-    setStories(updated);
-    setAddingFor(null);
-    if(pipe.jdData){
-      setPipe(p=>({...p,step:"score",cps:null,resume:null,letter:null}));
-      const expCtx=buildExpContext(experience);
-      const storyCtx=buildStoryContext(updated);
-      try{
-        const cpsText=await callClaude(
-          `Score the candidate against each skill 0-100. Return ONLY valid JSON — no markdown fences, no preamble. Schema: {"scores":[{"skill":"string","score":0-100,"evidence":"string","gap":"string","improve":"string"}]}`,
-          `Skills:\n${JSON.stringify(pipe.jdData.skills)}\n\nExperience:\n${expCtx}\n\nSOAR stories:\n${storyCtx}\n\nCredentials: ${eduCtx}`,
-          3000
-        );
-        console.log('[CPS re-score] raw response:', cpsText.slice(0,500));
-        const cpsData=parseJSON(cpsText);
-        if(!cpsData?.scores){
-          console.error('[CPS re-score] parseJSON failed. Full response:', cpsText);
-          throw new Error(`Re-scoring failed. Raw response: ${cpsText.slice(0,200)}`);
-        }
-        setPipe(p=>({...p,step:"draft",cps:cpsData.scores}));
-        const resumeText=await callClaude(
-          `Generate updated resume CONTENT maximizing CPS. ALL CAPS section headers. Bullet points start with •. 3 pages max.`,
-          `Target: ${pipe.jdData.role} at ${pipe.jdData.company}\nExperience:\n${expCtx}\nSOAR stories:\n${storyCtx}\nCompetencies: ${COMPETENCIES}`,
-          2000
-        );
-        setPipe(p=>({...p,step:"letter",resume:resumeText}));
-        const letterText=await callClaude(
-          `Write a warm, professional cover letter. 4 paragraphs. No clichés. Human-sounding.`,
-          `Role: ${pipe.jdData.role} at ${pipe.jdData.company}\nCandidate: Adam Waldman, CFA — 20 years financial services, capital markets fluency, senior CFO advisory.`
-        );
-        setPipe(p=>({...p,step:"done",letter:letterText}));
-      }catch(e){setPipe(p=>({...p,step:"done",error:e.message}));}
-    }
-  }
-
-  function downloadRTF(){
-    const rtf=buildResumeRTF(pipe.resume,experience);
-    downloadBlob(rtf,'adam_waldman_resume_tailored.rtf','application/rtf');
-    setDownloaded(true);
-  }
+  function goTo(step){setApp(a=>({...a,currentStep:step,error:null}));}
+  function setError(error){setApp(a=>({...a,error}));}
 
   return(
     <div>
-      <div style={{marginBottom:"1.5rem"}}>
+      <div style={{marginBottom:'1.5rem'}}>
         <div style={{fontSize:22,fontWeight:500}}>Application Engine</div>
-        <div style={{fontSize:13,color:"var(--color-text-secondary)",marginTop:2}}>Paste a job description. The engine analyzes it, scores your profile (CPS), and generates a tailored resume and cover letter — ready to submit.</div>
+        <div style={{fontSize:13,color:'var(--color-text-secondary)',marginTop:2}}>
+          Score your fit against a job posting step by step, resolve gaps, then generate a tailored resume and cover letter.
+        </div>
       </div>
 
-      {!isDone&&(
-        <div style={{...S.card,marginBottom:"1rem"}}>
-          <label style={S.label}>Job description</label>
-          <textarea value={jd} onChange={e=>setJd(e.target.value)} style={{...S.textarea,minHeight:220,marginBottom:"1rem"}} placeholder="Paste the full job posting here…" disabled={isRunning}/>
-          {pipe.error&&<div style={{fontSize:12,color:"#A32D2D",marginBottom:8,padding:"8px 12px",background:"#FCEBEB",borderRadius:6}}>⚠ {pipe.error}</div>}
-          <div style={{display:"flex",alignItems:"center",gap:12}}>
-            <button onClick={()=>runPipeline()} disabled={!jd.trim()||isRunning} style={{...S.primary,opacity:!jd.trim()||isRunning?0.5:1}}>
-              {isRunning?"Running pipeline…":"Run Full Pipeline →"}
-            </button>
-            {isRunning&&<div style={{fontSize:12,color:"var(--color-text-secondary)"}}>This takes about 30 seconds…</div>}
-          </div>
-        </div>
-      )}
-
-      {(isRunning||isDone)&&(
-        <div style={{...S.card,marginBottom:"1rem"}}>
-          <PipelineProgress step={pipe.step}/>
-          {isDone&&(
-            <div style={{marginTop:"0.75rem",paddingTop:"0.75rem",borderTop:"0.5px solid var(--color-border-tertiary)",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-              <div style={{fontSize:13,color:"var(--color-text-secondary)"}}>
-                Pipeline complete — Overall CPS: <strong style={{color:overall>=75?"#639922":overall>=60?"#BA7517":"#A32D2D"}}>{overall}/100</strong>
-                {pipe.jdData&&<span style={{marginLeft:8}}>· {pipe.jdData.role} at {pipe.jdData.company}</span>}
-              </div>
-              <button onClick={()=>setPipe({step:"idle",jdData:null,cps:null,resume:null,letter:null,error:null})} style={S.btn}>← New application</button>
+      {!pastInput?(
+        <div style={S.card}>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1rem',marginBottom:'1rem'}}>
+            <div>
+              <label style={S.label}>Job title <span style={{color:'#A32D2D'}}>*</span></label>
+              <input value={jobTitle} onChange={e=>setJobTitle(e.target.value)} style={S.inp} placeholder="e.g. VP Data & Analytics"/>
             </div>
-          )}
+            <div>
+              <label style={S.label}>Company <span style={{color:'#A32D2D'}}>*</span></label>
+              <input value={company} onChange={e=>setCompany(e.target.value)} style={S.inp} placeholder="e.g. Mackenzie Investments"/>
+            </div>
+          </div>
+          <div style={{marginBottom:'1rem'}}>
+            <label style={S.label}>Job description <span style={{color:'#A32D2D'}}>*</span></label>
+            <textarea value={jdText} onChange={e=>setJdText(e.target.value)} style={{...S.textarea,minHeight:220}} placeholder="Paste the full job posting here…"/>
+          </div>
+          {app.error&&<div style={{fontSize:12,color:'#A32D2D',marginBottom:8,padding:'8px 12px',background:'#FCEBEB',borderRadius:6}}>⚠ {app.error}</div>}
+          <button onClick={()=>goTo('jdAnalysis')} disabled={!canAnalyze} style={{...S.primary,opacity:canAnalyze?1:0.5}}>
+            Analyze JD →
+          </button>
         </div>
-      )}
-
-      {isDone&&(
-        <div style={{display:"grid",gridTemplateColumns:"minmax(0,1fr) minmax(0,1fr)",gap:"1rem",alignItems:"start"}}>
+      ):(
+        <div style={{...S.card,marginBottom:'1rem',display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0.875rem 1rem'}}>
           <div>
-            <div style={{display:"flex",background:"var(--color-background-secondary)",borderRadius:8,padding:3,marginBottom:"1rem",gap:2}}>
-              {[{id:"resume",label:"Resume"},{id:"letter",label:"Cover Letter"}].map(t=>(
-                <button key={t.id} onClick={()=>setTab(t.id)} style={{flex:1,padding:"6px 0",border:"none",cursor:"pointer",fontSize:13,borderRadius:6,fontFamily:"inherit",background:tab===t.id?"var(--color-background-primary)":"transparent",color:tab===t.id?"var(--color-text-primary)":"var(--color-text-secondary)",fontWeight:tab===t.id?500:400}}>{t.label}</button>
-              ))}
-            </div>
-            {tab==="resume"&&(
-              <div style={S.card}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"1rem"}}>
-                  <div style={{fontSize:11,color:"var(--color-text-tertiary)"}}>Optimized for {pipe.jdData?.role} · {pipe.jdData?.company}</div>
-                  <div style={{display:"flex",gap:6}}>
-                    <button onClick={()=>navigator.clipboard?.writeText([`${CANDIDATE.name}\n${CANDIDATE.subtitle}\n${CANDIDATE.contact}`,pipe.resume].join("\n\n"))} style={{...S.btn,fontSize:11,padding:"4px 10px"}}>Copy ↗</button>
-                    <button onClick={downloadRTF} style={{...S.btn,fontSize:11,padding:"4px 10px",color:downloaded?"#065f46":"var(--color-text-primary)",borderColor:downloaded?"#10b981":"var(--color-border-secondary)"}}>{downloaded?"✓ Downloaded":"↓ .rtf"}</button>
-                  </div>
-                </div>
-                <ResumeOutput content={pipe.resume}/>
-              </div>
-            )}
-            {tab==="letter"&&(
-              <div style={S.card}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"1rem"}}>
-                  <div style={{fontSize:11,color:"var(--color-text-tertiary)"}}>Cover letter · {pipe.jdData?.role} · {pipe.jdData?.company}</div>
-                  <button onClick={()=>navigator.clipboard?.writeText(pipe.letter||"")} style={{...S.btn,fontSize:11,padding:"4px 10px"}}>Copy ↗</button>
-                </div>
-                <div style={{fontSize:13,lineHeight:1.8,color:"var(--color-text-primary)",whiteSpace:"pre-wrap"}}>{pipe.letter}</div>
-              </div>
-            )}
+            <span style={{fontWeight:500,fontSize:14}}>{jobTitle}</span>
+            <span style={{fontSize:13,color:'var(--color-text-secondary)',marginLeft:8}}>· {company}</span>
           </div>
-          <div style={S.card}>
-            <div style={{fontSize:14,fontWeight:500,marginBottom:"1rem"}}>Candidate Profile Score</div>
-            {addingFor?(
-              <AddEvidencePanel targetGap={addingFor} onSave={handleAddEvidence} onCancel={()=>setAddingFor(null)}/>
-            ):(
-              <CPSScorecard scores={pipe.cps} onAddEvidence={setAddingFor}/>
-            )}
-          </div>
+          <button onClick={resetAll} style={S.btn}>← New application</button>
+        </div>
+      )}
+
+      {completedSteps.length>0&&(
+        <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:'1rem'}}>
+          {completedSteps.map(s=>(
+            <button key={s.id} onClick={()=>goTo(s.id)}
+              style={{...S.btn,fontSize:11,padding:'3px 10px',
+                background:app.currentStep===s.id?'var(--color-text-primary)':undefined,
+                color:app.currentStep===s.id?'var(--color-background-primary)':undefined,
+              }}>
+              {s.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {pastInput&&(
+        <div style={{display:'flex',flexDirection:'column',gap:'1rem'}}>
         </div>
       )}
     </div>
   );
 }
+
 
 // ─── PROFILE VIEW ─────────────────────────────────────────
 function SalaryInput({label, value, onChange}) {
@@ -3060,7 +2940,7 @@ export default function App() {
         {page==="interview"&&<InterviewView stories={stories}/>}
         {page==="experience"&&<ExperienceView experience={experience} setExperience={exp=>{setExperience(exp);persistExp(exp);}}/>}
         {page==="awards"&&<AwardsView/>}
-        {page==="apply"&&<ApplyView stories={stories} setStories={updateStories} experience={experience}/>}
+        {page==="apply"&&<ApplyView stories={stories} setStories={updateStories} experience={experience} profile={profile}/>}
         {page==="profile"&&<ProfileView profile={profile} setProfile={p=>{const next=typeof p==='function'?p(profile):p;setProfile(next);persistProfile(next);}}/>}
       </div>
 
