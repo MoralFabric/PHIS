@@ -1528,7 +1528,7 @@ function buildStoryContext(stories) {
 }
 
 function tierStyle(score) {
-  if (score >= 80) return { bg:"#EAF3DE", color:"#3B6D11", label:"Strong", bar:"#639922" };
+  if (score >= 75) return { bg:"#EAF3DE", color:"#3B6D11", label:"Strong", bar:"#639922" };
   if (score >= 60) return { bg:"#FAEEDA", color:"#854F0B", label:"Partial", bar:"#EF9F27" };
   return { bg:"#FCEBEB", color:"#A32D2D", label:"Gap", bar:"#E24B4A" };
 }
@@ -2433,7 +2433,7 @@ function CPSScorecard({scores,onAddEvidence}) {
   return(
     <div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(4,minmax(0,1fr))",gap:8,marginBottom:"1rem"}}>
-        {[{label:"Overall CPS",val:avg,color:avgColor},{label:"Strong",val:scores?.filter(s=>s.score>=80).length||0,color:"#639922"},{label:"Partial",val:scores?.filter(s=>s.score>=60&&s.score<80).length||0,color:"#BA7517"},{label:"Gaps",val:scores?.filter(s=>s.score<60).length||0,color:"#A32D2D"}].map(c=>(
+        {[{label:"Overall CPS",val:avg,color:avgColor},{label:"Strong (75+)",val:scores?.filter(s=>s.score>=75).length||0,color:"#639922"},{label:"Partial (60–74)",val:scores?.filter(s=>s.score>=60&&s.score<75).length||0,color:"#BA7517"},{label:"Gaps (<70)",val:scores?.filter(s=>s.score<70).length||0,color:"#A32D2D"}].map(c=>(
           <div key={c.label} style={{background:"var(--color-background-secondary)",borderRadius:8,padding:"0.75rem"}}>
             <div style={{fontSize:20,fontWeight:500,color:c.color}}>{c.val}</div>
             <div style={{fontSize:11,color:"var(--color-text-secondary)",marginTop:1}}>{c.label}</div>
@@ -2743,6 +2743,88 @@ function JDAnalysisStep({active,jobTitle,company,jdText,profile,result,onComplet
   );
 }
 
+// ─── STEP 2: CPS SCORE ──────────────────────────────────
+function CPSStep({active,jdAnalysis,result,stories,experience,onComplete,onError}) {
+  const [loading,setLoading]=useState(false);
+  const [scores,setScores]=useState(result?.scores||null);
+  const [err,setErr]=useState(null);
+
+  async function runScoring(){
+    setLoading(true);setErr(null);
+    try{
+      const expCtx=buildExpContext(experience);
+      const eduCtx=EDUCATION_DATA.map(e=>e.cred+" — "+e.org+(e.year?" ("+e.year+")":"")+": "+e.note).join("; ");
+      const nl="\n";
+      const storyCtx=stories.map(s=>["SOAR: "+s.title+" ("+s.employer+")",nl+"Skills: "+(s.skills||s.themes||[]).join(", "),nl+"Action: "+s.action,nl+"Result: "+s.result].join("")).join(nl+nl);
+      const raw=await callClaude(
+        "You are a career scoring expert. Score the candidate against each skill 0-100. Cite specific evidence. Return ONLY valid JSON—no markdown fences, no preamble. Schema: {\"scores\":[{\"skill\":\"string\",\"score\":0,\"evidence\":\"specific quote\",\"gap\":\"what is missing\",\"improve\":\"one actionable sentence\"}]}",
+        ["Skills:",nl,JSON.stringify(jdAnalysis.skills),nl+nl,"Experience:",nl,expCtx,nl+nl,"SOAR stories:",nl,storyCtx,nl+nl,"Education: ",eduCtx,nl+nl,"Competencies: ",COMPETENCIES].join(""),
+        3000
+      );
+      console.log("[CPS step] raw:", raw.slice(0,300));
+      const parsed=parseJSON(raw);
+      if(!parsed?.scores){console.error("[CPS step] parse failed:", raw);throw new Error("Could not calculate CPS scores. Raw: "+raw.slice(0,200));}
+      setScores(parsed.scores);
+    }catch(e){setErr(e.message);onError(e.message);}
+    setLoading(false);
+  }
+
+  const avg=scores?Math.round(scores.reduce((a,s)=>a+s.score,0)/scores.length):0;
+  const avgColor=avg>=75?"#639922":avg>=60?"#BA7517":"#A32D2D";
+  const gapCount=scores?scores.filter(s=>s.score<70).length:0;
+
+  return(
+    <div style={S.card}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:"1rem"}}>
+        <div>
+          <div style={{fontSize:14,fontWeight:500}}>Step 2 — CPS Scorecard</div>
+          {scores&&<div style={{fontSize:12,color:"var(--color-text-secondary)",marginTop:2}}>{jdAnalysis.skills.length} skills scored</div>}
+        </div>
+        {result&&<span style={{fontSize:11,padding:"2px 8px",background:"#EAF3DE",color:"#3B6D11",borderRadius:4,fontWeight:500}}>✓ Complete</span>}
+      </div>
+
+      {!scores&&!loading&&(
+        <>
+          <div style={{fontSize:13,color:"var(--color-text-secondary)",marginBottom:"1rem"}}>
+            Score your full profile against {jdAnalysis.skills.length} extracted skills using your complete SOAR library and experience.
+          </div>
+          {err&&<div style={{fontSize:12,color:"#A32D2D",padding:"8px 12px",background:"#FCEBEB",borderRadius:6,marginBottom:"0.75rem"}}>⚠ {err}</div>}
+          <button onClick={runScoring} style={S.primary}>Score my profile →</button>
+        </>
+      )}
+
+      {loading&&(
+        <div style={{fontSize:13,color:"var(--color-text-secondary)"}}>
+          Scoring against {jdAnalysis.skills.length} skills — this takes about 15 seconds…
+        </div>
+      )}
+
+      {scores&&(
+        <>
+          <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr",gap:8,marginBottom:"1.25rem"}}>
+            <div style={{background:"var(--color-background-secondary)",borderRadius:8,padding:"1rem"}}>
+              <div style={{fontSize:36,fontWeight:600,color:avgColor,lineHeight:1}}>{avg}</div>
+              <div style={{fontSize:11,color:"var(--color-text-secondary)",marginTop:4}}>Overall CPS / 100</div>
+            </div>
+            <div style={{background:"var(--color-background-secondary)",borderRadius:8,padding:"1rem"}}>
+              <div style={{fontSize:28,fontWeight:500,color:"#A32D2D",lineHeight:1}}>{gapCount}</div>
+              <div style={{fontSize:11,color:"var(--color-text-secondary)",marginTop:4}}>Gaps (score &lt;70)</div>
+            </div>
+            <div style={{background:"var(--color-background-secondary)",borderRadius:8,padding:"1rem"}}>
+              <div style={{fontSize:28,fontWeight:500,color:"#639922",lineHeight:1}}>{scores.filter(s=>s.score>=75).length}</div>
+              <div style={{fontSize:11,color:"var(--color-text-secondary)",marginTop:4}}>Strong (75+)</div>
+            </div>
+          </div>
+          <CPSScorecard scores={scores} onAddEvidence={()=>{}}/>
+          {!result&&(
+            <button onClick={()=>onComplete({scores})} style={{...S.primary,marginTop:"1rem"}}>Review gaps →</button>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
 // ─── APPLICATION ENGINE ───────────────────────────
 function ApplyView({stories,setStories,experience,profile}) {
   const [jobTitle,setJobTitle]=useState("");
@@ -2832,6 +2914,17 @@ function ApplyView({stories,setStories,experience,profile}) {
               profile={profile}
               result={app.jdAnalysis}
               onComplete={jdAnalysis=>setApp(a=>({...a,jdAnalysis,currentStep:'cpsScore',cpsResult:null,gapResolutions:null,rescore:null,resume:null,coverLetter:null}))}
+              onError={setError}
+            />
+          )}
+          {(app.currentStep==='cpsScore'||app.cpsResult)&&app.jdAnalysis&&(
+            <CPSStep
+              active={app.currentStep==='cpsScore'}
+              jdAnalysis={app.jdAnalysis}
+              result={app.cpsResult}
+              stories={stories}
+              experience={experience}
+              onComplete={cpsResult=>setApp(a=>({...a,cpsResult,currentStep:'gapResolutions',gapResolutions:null,rescore:null,resume:null,coverLetter:null}))}
               onError={setError}
             />
           )}
