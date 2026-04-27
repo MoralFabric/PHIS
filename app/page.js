@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo } from "react";
 import { seedAndGetStories, upsertStory, upsertStories, deleteStory as dbDeleteStory, getExperience, saveExperience } from '@/lib/data';
 
 // ─── CONFIG ───────────────────────────────────────────────
-const MODEL   = "claude-sonnet-4-20250514";
+const MODEL   = "claude-sonnet-4-6";
 const SK      = "phis5";
 const EXP_SK   = "phis5_exp";
 
@@ -2681,11 +2681,16 @@ function ApplyView({stories,setStories,experience}) {
       setPipe(p=>({...p,step:"score",jdData}));
 
       const cpsText=await callClaude(
-        `You are a career scoring expert. Score the candidate against each skill 0-100. Cite specific evidence. Return ONLY valid JSON: {"scores":[{"skill":"string","score":0-100,"evidence":"specific quote","gap":"what is missing","improve":"one actionable sentence"}]}`,
-        `Skills:\n${JSON.stringify(jdData.skills)}\n\nExperience:\n${expCtx}\n\nSOAR stories:\n${storyCtx}\n\nEducation: ${eduCtx}\n\nCompetencies: ${COMPETENCIES}`
+        `You are a career scoring expert. Score the candidate against each skill 0-100. Cite specific evidence. Return ONLY valid JSON — no markdown fences, no preamble, no trailing text. Schema: {"scores":[{"skill":"string","score":0-100,"evidence":"specific quote","gap":"what is missing","improve":"one actionable sentence"}]}`,
+        `Skills:\n${JSON.stringify(jdData.skills)}\n\nExperience:\n${expCtx}\n\nSOAR stories:\n${storyCtx}\n\nEducation: ${eduCtx}\n\nCompetencies: ${COMPETENCIES}`,
+        3000
       );
+      console.log('[CPS] raw response:', cpsText.slice(0,500));
       const cpsData=parseJSON(cpsText);
-      if(!cpsData?.scores)throw new Error("Could not calculate CPS scores.");
+      if(!cpsData?.scores){
+        console.error('[CPS] parseJSON failed. Full response:', cpsText);
+        throw new Error(`Could not calculate CPS scores. Raw response: ${cpsText.slice(0,200)}`);
+      }
       setPipe(p=>({...p,step:"draft",cps:cpsData.scores}));
 
       const topGaps=cpsData.scores.filter(s=>s.score<70).map(s=>s.skill).join(", ");
@@ -2719,11 +2724,16 @@ function ApplyView({stories,setStories,experience}) {
       const storyCtx=buildStoryContext(updated);
       try{
         const cpsText=await callClaude(
-          `Score the candidate against each skill 0-100. Return ONLY valid JSON: {"scores":[{"skill":"string","score":0-100,"evidence":"string","gap":"string","improve":"string"}]}`,
-          `Skills:\n${JSON.stringify(pipe.jdData.skills)}\n\nExperience:\n${expCtx}\n\nSOAR stories:\n${storyCtx}\n\nCredentials: ${eduCtx}`
+          `Score the candidate against each skill 0-100. Return ONLY valid JSON — no markdown fences, no preamble. Schema: {"scores":[{"skill":"string","score":0-100,"evidence":"string","gap":"string","improve":"string"}]}`,
+          `Skills:\n${JSON.stringify(pipe.jdData.skills)}\n\nExperience:\n${expCtx}\n\nSOAR stories:\n${storyCtx}\n\nCredentials: ${eduCtx}`,
+          3000
         );
+        console.log('[CPS re-score] raw response:', cpsText.slice(0,500));
         const cpsData=parseJSON(cpsText);
-        if(!cpsData?.scores)throw new Error("Re-scoring failed");
+        if(!cpsData?.scores){
+          console.error('[CPS re-score] parseJSON failed. Full response:', cpsText);
+          throw new Error(`Re-scoring failed. Raw response: ${cpsText.slice(0,200)}`);
+        }
         setPipe(p=>({...p,step:"draft",cps:cpsData.scores}));
         const resumeText=await callClaude(
           `Generate updated resume CONTENT maximizing CPS. ALL CAPS section headers. Bullet points start with •. 3 pages max.`,
