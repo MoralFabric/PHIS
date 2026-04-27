@@ -1,0 +1,16 @@
+{
+  "id": "soar_2026_001",
+  "type": "insight",
+  "title": "Transforming EDL Development Through Reusable Data Architecture",
+  "employer": "Manulife Global Wealth & Asset Management",
+  "situation": "Shortly after transitioning into the AVP, Business Insights & Reporting role, the CDO informed Global Retirement leadership that the new EDL environment was ready for use. With leftover strategic funding, leaders proposed a set of small, isolated reporting projects—including online statement redesign and contribution rate reporting—none of which would create reusable enterprise value.",
+  "obstacle": "The CDO team, Deloitte consultants, and business stakeholders were anchored to a traditional project-based delivery model requiring fixed outputs, user stories, and cost/benefit cases. Proposing a reusable data architecture was seen as too abstract and outside their delivery framework. The room gravitated toward a low-value print-and-post project that would save only ~$20K annually.",
+  "action": "Shifted strategy by accepting leadership of the contribution rate project and reframing it as a data architecture initiative. Defined a minimal, reusable EDL structure—fact tables, dimensions, and ID keys—designed for flexible modelling rather than hard-coded reporting. Delivered the build on time and used Power BI to rapidly generate multi-dimensional insights across age, segment, industry, client, and advisor. Presented the approach at the CDO Town Hall, demonstrating how flexible modelling revealed insights that rigid reporting could not.",
+  "result": "The reusable EDL structure enabled rapid insight generation, including identifying that plans matching at least 3% drove significantly higher contribution rates. Built a targeted list of 500+ clients below the threshold and quantified that if only 25 increased their match by 1%, the financial impact would exceed project cost by 25×. The presentation received a standing ovation and became the model for all future EDL development.",
+  "impact": "Shifted the CDO organization from project-based reporting builds to reusable data architecture; established a scalable model that accelerated analytics delivery across Retirement and GWAM.",
+  "themes": ["Insight Leadership", "Data Strategy", "Strategic Thinking", "Executive Influence", "Change Leadership"],
+  "skills": ["data architecture", "strategic influence", "analytics", "executive storytelling", "organizational transformation"],
+  "useFor": ["Resume", "Interview", "LinkedIn"],
+  "notes": "One of the strongest demonstrations of data strategy, political navigation, and enterprise impact.",
+  "dateAdded": "2026-04-06"
+}

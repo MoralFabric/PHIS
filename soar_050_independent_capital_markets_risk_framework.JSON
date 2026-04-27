@@ -1,0 +1,13 @@
+{
+  "id": "soar_050_independent_capital_markets_risk_framework",
+  "type": "insight",
+  "title": "Reframing Capital Markets Risk Through Independent Analysis",
+  "employer": "OMERS",
+  "situation": "As the inaugural Insights Analyst for Capital Markets at OMERS, I was tasked with developing independent performance metrics and reporting directly to the CFO on the success of the capital markets portfolio.",
+  "obstacle": "As an outsider providing independent oversight, I was unwelcome. The CIO's preferred metric—effective cash yield—obscured meaningful risk. The portfolio carried hidden concentration risk through derivative-based fixed income exposure and a levered beta above one.",
+  "action": "Built an expected return framework grounded in portfolio assumptions. Calculated weighted beta and modified duration to surface the true risk profile. Revealed that negative effective duration—driven by large long CDS positions—combined with concentrated large-cap equity exposure created a misleading picture of stability. Presented a total return perspective to the CFO, challenging the income-focused narrative.",
+  "result": "Reframed internal evaluation of capital markets performance, shifting leadership from income-focused metrics to a more complete view of portfolio risk and structural vulnerability.",
+  "themes": ["Capital Markets", "Risk Analytics", "Fixed Income Derivatives", "Independent Oversight", "CFA-Level Analysis"],
+  "useFor": ["Resume", "Cover Letter", "Interview"],
+  "notes": ""
+}

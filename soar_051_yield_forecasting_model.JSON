@@ -1,0 +1,13 @@
+{
+  "id": "soar_051_yield_forecasting_model",
+  "type": "insight",
+  "title": "Building an Institutional-Grade Yield Forecasting Model",
+  "employer": "OMERS",
+  "situation": "Responsible for reviewing and assessing capital markets investment strategy across strategy, micro, macro, and portfolio dimensions.",
+  "obstacle": "Evaluating a large institutional portfolio required synthesizing inputs across multiple teams while determining whether existing investment policy and metrics were fit for long-horizon decision-making.",
+  "action": "Implemented key performance metrics with defined ranges and reviewed the Investment Policy Statement for strategic soundness. Led research linking demographic factors to long-term interest rate and equity yields, producing a proprietary model mapping age disbursement to future yield profiles.",
+  "result": "Strengthened the capital markets strategy framework and produced a durable analytical tool—still in personal use—that provides a demographic lens for long-term asset allocation decisions.",
+  "themes": ["Capital Markets Strategy", "Investment Policy", "Quantitative Modeling", "Demographic Analysis", "Long-Term Asset Allocation"],
+  "useFor": ["Resume", "Cover Letter", "Interview"],
+  "notes": ""
+}

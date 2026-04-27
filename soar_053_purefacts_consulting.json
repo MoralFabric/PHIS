@@ -1,0 +1,41 @@
+{
+  "id": "soar_053_purefacts_consulting",
+  "title": "PureFacts – External Consulting: NAV Backup System Architecture & Client Pitch",
+  "type": "consulting",
+  "employer": "PureFacts Financial Solutions",
+  "year": 2019,
+  "situation": "PureFacts, a Toronto-based FinTech specializing in wealth management data solutions, was pursuing a major Canadian bank as a client for a mission-critical NAV backup system — an independent infrastructure capable of calculating mutual fund Net Asset Values if the bank's primary system failed. The engagement required deep expertise in fund accounting, operational risk, and financial data architecture, combined with the ability to lead a client-facing pitch to senior bank leadership.",
+  "obstacle": "The proposed system was technically complex, spanning pricing feeds, corporate actions, reconciliation logic, valuation methodologies, and data lineage — all of which needed to be credibly architected and clearly communicated to a risk-averse institutional audience. PureFacts needed someone who could rapidly absorb the domain, translate technical complexity into strategic narrative, and lead the pitch with credibility.",
+  "actions": [
+    "Engaged by PureFacts CEO Robert Madej to lead the strategic and architectural design of the NAV backup system proposal",
+    "Rapidly absorbed the full domain: fund accounting, pricing feeds, corporate actions, reconciliation, valuation methodologies, and operational risk",
+    "Mapped all required data inputs, designed the calculation engine, and identified dependencies and failure points",
+    "Outlined reconciliation logic, exception handling, and contingency workflows",
+    "Built workflow diagrams and a high-level implementation roadmap",
+    "Led the client-facing pitch presentation to the bank's senior leadership team",
+    "Walked stakeholders through the proposed architecture, risk-mitigation rationale, and operational benefits"
+  ],
+  "results": [
+    "Delivered a fully architected system proposal and pitch-ready narrative within a short engagement window",
+    "Successfully presented a complex technical solution to senior bank stakeholders with clarity and credibility",
+    "Bank ultimately declined to proceed for internal strategic reasons unrelated to the proposal quality",
+    "Demonstrated ability to rapidly onboard into a new domain, architect complex financial systems, and lead external client engagements independently"
+  ],
+  "competenciesDemonstrated": [
+    "External Consulting",
+    "Financial Systems Architecture",
+    "Client-Facing Communication",
+    "Rapid Domain Mastery",
+    "Strategic Problem Structuring",
+    "Executive Presentation"
+  ],
+  "themes": [
+    "Consulting",
+    "FinTech",
+    "Operational Risk",
+    "Fund Accounting",
+    "Strategic Advisory"
+  ],
+  "useCases": ["Resume", "Interview", "Consulting Positioning"],
+  "fullStory": "Between OMERS and Manulife, I took on an external consulting engagement with PureFacts, a Toronto FinTech brought in by CEO Robert Madej to help design and pitch a NAV backup system to a major Canadian bank. This was a consulting engagement in every sense — ambiguous scope, short timeline, high stakes, external client. I absorbed the domain fast: fund accounting, pricing feeds, corporate actions, reconciliation, valuation, data lineage, operational risk. I architected the full system — inputs, calculation engine, reconciliation logic, exception handling, implementation roadmap — and built it into a pitch narrative for bank leadership. I led the presentation. The bank passed for internal reasons that had nothing to do with the work. But the engagement confirmed something I already knew: I can walk into a complex, unfamiliar problem, structure it quickly, and present it credibly to senior stakeholders. That's consulting."
+}
