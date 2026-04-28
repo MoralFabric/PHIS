@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useMemo } from "react";
-import { seedAndGetStories, upsertStory, upsertStories, deleteStory as dbDeleteStory, getExperience, saveExperience, getProfile, saveProfile } from '@/lib/data';
+import { seedAndGetStories, upsertStory, upsertStories, deleteStory as dbDeleteStory, getExperience, saveExperience, getProfile, saveProfile, getAwards, getEducation, getProfileContext } from '@/lib/data';
 
 // ─── CONFIG ───────────────────────────────────────────────
 const MODEL   = "claude-sonnet-4-6";
@@ -175,27 +175,6 @@ const EXPERIENCE_DEFAULT = [
   },
 ];
 
-
-// ─── EDUCATION ────────────────────────────────────────────
-const EDUCATION_DATA = [
-  { cred:"Chartered Financial Analyst (CFA)",   org:"CFA Institute",          year:"2013", note:"CFA Society Toronto Corporate Finance Committee (2017–2022)" },
-  { cred:"Honours B.Sc. — Mathematics & Economics", org:"University of Toronto", year:"2005", note:"VP University Affairs · Merit Award for Student Leadership" },
-  { cred:"NLP Master Practitioner",             org:"NLP Canada Training Inc.", year:"",    note:"Applied NLP methodologies for executive influence and strategic communication" },
-];
-
-// ─── AWARDS ───────────────────────────────────────────────
-const AWARDS_DATA = [
-  { year:2025, award:"Ovation Award — Participant Outcomes Index",           org:"Manulife", narrative:"Recognized for designing and operationalizing the Participant Outcomes Index, shifting the organization from activity-based to outcome-based value measurement." },
-  { year:2024, award:"Ovation Award — Retirement Investment Product",        org:"Manulife", narrative:"Awarded for strategic insight and financial leadership supporting the launch and scaling of a key retirement investment product." },
-  { year:2023, award:"Cheer Award (5,000 pts) — AIR & Retention",           org:"Manulife", narrative:"Recognized for developing behavioral insights that improved member retention and informed AIR platform enhancements." },
-  { year:2023, award:"Applause Award — Sponsor Analytics",                   org:"Manulife", narrative:"Awarded for delivering sponsor-level insights that shaped product, pricing, and distribution strategy." },
-  { year:2022, award:"Ovation Award — Digital KPI",                          org:"Manulife", narrative:"Recognized for leading the redesign of digital KPIs aligned with customer outcomes and enterprise strategy." },
-  { year:2022, award:"Stars of Excellence Nomination — KPI Redesign",        org:"Manulife", narrative:"Nominated for enterprise-wide impact in redesigning KPIs and eliminating misaligned metrics." },
-  { year:2020, award:"Stars of Excellence Award — AIR Platform",             org:"Manulife", narrative:"Awarded for insight leadership that shaped the AIR platform and improved member engagement and retention." },
-  { year:2016, award:"Pinnacle Award — Service Excellence",                  org:"Manulife Private Asset Management", narrative:"Recognized for exceptional leadership and service excellence within Private Markets Operations." },
-  { year:"2007–2014", award:"Super Service Award ×5",                        org:"State Street", narrative:"Five Super Service Awards for consistently delivering exceptional client outcomes across multiple operational and transformation roles." },
-  { year:"2007–2014", award:"Above and Beyond Award ×2",                     org:"State Street", narrative:"Awarded twice for leadership and execution during high-risk fund conversions and operational transformation initiatives." },
-];
 
 // ─── TYPES / THEMES / USE_FOR ─────────────────────────────
 const TYPES = [
@@ -2014,7 +1993,7 @@ ${expSummary}`,
 }
 
 // ─── HOME VIEW ────────────────────────────────────────────
-function HomeView({stories,experience,onStoryClick}) {
+function HomeView({stories,experience,awards,education,onStoryClick}) {
   const exp = experience || EXPERIENCE_DEFAULT;
   const [expandedRole,setExpandedRole]=useState(null);
 
@@ -2023,8 +2002,8 @@ function HomeView({stories,experience,onStoryClick}) {
   }
   function roleAwards(expItem) {
     const {startYear,endYear}=parseDates(expItem.dates);
-    return AWARDS_DATA.filter(a=>{
-      const yr=typeof a.year==="number"?a.year:null;
+    return (awards||[]).filter(a=>{
+      const yr=parseInt(a.year);
       if(!yr)return false;
       const inPeriod=yr>=startYear&&yr<=(endYear||2026);
       const orgMatch=isRelatedOrg(a.org,expItem.org)||isRelatedOrg(expItem.org,a.org);
@@ -2109,7 +2088,7 @@ function HomeView({stories,experience,onStoryClick}) {
 
       <div style={{paddingTop:"1.25rem",borderTop:"0.5px solid var(--color-border-tertiary)"}}>
         <div style={{fontSize:11,fontWeight:600,color:"var(--color-text-tertiary)",textTransform:"uppercase",letterSpacing:"0.07em",marginBottom:"0.75rem"}}>Education & Credentials</div>
-        {EDUCATION_DATA.map((e,i)=>(
+        {(education||[]).map((e,i)=>(
           <div key={i} style={{marginBottom:"0.875rem"}}>
             <div style={{fontSize:14,fontWeight:500,color:"var(--color-text-primary)",marginBottom:2}}>{e.cred}</div>
             <div style={{fontSize:12,color:"#1d4ed8",marginBottom:2}}>{e.org}{e.year?` · ${e.year}`:""}</div>
@@ -2395,14 +2374,15 @@ function ExperienceView({experience,setExperience}) {
 }
 
 // ─── AWARDS VIEW ──────────────────────────────────────────
-function AwardsView() {
+function AwardsView({awards}) {
+  const list = awards || [];
   return(
     <div style={{paddingTop:"1.5rem"}}>
       <div style={{fontSize:20,fontWeight:500,color:"var(--color-text-primary)",marginBottom:4}}>Awards & Recognition</div>
-      <div style={{fontSize:13,color:"var(--color-text-secondary)",marginBottom:"1.5rem"}}>{AWARDS_DATA.length} recognitions across your career.</div>
+      <div style={{fontSize:13,color:"var(--color-text-secondary)",marginBottom:"1.5rem"}}>{list.length} recognitions across your career.</div>
       <div>
-        {AWARDS_DATA.map((a,i)=>(
-          <div key={i} style={{display:"flex",gap:16,paddingBottom:"1.25rem",marginBottom:"1.25rem",borderBottom:i<AWARDS_DATA.length-1?"0.5px solid var(--color-border-tertiary)":"none"}}>
+        {list.map((a,i)=>(
+          <div key={i} style={{display:"flex",gap:16,paddingBottom:"1.25rem",marginBottom:"1.25rem",borderBottom:i<list.length-1?"0.5px solid var(--color-border-tertiary)":"none"}}>
             <div style={{flexShrink:0,width:64,textAlign:"right"}}>
               <div style={{fontSize:12,fontWeight:600,color:"var(--color-text-tertiary)"}}>{a.year}</div>
               <div style={{fontSize:10,color:"var(--color-text-tertiary)",marginTop:2}}>{a.org}</div>
@@ -2526,12 +2506,12 @@ function AddEvidencePanel({targetGap,onSave,onCancel}) {
   );
 }
 
-function ResumeOutput({content}) {
+function ResumeOutput({content,subtitle}) {
   return(
     <div style={{fontFamily:"Georgia,serif",fontSize:12.5,lineHeight:1.7,color:"var(--color-text-primary)"}}>
       <div style={{textAlign:"center",marginBottom:"1.25rem",paddingBottom:"1rem",borderBottom:"1px solid var(--color-border-secondary)"}}>
         <div style={{fontSize:20,fontWeight:700,letterSpacing:"0.04em"}}>{CANDIDATE.name}</div>
-        <div style={{fontSize:11,color:"var(--color-text-secondary)",marginTop:4}}>{CANDIDATE.subtitle}</div>
+        <div style={{fontSize:11,color:"var(--color-text-secondary)",marginTop:4}}>{subtitle||CANDIDATE.subtitle}</div>
         <div style={{fontSize:10,color:"var(--color-text-tertiary)",marginTop:3}}>{CANDIDATE.contact}</div>
       </div>
       <pre style={{whiteSpace:"pre-wrap",fontFamily:"Georgia,serif",fontSize:12.5,margin:0,lineHeight:1.7,color:"var(--color-text-primary)"}}>{content}</pre>
@@ -2548,13 +2528,13 @@ function escRTF(str) {
   return out;
 }
 
-function buildResumeRTF(resumeText) {
+function buildResumeRTF(resumeText, subtitle) {
   const fontTbl='{\\fonttbl{\\f0\\fswiss\\fcharset0 Calibri;}}';
   const colorTbl='{\\colortbl ;\\red30\\green58\\blue95;\\red37\\green99\\blue235;\\red31\\green41\\blue55;\\red107\\green114\\blue128;}';
   function secHead(t){return'\\pard\\sb240\\sa40\\cf1\\f0\\fs17\\b\\caps '+escRTF(t)+'\\b0\\caps0\\par\n'+'\\pard\\sb0\\sa80\\brdrb\\brdrs\\brdrw10\\brdrcolor2 \\par\n';}
   let body='';
   body+='\\pard\\sb0\\sa50\\cf1\\f0\\fs44\\b '+escRTF(CANDIDATE.name)+'\\b0\\par\n';
-  body+='\\pard\\sb0\\sa40\\cf3\\f0\\fs20 '+escRTF(CANDIDATE.subtitle)+'\\par\n';
+  body+='\\pard\\sb0\\sa40\\cf3\\f0\\fs20 '+escRTF(subtitle||CANDIDATE.subtitle)+'\\par\n';
   body+='\\pard\\sb0\\sa160\\cf4\\f0\\fs17 '+escRTF(CANDIDATE.contact)+'\\par\n';
   body+='\\pard\\sb0\\sa0\\brdrb\\brdrs\\brdrw20\\brdrcolor1 \\par\n';
   if(resumeText){
@@ -2570,8 +2550,10 @@ function buildResumeRTF(resumeText) {
   return'{\\rtf1\\ansi\\ansicpg1252\\deff0\\deflang1033\n'+fontTbl+'\n'+colorTbl+'\n\\paperw12240\\paperh15840\\margl1008\\margr1008\\margt1008\\margb1008\n'+body+'}';
 }
 
-function buildFullCVRTF(exp) {
+function buildFullCVRTF(exp, education, awards, subtitle) {
   const expData = exp || EXPERIENCE_DEFAULT;
+  const eduData = education || [];
+  const awardsData = awards || [];
   const p='#1e3a5f',a='#2563eb';
   function h2c(hex){const h=(hex||'#000').replace('#','');return[parseInt(h.slice(0,2),16)||0,parseInt(h.slice(2,4),16)||0,parseInt(h.slice(4,6),16)||0];}
   const [pr,pg,pb]=h2c(p);const [ar,ag,ab]=h2c(a);
@@ -2580,7 +2562,7 @@ function buildFullCVRTF(exp) {
   function secHead(t){return'\\pard\\sb200\\sa40\\cf1\\f0\\fs17\\b\\caps '+escRTF(t)+'\\b0\\caps0\\par\n'+'\\pard\\sb0\\sa80\\brdrb\\brdrs\\brdrw10\\brdrcolor2 \\par\n';}
   let body='';
   body+='\\pard\\sb0\\sa50\\cf1\\f0\\fs44\\b '+escRTF(CANDIDATE.name)+'\\b0\\par\n';
-  body+='\\pard\\sb0\\sa40\\cf3\\f0\\fs20 '+escRTF(CANDIDATE.subtitle)+'\\par\n';
+  body+='\\pard\\sb0\\sa40\\cf3\\f0\\fs20 '+escRTF(subtitle||CANDIDATE.subtitle)+'\\par\n';
   body+='\\pard\\sb0\\sa160\\cf4\\f0\\fs17 '+escRTF(CANDIDATE.contact)+'\\par\n';
   body+='\\pard\\sb0\\sa0\\brdrb\\brdrs\\brdrw20\\brdrcolor1 \\par\n';
   body+=secHead('Professional Experience');
@@ -2591,13 +2573,13 @@ function buildFullCVRTF(exp) {
     body+='\\pard\\sa80\\par\n';
   });
   body+=secHead('Education & Credentials');
-  EDUCATION_DATA.forEach(e=>{
+  eduData.forEach(e=>{
     body+='\\pard\\sb100\\sa0\\tqr\\tx9360\\cf3\\f0\\fs20\\b '+escRTF(e.cred)+'\\b0\\tab\\cf4\\fs17 '+escRTF(e.year||'')+'\\par\n';
     body+='\\pard\\sb0\\sa24\\cf2\\f0\\fs17\\i '+escRTF(e.org)+'\\i0\\par\n';
     body+='\\pard\\fi360\\sb0\\sa60\\cf3\\f0\\fs17 '+escRTF(e.note)+'\\par\n';
   });
   body+=secHead('Awards & Recognition');
-  AWARDS_DATA.forEach(a=>{
+  awardsData.forEach(a=>{
     body+='\\pard\\sb80\\sa0\\tqr\\tx9360\\cf1\\f0\\fs18\\b \\u9733? '+escRTF(a.award)+'\\b0\\tab\\cf4\\fs17 '+escRTF(String(a.year))+'\\par\n';
     body+='\\pard\\fi360\\sb0\\sa60\\cf3\\f0\\fs17 '+escRTF(a.narrative)+'\\par\n';
   });
@@ -2607,12 +2589,13 @@ function buildFullCVRTF(exp) {
 
 
 // ─── FULL CV EXPORTER ─────────────────────────────────────
-function FullCVExporter({stories,experience,onClose}) {
+function FullCVExporter({stories,experience,awards,education,profileContext,onClose}) {
   const overlay={position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center",padding:"1rem"};
   const box={background:"#ffffff",borderRadius:12,padding:"1.5rem",maxWidth:480,width:"100%",boxShadow:"0 20px 60px rgba(0,0,0,0.3)",color:"#111"};
 
   function download(){
-    const rtf=buildFullCVRTF(experience);
+    const subtitle=profileContext?.headerTagline||CANDIDATE.subtitle;
+    const rtf=buildFullCVRTF(experience,education,awards,subtitle);
     downloadBlob(rtf,'adam_waldman_full_cv.rtf','application/rtf');
   }
 
@@ -2627,8 +2610,8 @@ function FullCVExporter({stories,experience,onClose}) {
           <div style={{fontSize:12,fontWeight:600,color:"#065f46",marginBottom:4}}>What's included</div>
           <div style={{fontSize:12,color:"#374151",lineHeight:1.7}}>
             ✓ All 6 roles with full achievement bullets<br/>
-            ✓ Education & Credentials ({EDUCATION_DATA.length} entries)<br/>
-            ✓ All {AWARDS_DATA.length} awards and recognitions<br/>
+            ✓ Education & Credentials ({(education||[]).length} entries)<br/>
+            ✓ All {(awards||[]).length} awards and recognitions<br/>
             ✓ Professional layout — navy/blue executive styling
           </div>
         </div>
@@ -2761,7 +2744,7 @@ function JDAnalysisStep({active,jobTitle,company,jdText,profile,result,onComplet
 }
 
 // ─── STEP 2: CPS SCORE ──────────────────────────────────
-function CPSStep({active,jdAnalysis,result,stories,experience,onComplete,onError}) {
+function CPSStep({active,jdAnalysis,result,stories,experience,education,onComplete,onError}) {
   const [loading,setLoading]=useState(false);
   const [scores,setScores]=useState(result?.scores||null);
   const [err,setErr]=useState(null);
@@ -2770,7 +2753,7 @@ function CPSStep({active,jdAnalysis,result,stories,experience,onComplete,onError
     setLoading(true);setErr(null);
     try{
       const expCtx=buildExpContext(experience);
-      const eduCtx=EDUCATION_DATA.map(e=>e.cred+" — "+e.org+(e.year?" ("+e.year+")":"")+": "+e.note).join("; ");
+      const eduCtx=(education||[]).map(e=>e.cred+" — "+e.org+(e.year?" ("+e.year+")":"")+": "+e.note).join("; ");
       const nl="\n";
       const storyCtx=stories.map(s=>["SOAR: "+s.title+" ("+s.employer+")",nl+"Skills: "+(s.skills||s.themes||[]).join(", "),nl+"Action: "+s.action,nl+"Result: "+s.result].join("")).join(nl+nl);
       const raw=await callClaude(
@@ -3035,7 +3018,7 @@ function GapResolutionStep({active,jdAnalysis,cpsResult,result,stories,setStorie
 
 
 // ─── STEP 4: RE-SCORE + PROBABILITIES ────────────────────
-function RescoreStep({active,jdAnalysis,cpsResult,gapResolutions,result,stories,experience,onComplete,onError}) {
+function RescoreStep({active,jdAnalysis,cpsResult,gapResolutions,result,stories,experience,education,onComplete,onError}) {
   const [loading,setLoading]=useState(false);
   const [scores,setScores]=useState(result?.scores||null);
   const [probs,setProbs]=useState(result?.probs||null);
@@ -3053,7 +3036,7 @@ function RescoreStep({active,jdAnalysis,cpsResult,gapResolutions,result,stories,
     const nl='\n';
     try{
       const expCtx=buildExpContext(experience);
-      const eduCtx=EDUCATION_DATA.map(e=>e.cred+' — '+e.org+(e.year?' ('+e.year+')':'')+': '+e.note).join('; ');
+      const eduCtx=(education||[]).map(e=>e.cred+' — '+e.org+(e.year?' ('+e.year+')':'')+': '+e.note).join('; ');
       const storyCtx=stories.map(s=>'SOAR: '+s.title+' ('+s.employer+')'+nl+'Skills: '+(s.skills||s.themes||[]).join(', ')+nl+'Action: '+s.action+nl+'Result: '+s.result).join(nl+nl);
 
       // Re-score CPS
@@ -3164,7 +3147,7 @@ function RescoreStep({active,jdAnalysis,cpsResult,gapResolutions,result,stories,
 
 
 // ─── STEP 5: RESUME GENERATION ───────────────────────────
-function ResumeStep({active,jdAnalysis,rescore,result,stories,experience,onComplete,onError}) {
+function ResumeStep({active,jdAnalysis,rescore,result,stories,experience,awards,education,profileContext,onComplete,onError}) {
   const [loading,setLoading]=useState(false);
   const [content,setContent]=useState(result?.content||null);
   const [err,setErr]=useState(null);
@@ -3182,8 +3165,8 @@ function ResumeStep({active,jdAnalysis,rescore,result,stories,experience,onCompl
     const nl='\n';
     try{
       const expCtx=buildExpContext(experience);
-      const eduCtx=EDUCATION_DATA.map(e=>e.cred+' — '+e.org+(e.year?' ('+e.year+')':'')+': '+e.note).join('; ');
-      const awardsCtx=AWARDS_DATA.slice(0,6).map(a=>a.award+' ('+a.year+')').join('; ');
+      const eduCtx=(education||[]).map(e=>e.cred+' — '+e.org+(e.year?' ('+e.year+')':'')+': '+e.note).join('; ');
+      const awardsCtx=(awards||[]).slice(0,6).map(a=>a.award+' ('+a.year+')').join('; ');
       const scores=rescore?.scores||[];
       const topGaps=scores.filter(s=>s.score<70).map(s=>s.skill).join(', ');
       const storyCtx=stories.map(s=>'SOAR: '+s.title+' ('+s.employer+')'+nl+'Action: '+s.action+nl+'Result: '+s.result).join(nl+nl);
@@ -3200,7 +3183,7 @@ function ResumeStep({active,jdAnalysis,rescore,result,stories,experience,onCompl
   }
 
   function download(){
-    const rtf=buildResumeRTF(content);
+    const rtf=buildResumeRTF(content,profileContext?.headerTagline||CANDIDATE.subtitle);
     downloadBlob(rtf,'adam_waldman_resume_'+jdAnalysis.role.replace(/\s+/g,'_').toLowerCase()+'.rtf','application/rtf');
     setDownloaded(true);
   }
@@ -3234,7 +3217,7 @@ function ResumeStep({active,jdAnalysis,rescore,result,stories,experience,onCompl
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'0.75rem'}}>
             <div style={{fontSize:11,color:'var(--color-text-tertiary)'}}>Em-dashes removed, banned phrases avoided</div>
             <div style={{display:'flex',gap:6}}>
-              <button onClick={()=>navigator.clipboard?.writeText([CANDIDATE.name+'\n'+CANDIDATE.subtitle+'\n'+CANDIDATE.contact,content].join('\n\n'))} style={{...S.btn,fontSize:11,padding:'4px 10px'}}>Copy ↗</button>
+              <button onClick={()=>navigator.clipboard?.writeText([CANDIDATE.name+'\n'+(profileContext?.headerTagline||CANDIDATE.subtitle)+'\n'+CANDIDATE.contact,content].join('\n\n'))} style={{...S.btn,fontSize:11,padding:'4px 10px'}}>Copy ↗</button>
               <button onClick={download} style={{...S.btn,fontSize:11,padding:'4px 10px',color:downloaded?'#065f46':'var(--color-text-primary)',borderColor:downloaded?'#10b981':'var(--color-border-secondary)'}}>
                 {downloaded?'✓ Downloaded':'↓ .rtf'}
               </button>
@@ -3254,7 +3237,7 @@ function ResumeStep({active,jdAnalysis,rescore,result,stories,experience,onCompl
 
 
 // ─── STEP 6: COVER LETTER GENERATION ─────────────────────
-function CoverLetterStep({active,jdAnalysis,rescore,resume,result,stories,experience,onComplete,onError}) {
+function CoverLetterStep({active,jdAnalysis,rescore,resume,result,stories,experience,profileContext,onComplete,onError}) {
   const [loading,setLoading]=useState(false);
   const [content,setContent]=useState(result?.content||null);
   const [err,setErr]=useState(null);
@@ -3271,7 +3254,7 @@ function CoverLetterStep({active,jdAnalysis,rescore,resume,result,stories,experi
     const colorTbl='{\\colortbl ;\\red30\\green58\\blue95;\\red37\\green99\\blue235;\\red31\\green41\\blue55;\\red107\\green114\\blue128;}';
     let body='';
     body+='\\pard\\sb0\\sa50\\cf1\\f0\\fs44\\b '+escRTF(CANDIDATE.name)+'\\b0\\par\n';
-    body+='\\pard\\sb0\\sa40\\cf3\\f0\\fs20 '+escRTF(CANDIDATE.subtitle)+'\\par\n';
+    body+='\\pard\\sb0\\sa40\\cf3\\f0\\fs20 '+escRTF(profileContext?.headerTagline||CANDIDATE.subtitle)+'\\par\n';
     body+='\\pard\\sb0\\sa200\\cf4\\f0\\fs17 '+escRTF(CANDIDATE.contact)+'\\par\n';
     body+='\\pard\\sb0\\sa0\\brdrb\\brdrs\\brdrw20\\brdrcolor1 \\par\n';
     const paras=(text||'').split(/\n\n+/).filter(p=>p.trim());
@@ -3356,7 +3339,7 @@ function CoverLetterStep({active,jdAnalysis,rescore,resume,result,stories,experi
 
 
 // ─── APPLICATION ENGINE ───────────────────────────
-function ApplyView({stories,setStories,experience,profile}) {
+function ApplyView({stories,setStories,experience,awards,education,profileContext,profile}) {
   const [jobTitle,setJobTitle]=useState("");
   const [company,setCompany]=useState("");
   const [jdText,setJdText]=useState("");
@@ -3454,6 +3437,7 @@ function ApplyView({stories,setStories,experience,profile}) {
               result={app.cpsResult}
               stories={stories}
               experience={experience}
+              education={education}
               onComplete={cpsResult=>setApp(a=>({...a,cpsResult,currentStep:'gapResolutions',gapResolutions:null,rescore:null,resume:null,coverLetter:null}))}
               onError={setError}
             />
@@ -3479,6 +3463,7 @@ function ApplyView({stories,setStories,experience,profile}) {
               result={app.rescore}
               stories={stories}
               experience={experience}
+              education={education}
               onComplete={rescore=>setApp(a=>({...a,rescore,currentStep:'resume',resume:null,coverLetter:null}))}
               onError={setError}
             />
@@ -3491,6 +3476,9 @@ function ApplyView({stories,setStories,experience,profile}) {
               result={app.resume}
               stories={stories}
               experience={experience}
+              awards={awards}
+              education={education}
+              profileContext={profileContext}
               onComplete={resume=>setApp(a=>({...a,resume,currentStep:'coverLetter',coverLetter:null}))}
               onError={setError}
             />
@@ -3504,6 +3492,7 @@ function ApplyView({stories,setStories,experience,profile}) {
               result={app.coverLetter}
               stories={stories}
               experience={experience}
+              profileContext={profileContext}
               onComplete={coverLetter=>setApp(a=>({...a,coverLetter,currentStep:'coverLetter'}))}
               onError={setError}
             />
@@ -3535,7 +3524,7 @@ function SalaryInput({label, value, onChange}) {
   );
 }
 
-function ProfileView({profile,setProfile}) {
+function ProfileView({profile,setProfile,awards,education,profileContext}) {
   return(
     <div>
       <div style={{fontSize:22,fontWeight:500,marginBottom:4}}>Profile & Settings</div>
@@ -3571,12 +3560,12 @@ function ProfileView({profile,setProfile}) {
         <div style={S.card}>
           <div style={{fontSize:14,fontWeight:500,marginBottom:"1rem"}}>Candidate on file</div>
           <div style={{fontSize:13,fontWeight:500,marginBottom:4}}>{CANDIDATE.name}</div>
-          <div style={{fontSize:12,color:"var(--color-text-secondary)",marginBottom:2}}>{CANDIDATE.subtitle}</div>
+          <div style={{fontSize:12,color:"var(--color-text-secondary)",marginBottom:2}}>{profileContext?.headerTagline||CANDIDATE.subtitle}</div>
           <div style={{fontSize:12,color:"var(--color-text-tertiary)",marginBottom:"1.25rem"}}>{CANDIDATE.contact}</div>
           <div style={{fontSize:11,fontWeight:500,color:"var(--color-text-tertiary)",textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:6}}>Education & Credentials</div>
-          {EDUCATION_DATA.map((e,i)=><div key={i} style={{fontSize:12,color:"var(--color-text-secondary)",marginBottom:3}}>{e.cred} · {e.org}{e.year?" ("+e.year+")":""}</div>)}
+          {(education||[]).map((e,i)=><div key={i} style={{fontSize:12,color:"var(--color-text-secondary)",marginBottom:3}}>{e.cred} · {e.org}{e.year?" ("+e.year+")":""}</div>)}
           <div style={{marginTop:"1rem",fontSize:11,fontWeight:500,color:"var(--color-text-tertiary)",textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:6}}>Recognition</div>
-          {AWARDS_DATA.slice(0,5).map((a,i)=><div key={i} style={{fontSize:12,color:"var(--color-text-secondary)",marginBottom:3}}>★ {a.award} ({a.year})</div>)}
+          {(awards||[]).slice(0,5).map((a,i)=><div key={i} style={{fontSize:12,color:"var(--color-text-secondary)",marginBottom:3}}>★ {a.award} ({a.year})</div>)}
         </div>
       </div>
     </div>
@@ -3594,6 +3583,9 @@ export default function App() {
   const [showFullCV,setShowFullCV]=useState(false);
   const [profile,setProfile]=useState({tone:"professional",pageLimit:3,seniority:"VP",baseSalaryFrom:185000,baseSalaryTo:220000,totalCompFrom:285000,totalCompTo:350000});
   const [experience,setExperience]=useState(EXPERIENCE_DEFAULT);
+  const [awards,setAwards]=useState([]);
+  const [education,setEducation]=useState([]);
+  const [profileContext,setProfileContext]=useState(null);
 
   useEffect(()=>{
     (async()=>{
@@ -3615,6 +3607,9 @@ export default function App() {
           totalCompTo:    prof.total_comp_to     ?? p.totalCompTo,
         }));
       }catch(e){}
+      try{const aw=await getAwards();if(aw.length>0)setAwards(aw);}catch(e){}
+      try{const edu=await getEducation();if(edu.length>0)setEducation(edu);}catch(e){}
+      try{const ctx=await getProfileContext();if(ctx)setProfileContext(ctx);}catch(e){}
       setLoading(false);
     })();
   },[]);
@@ -3713,7 +3708,7 @@ export default function App() {
 
       {/* Main */}
       <div style={{flex:1,paddingLeft:"1.5rem",minWidth:0,overflowY:"auto"}}>
-        {page==="home"&&<HomeView stories={stories} experience={experience} onStoryClick={s=>{setSelected(s);setPage("detail");}}/>}
+        {page==="home"&&<HomeView stories={stories} experience={experience} awards={awards} education={education} onStoryClick={s=>{setSelected(s);setPage("detail");}}/>}
 
         {page==="browse"&&!selected&&(
           <div style={{paddingTop:"1.5rem"}}>
@@ -3738,12 +3733,12 @@ export default function App() {
         {page==="ask"&&<AskView stories={stories}/>}
         {page==="interview"&&<InterviewView stories={stories}/>}
         {page==="experience"&&<ExperienceView experience={experience} setExperience={exp=>{setExperience(exp);persistExp(exp);}}/>}
-        {page==="awards"&&<AwardsView/>}
-        {page==="apply"&&<ApplyView stories={stories} setStories={updateStories} experience={experience} profile={profile}/>}
-        {page==="profile"&&<ProfileView profile={profile} setProfile={p=>{const next=typeof p==='function'?p(profile):p;setProfile(next);persistProfile(next);}}/>}
+        {page==="awards"&&<AwardsView awards={awards}/>}
+        {page==="apply"&&<ApplyView stories={stories} setStories={updateStories} experience={experience} awards={awards} education={education} profileContext={profileContext} profile={profile}/>}
+        {page==="profile"&&<ProfileView profile={profile} setProfile={p=>{const next=typeof p==='function'?p(profile):p;setProfile(next);persistProfile(next);}} awards={awards} education={education} profileContext={profileContext}/>}
       </div>
 
-      {showFullCV&&<FullCVExporter stories={stories} experience={experience} onClose={()=>setShowFullCV(false)}/>}
+      {showFullCV&&<FullCVExporter stories={stories} experience={experience} awards={awards} education={education} profileContext={profileContext} onClose={()=>setShowFullCV(false)}/>}
     </div>
   );
 }
