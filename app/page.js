@@ -1490,10 +1490,10 @@ const EXTENDED_SOAR = [
 ];
 
 // ─── HELPERS ──────────────────────────────────────────────
-async function callClaude(system, user, maxTokens=1000) {
+async function callClaude(system, user, maxTokens=1000, temperature=1) {
   const r = await fetch("/api/claude", {
     method:"POST", headers:{"Content-Type":"application/json"},
-    body: JSON.stringify({ model:MODEL, max_tokens:maxTokens, system, messages:[{role:"user",content:user}] }),
+    body: JSON.stringify({ model:MODEL, max_tokens:maxTokens, temperature, system, messages:[{role:"user",content:user}] }),
   });
   const d = await r.json();
   if (d.error) throw new Error(d.error.message);
@@ -1808,7 +1808,8 @@ Rules:
 "${input}"
 
 His current roles (for exp_id matching):
-${expSummary}`
+${expSummary}`,
+        3000, 0
       );
       const parsed = parseJSON(text);
       if (!parsed?.items?.length) throw new Error("No items returned — please try rephrasing.");
@@ -2144,7 +2145,7 @@ function AskView({stories}) {
         const ans=await callClaude(
           `You are Adam Waldman, a senior finance and analytics executive. Answer interview questions in first person, naturally and confidently. Be specific — name the initiative, the obstacle, the outcome. 3 to 4 paragraphs. No bullets. No headers. No hedging. Sound like a human being who has done real things. When answering questions about whether Adam has done something, interpret the question generously. Contributing a chapter to a book counts as writing for that book. Co-authoring counts. Speaking on a topic counts as expertise. Don't refuse credit for things the stories clearly demonstrate. If a story partially matches the question, surface it and explain the nature of his involvement rather than answering "no."`,
           `INTERVIEW QUESTION: "${q}"\n\nSTORIES TO DRAW FROM:\n${ctx}`,
-          600
+          1000, 0.4
         );
         setResult({prose:ans.trim()});
       } else {
@@ -2152,7 +2153,7 @@ function AskView({stories}) {
         const ans=await callClaude(
           `You help Adam Waldman find the most relevant stories from his experience library. Return ONLY valid JSON.`,
           `His question: "${q}"\n\nLibrary: ${JSON.stringify(summaries)}\n\nReturn JSON: {"headline":"one sentence","stories":[{"id":N,"relevance":"2-3 sentences","angle":"1 sentence"}],"advice":"2-3 sentences"}`,
-          1000
+          1500, 0
         );
         setResult(parseJSON(ans));
       }
@@ -2237,7 +2238,7 @@ function InterviewView({stories}) {
       const ans=await callClaude(
         `You are Adam Waldman, a senior finance and analytics executive with 15+ years of experience building insight-driven organizations. You are in a job interview. Draw from the specific stories in your library to compose your answer. Write in first person, naturally and confidently, as you would speak in a real interview room. Be specific — name the initiative, the obstacle, what you did, what happened. 3 to 4 paragraphs. No bullets. No headers. No hedging. Sound like a human being who has done real things. When answering questions about whether Adam has done something, interpret the question generously. Contributing a chapter to a book counts as writing for that book. Co-authoring counts. Speaking on a topic counts as expertise. Don't refuse credit for things the stories clearly demonstrate. If a story partially matches the question, surface it and explain the nature of his involvement rather than answering "no."`,
         `INTERVIEW QUESTION: "${prompt}"\n\nYOUR STORIES TO DRAW FROM:\n${ctx}`,
-        600
+        1000, 0.4
       );
       setAnswer(ans.trim());
     }catch(e){setErr("Something went wrong — please try again.");}
@@ -2482,7 +2483,8 @@ function AddEvidencePanel({targetGap,onSave,onCancel}) {
     try{
       const text=await callClaude(
         `Convert a candidate's experience into a structured SOAR story. Return ONLY valid JSON: {"title":"string","type":"insight","employer":"string","situation":"string","action":"string","result":"string","skills":["string"]}. No markdown.`,
-        `Gap to address: ${targetGap?.skill}\nImprovement needed: ${targetGap?.improve}\nCandidate description:\n${desc}`
+        `Gap to address: ${targetGap?.skill}\nImprovement needed: ${targetGap?.improve}\nCandidate description:\n${desc}`,
+        2000, 0
       );
       const parsed=parseJSON(text);
       if(parsed)setStructured(parsed);
@@ -2660,7 +2662,7 @@ function JDAnalysisStep({active,jobTitle,company,jdText,profile,result,onComplet
         const raw=await callClaude(
           "You are a senior recruiter. Extract key information from this job description. Return ONLY valid JSON—no markdown fences. Schema: {\"role\":\"string\",\"company\":\"string\",\"seniority\":\"string\",\"skills\":[{\"name\":\"string\",\"weight\":1,\"category\":\"domain|leadership|technical|soft\",\"required\":true}],\"responsibilities\":[\"string\"],\"comp\":{\"base_from\":null,\"base_to\":null,\"total_from\":null,\"total_to\":null}}. Extract 10-14 skills; weight 1-10 where 10=must-have; comp fields are numbers or null if not mentioned.",
           "Job Title: "+jobTitle+" | Company: "+company+" | Job Description: "+jdText,
-          2000
+          3000, 0
         );
         const parsed=parseJSON(raw);
         if(!parsed?.skills?.length) throw new Error("Could not extract skills—check the JD is complete.");
@@ -2759,7 +2761,7 @@ function CPSStep({active,jdAnalysis,result,stories,experience,onComplete,onError
       const raw=await callClaude(
         "You are a career scoring expert. Score the candidate against each skill 0-100. Cite specific evidence. Return ONLY valid JSON—no markdown fences, no preamble. Schema: {\"scores\":[{\"skill\":\"string\",\"score\":0,\"evidence\":\"specific quote\",\"gap\":\"what is missing\",\"improve\":\"one actionable sentence\"}]}",
         ["Skills:",nl,JSON.stringify(jdAnalysis.skills),nl+nl,"Experience:",nl,expCtx,nl+nl,"SOAR stories:",nl,storyCtx,nl+nl,"Education: ",eduCtx,nl+nl,"Competencies: ",COMPETENCIES].join(""),
-        3000
+        5000, 0
       );
       console.log("[CPS step] raw:", raw.slice(0,300));
       const parsed=parseJSON(raw);
@@ -2936,7 +2938,7 @@ function GapResolutionStep({active,jdAnalysis,cpsResult,result,stories,setStorie
       callClaude(
         'You are a career story evaluator. The candidate claims to have experience for a skill gap. Evaluate strictly. If the description genuinely demonstrates the skill, return a complete SOAR JSON. If not, explain why. Return ONLY valid JSON—no markdown fences. If accepted: '+schemaExample+'. If rejected: {"accepted":false,"reason":"one sentence"}',
         'Skill to demonstrate: '+skill+' | Gap context: '+gap.improve+' | Candidate description: '+cap.text,
-        1500
+        2000, 0
       ).then(raw=>{
         const parsed=parseJSON(raw);
         if(!parsed) throw new Error('Could not parse Claude response—please try again.');
@@ -3043,7 +3045,7 @@ function RescoreStep({active,jdAnalysis,cpsResult,gapResolutions,result,stories,
       const cpsRaw=await callClaude(
         'Score the candidate against each skill 0-100. Return ONLY valid JSON—no markdown fences. Schema: {"scores":[{"skill":"string","score":0,"evidence":"string","gap":"string","improve":"string"}]}',
         ['Skills:',nl,JSON.stringify(jdAnalysis.skills),nl+nl,'Experience:',nl,expCtx,nl+nl,'SOAR stories:',nl,storyCtx,nl+nl,'Education: ',eduCtx,nl+nl,'Competencies: ',COMPETENCIES].join(''),
-        3000
+        5000, 0
       );
       console.log('[rescore] raw:', cpsRaw.slice(0,200));
       const cpsData=parseJSON(cpsRaw);
@@ -3059,7 +3061,7 @@ function RescoreStep({active,jdAnalysis,cpsResult,gapResolutions,result,stories,
       const probRaw=await callClaude(
         'You are a hiring probability estimator. Given the candidate data, estimate three probabilities. Use these explicit weights: CPS avg contributes 50% to interview probability; comp match contributes 15%; seniority match contributes 15%; remaining gaps contribute -5% each up to -20%. P(offer|interviewed) depends on CPS avg (40%), gap count (30%), story quality (30%). P(overall) = P(interview) * P(offer|interviewed). Return ONLY valid JSON—no markdown: {"p_interview":0.0,"p_interview_reason":"string","p_offer":0.0,"p_offer_reason":"string","p_overall":0.0,"p_overall_reason":"string"}',
         'Role: '+jdAnalysis.role+' | Seniority: '+(jdAnalysis.seniority||'not specified')+' | Company: '+jdAnalysis.company+' | CPS average: '+rescoreAvg+'/100 | Initial CPS: '+initialAvg+'/100 | Gaps remaining: '+gapCount+' | Stories added in gap resolution: '+addedStories+' | Comp in JD: '+compMatchStatus,
-        800
+        1000, 0
       );
       console.log('[probs] raw:', probRaw.slice(0,200));
       const probData=parseJSON(probRaw);
@@ -3174,7 +3176,7 @@ function ResumeStep({active,jdAnalysis,rescore,result,stories,experience,onCompl
       const raw=await callClaude(
         'You are an expert resume writer. Generate resume CONTENT for the targeted role. Rules: (1) ALL CAPS section headers followed by a colon — e.g. PROFESSIONAL EXPERIENCE: (2) Bullet points start with • (3) 3 pages maximum (4) ABSOLUTELY NO em-dashes (— or –) anywhere — use commas or rewrite; this is a hard rule (5) No decorative sub-headers (6) No AI-sounding constructions — banned phrases: '+BANNED_WORDS+' (7) Current role end date is 2026 (8) Strong action verbs with quantified outcomes (9) Header appears only on page 1. Return plain text — no markdown.',
         ['Target role: ',jdAnalysis.role,' at ',jdAnalysis.company,nl,'High-weight skills: ',jdAnalysis.skills.filter(s=>s.weight>=7).map(s=>s.name).join(', '),nl,'Gaps to address through framing: ',topGaps,nl+nl,'EXPERIENCE:',nl,expCtx,nl+nl,'SOAR STORIES (draw from these):',nl,storyCtx,nl+nl,'COMPETENCIES: ',COMPETENCIES,nl,'CAPITAL MARKETS: ',CM_EXPERTISE,nl,'EDUCATION: ',eduCtx,nl,'AWARDS: ',awardsCtx].join(''),
-        3000
+        5000, 0.3
       );
       const cleaned=stripEmDashes(raw);
       setContent(cleaned);
@@ -3275,7 +3277,7 @@ function CoverLetterStep({active,jdAnalysis,rescore,resume,result,stories,experi
       const raw=await callClaude(
         'You are an expert cover letter writer. Write a 4-paragraph cover letter. Tone: warm, confident, human — not stiff or corporate. Rules: (1) Opening paragraph: specific hook about why THIS role at THIS company — no "I am excited to apply" or "I am writing to" — open with a statement of perspective or conviction (2) Paragraph 2: connect 2-3 strongest skills/stories to what the role needs — be concrete (3) Paragraph 3: demonstrate knowledge of the company or industry context and how it connects to the candidate\'s experience (4) Closing: confident call to action, brief, no groveling. Hard rules: ABSOLUTELY NO em-dashes (use commas or rewrite), no banned phrases: '+BANNED_WORDS+'. Return plain text only — no markdown, no subject line, no date, no address block.',
         ['Role: ',jdAnalysis.role,' at ',jdAnalysis.company,nl,'High-weight skills: ',jdAnalysis.skills.filter(s=>s.weight>=7).map(s=>s.name).join(', '),nl,'Candidate strengths: ',topSkills,nl+nl,'Top stories:',nl,storyCtx,nl+nl,'Candidate narrative: ',ADAM.narrative,nl,'Competencies: ',COMPETENCIES].join(''),
-        1200
+        2000, 0.4
       );
       const cleaned=stripEmDashes(raw);
       setContent(cleaned);
