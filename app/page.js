@@ -1812,7 +1812,7 @@ function FreeAddView({stories,experience,awards,education,profileContext,onSave,
     try{
       const expSummary=expData.map(e=>e.id+': '+e.role+' at '+e.org+' ('+e.dates+')').join('\n');
       const text=await callClaude(
-        'You are a career data assistant for Adam Waldman, a senior finance and analytics executive. Given free-form text about something he did, experienced, or wants to update, create structured career data. A single input can produce multiple items — classify everything relevant.\n\nReturn ONLY valid JSON:\n{\n  "analysis": "one sentence describing what was captured",\n  "items": [\n    {\n      "type": "soar",\n      "label": "short label",\n      "exp_id": "exp_001 or null",\n      "data": {"title":"","type":"career","employer":"","situation":"","obstacle":"","action":"","result":"","impact":"","fullStory":"3-4 sentences first person","themes":[],"skills":[],"useFor":["Resume","Interview"]}\n    },\n    {\n      "type": "experience_bullet",\n      "label": "short label",\n      "exp_id": "exp_001 or null if unclear",\n      "data": {"bullets":["bullet starting with strong action verb"]}\n    },\n    {\n      "type": "facet",\n      "label": "short label",\n      "exp_id": "exp_001 or null if unclear",\n      "data": {"name":"facet name","themes":[],"narrative":"facet paragraph describing this dimension of the role"}\n    },\n    {\n      "type": "award",\n      "label": "short label",\n      "data": {"award":"","org":"","year":2024,"narrative":""}\n    },\n    {\n      "type": "education",\n      "label": "short label",\n      "data": {"cred":"","org":"","year":"","note":""}\n    },\n    {\n      "type": "profile_context",\n      "label": "short label",\n      "data": {"headerTagline":null,"positioningSummary":null,"targetSeniority":null,"compFloorBase":null,"compFloorTotal":null,"geographicPreferences":null,"industriesExcluded":null}\n    }\n  ]\n}\n\nClassification rules:\n- Include ONLY item types relevant to the input — omit unused types from the array\n- soar: create when there is a clear situation→obstacle→action→result arc\n- experience_bullet: create when it clearly belongs to a specific role — exp_id null if role is ambiguous\n- facet: create when the input describes a dimension of a role (advisory function, leadership pattern, domain expertise) not captured as a SOAR story\n- award: ONLY if an award, prize, or named recognition is explicitly mentioned\n- education: ONLY if a credential, certification, or course is explicitly mentioned\n- profile_context: ONLY if user wants to update their headline, positioning, salary target, or location preferences. Include only non-null fields that should change.\n- A single input CAN produce multiple items (story + award, story + bullet, etc.)\n- Use Adams voice: confident, direct, outcome-focused. No em-dashes.',
+        'You are a career data assistant for Adam Waldman, a senior finance and analytics executive. Given free-form text about something he did, experienced, or wants to update, create structured career data. A single input can produce multiple items — classify everything relevant.\n\nReturn ONLY valid JSON:\n{\n  "analysis": "one sentence describing what was captured",\n  "items": [\n    {\n      "type": "soar",\n      "label": "short label",\n      "exp_id": "exp_001 or null",\n      "data": {"title":"","type":"career","employer":"","situation":"","obstacle":"","action":"","result":"","impact":"","fullStory":"3-4 sentences first person","themes":[],"skills":[],"useFor":["Resume","Interview"]}\n    },\n    {\n      "type": "experience_bullet",\n      "label": "short label",\n      "exp_id": "exp_001 or null if unclear",\n      "data": {"bullets":["bullet starting with strong action verb"]}\n    },\n    {\n      "type": "facet",\n      "label": "short label",\n      "exp_id": "exp_001 or null if unclear",\n      "data": {"name":"facet name","themes":[],"narrative":"facet paragraph describing this dimension of the role"}\n    },\n    {\n      "type": "award",\n      "label": "short label",\n      "data": {"award":"","org":"","year":2024,"narrative":""}\n    },\n    {\n      "type": "education",\n      "label": "short label",\n      "data": {"cred":"","org":"","year":"","note":""}\n    },\n    {\n      "type": "profile_context",\n      "label": "short label",\n      "data": {"headerTagline":null,"positioningSummary":null,"targetSeniority":null,"compFloorBase":null,"compFloorTotal":null,"geographicPreferences":null,"industriesExcluded":null}\n    }\n  ]\n}\n\nClassification rules:\n- Include ONLY item types relevant to the input — omit unused types from the array\n- soar: for a long input describing multiple distinct projects or achievements, create one SOAR per distinct arc. Do not merge separate outcomes into one story. Each SOAR should stand alone with its own situation, obstacle, action, and result.\n- experience_bullet: create when it clearly belongs to a specific role — exp_id null if role is ambiguous\n- facet: create when the input describes a dimension of a role (advisory function, leadership pattern, domain expertise) not captured as a SOAR story\n- award: ONLY if an award, prize, or named recognition is explicitly mentioned\n- education: ONLY if a credential, certification, or course is explicitly mentioned\n- profile_context: ONLY if user wants to update their headline, positioning, salary target, or location preferences. Include only non-null fields that should change.\n- A single input CAN produce multiple items (story + award, story + bullet, etc.)\n- Use Adams voice: confident, direct, outcome-focused. No em-dashes.',
         'Adams description:\n"'+input+'"\n\nHis roles (for exp_id matching):\n'+expSummary,
         4000, 0
       );
@@ -1842,6 +1842,7 @@ function FreeAddView({stories,experience,awards,education,profileContext,onSave,
       return Object.assign({},e,{bullets:[].concat(e.bullets),facets:(e.facets||[]).map(function(f){return Object.assign({},f,{themes:[].concat(f.themes||[])});})});
     });
     let experienceChanged=false;
+    const newSoars=[];
     const newAwards=[];
     const newEducation=[];
     let profileCtxPatch=null;
@@ -1855,7 +1856,7 @@ function FreeAddView({stories,experience,awards,education,profileContext,onSave,
         const eid=state.roleOverride||raw.exp_id;
 
         if(raw.type==='soar'){
-          onSave(normalizeStory(Object.assign({},itemData,{id:Date.now()+i,dateAdded:new Date().toISOString().slice(0,10)})),{skipNavigation:true});
+          newSoars.push(normalizeStory(Object.assign({},itemData,{id:Date.now()+i,dateAdded:new Date().toISOString().slice(0,10)})));
         } else if(raw.type==='experience_bullet'){
           const role=expCopy.find(function(e){return e.id===eid;});
           if(role&&itemData&&itemData.bullets&&itemData.bullets.length){
@@ -1891,6 +1892,10 @@ function FreeAddView({stories,experience,awards,education,profileContext,onSave,
         }
       }
 
+      if(newSoars.length>0){
+        await upsertStories(newSoars);
+        setStories(function(prev){return prev.concat(newSoars);});
+      }
       for(let j=0;j<newAwards.length;j++){await insertAward(newAwards[j]);}
       for(let j=0;j<newEducation.length;j++){await insertEducation(newEducation[j]);}
 
