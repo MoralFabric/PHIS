@@ -1715,7 +1715,13 @@ function FreeAddView({stories,experience,awards,education,profileContext,onSave,
   const [err,setErr]=useState("");
   const [saveErr,setSaveErr]=useState("");
 
-  const expData=experience||EXPERIENCE_DEFAULT;
+  function uuidv4(){return'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,function(c){const r=Math.random()*16|0,v=c==='x'?r:r&0x3|0x8;return v.toString(16);});}
+  const expData=useMemo(function(){
+    return(experience||EXPERIENCE_DEFAULT).map(function(e){
+      var fs=(e.facets||[]).map(function(f){return f.facet_id?f:Object.assign({},f,{facet_id:uuidv4()});});
+      return Object.assign({},e,{facets:fs});
+    });
+  },[experience]);
 
   const examples=[
     "I led a migration of our data warehouse to Snowflake — took six months, involved four teams, and cut query times by 80%",
@@ -1849,7 +1855,7 @@ function FreeAddView({stories,experience,awards,education,profileContext,onSave,
         const eid=state.roleOverride||raw.exp_id;
 
         if(raw.type==='soar'){
-          onSave(normalizeStory(Object.assign({},itemData,{id:Date.now()+i,dateAdded:new Date().toISOString().slice(0,10)})));
+          onSave(normalizeStory(Object.assign({},itemData,{id:Date.now()+i,dateAdded:new Date().toISOString().slice(0,10)})),{skipNavigation:true});
         } else if(raw.type==='experience_bullet'){
           const role=expCopy.find(function(e){return e.id===eid;});
           if(role&&itemData&&itemData.bullets&&itemData.bullets.length){
@@ -1859,9 +1865,9 @@ function FreeAddView({stories,experience,awards,education,profileContext,onSave,
         } else if(raw.type==='facet'){
           const role=expCopy.find(function(e){return e.id===eid;});
           if(role){
-            const newFacet={name:itemData&&itemData.name||'',themes:itemData&&itemData.themes||[],narrative:itemData&&itemData.narrative||''};
+            const newFacet={facet_id:uuidv4(),name:itemData&&itemData.name||'',themes:itemData&&itemData.themes||[],narrative:itemData&&itemData.narrative||''};
             if(state.action==='enrich'&&state.sim&&state.sim.match){
-              const fi=role.facets.findIndex(function(f){return f.name===(state.sim.match&&state.sim.match.name);});
+              const fi=role.facets.findIndex(function(f){if(state.sim.match.facet_id&&f.facet_id)return f.facet_id===state.sim.match.facet_id;return f.name===(state.sim.match&&state.sim.match.name);});
               if(fi>=0){
                 role.facets[fi]=Object.assign({},role.facets[fi],{
                   narrative:role.facets[fi].narrative+'\n\n'+newFacet.narrative,
@@ -1869,7 +1875,7 @@ function FreeAddView({stories,experience,awards,education,profileContext,onSave,
                 });
               } else {role.facets=role.facets.concat([newFacet]);}
             } else if(state.action==='replace'&&state.sim&&state.sim.match){
-              const fi=role.facets.findIndex(function(f){return f.name===(state.sim.match&&state.sim.match.name);});
+              const fi=role.facets.findIndex(function(f){if(state.sim.match.facet_id&&f.facet_id)return f.facet_id===state.sim.match.facet_id;return f.name===(state.sim.match&&state.sim.match.name);});
               if(fi>=0)role.facets[fi]=newFacet; else role.facets=role.facets.concat([newFacet]);
             } else {
               role.facets=role.facets.concat([newFacet]);
@@ -3823,11 +3829,11 @@ export default function App() {
   async function persist(d){try{await upsertStories(d);}catch(e){}}
   async function persistExp(d){try{await saveExperience(d);}catch(e){}}
   async function persistProfile(p){try{await saveProfile({base_salary_from:p.baseSalaryFrom,base_salary_to:p.baseSalaryTo,total_comp_from:p.totalCompFrom,total_comp_to:p.totalCompTo});}catch(e){}}
-  function saveStory(form){
+  function saveStory(form,opts){
     const exists=stories.find(s=>s.id===form.id);
     const updated=exists?stories.map(s=>s.id===form.id?form:s):[...stories,form];
     setStories(updated);persist(updated);
-    setSelected(form);setEditing(null);setPage("detail");
+    if(!(opts&&opts.skipNavigation)){setSelected(form);setEditing(null);setPage("detail");}
   }
   function deleteStory(id){
     const updated=stories.filter(s=>s.id!==id);
