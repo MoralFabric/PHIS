@@ -1705,7 +1705,7 @@ function StoryEditForm({initial,onSave,onCancel}) {
 }
 
 // ─── FREE-FORM CAPTURE ────────────────────────────────────
-function FreeAddView({stories,experience,awards,education,profileContext,onSave,onUpdateExperience,onUpdateAwards,onUpdateEducation,onUpdateProfileContext,onCancel}) {
+function FreeAddView({stories,experience,awards,education,profileContext,onSave,onUpdateExperience,onUpdateAwards,onUpdateEducation,onUpdateProfileContext,onRescore,onCancel}) {
   const [input,setInput]=useState("");
   const [busy,setBusy]=useState(false);
   const [saving,setSaving]=useState(false);
@@ -1895,6 +1895,10 @@ function FreeAddView({stories,experience,awards,education,profileContext,onSave,
       if(newSoars.length>0){
         await upsertStories(newSoars);
         setStories(function(prev){return prev.concat(newSoars);});
+        if(onRescore){
+          const skillNames=[...new Set(newSoars.flatMap(function(s){return s.skills||[];}))];
+          if(skillNames.length>0)onRescore(skillNames);
+        }
       }
       for(let j=0;j<newAwards.length;j++){await insertAward(newAwards[j]);}
       for(let j=0;j<newEducation.length;j++){await insertEducation(newEducation[j]);}
@@ -3828,10 +3832,11 @@ function CoverLetterStep({active,jdAnalysis,rescore,resume,result,stories,experi
 
 
 // ─── APPLICATION ENGINE ───────────────────────────
-function ApplyView({stories,setStories,experience,awards,education,profileContext,profile}) {
+function ApplyView({stories,setStories,experience,awards,education,profileContext,profile,rescoreRequest,onRescoreDone}) {
   const [jobTitle,setJobTitle]=useState("");
   const [company,setCompany]=useState("");
   const [jdText,setJdText]=useState("");
+  const [rescoreToast,setRescoreToast]=useState(null);
   const [app,setApp]=useState({
     currentStep:'input',
     jdAnalysis:null,
@@ -3853,8 +3858,72 @@ function ApplyView({stories,setStories,experience,awards,education,profileContex
   function goTo(step){setApp(a=>({...a,currentStep:step,error:null}));}
   function setError(error){setApp(a=>({...a,error}));}
 
+  useEffect(function(){
+    if(!rescoreRequest||!app.cpsResult||!app.jdAnalysis)return;
+    if(onRescoreDone)onRescoreDone();
+    const soarSkills=[...new Set(rescoreRequest)];
+    const jdSkillsIndexed=(app.jdAnalysis.skills||[]).map(function(s,i){return{index:i,name:s.name};});
+    (async function(){
+      try{
+        const matchRaw=await callClaude(
+          'Given SOAR skills and an indexed list of JD skills, return the indices of JD skills that are evidenced or directly relevant to any of the SOAR skills. Return ONLY valid JSON: {"matched":[0,1,2]}',
+          'SOAR skills: '+JSON.stringify(soarSkills)+'\nJD skills: '+JSON.stringify(jdSkillsIndexed),
+          500,0
+        );
+        const matchParsed=parseJSON(matchRaw);
+        const matched=(matchParsed&&Array.isArray(matchParsed.matched))?matchParsed.matched:[];
+        const targetSkills=(app.jdAnalysis.skills||[]).filter(function(_,i){return matched.includes(i);});
+        if(!targetSkills.length){
+          setRescoreToast({type:'info',msg:'Stories saved. No direct skill overlap found — re-run CPS to update all scores.'});
+          return;
+        }
+        setRescoreToast({type:'info',msg:'Re-scoring '+targetSkills.length+' skill'+(targetSkills.length!==1?'s':'')+'...'});
+        const nl="\n";
+        const storyCtx=stories.map(function(s){return["SOAR: "+s.title+" ("+s.employer+")",nl+"Skills: "+(s.skills||s.themes||[]).join(", "),nl+"Action: "+s.action,nl+"Result: "+s.result].join("");}).join(nl+nl);
+        const scoreRaw=await callClaude(
+          "You are a career scoring expert. Score the candidate against each skill 0-100. Cite specific evidence. Return ONLY valid JSON. Schema: {\"scores\":[{\"skill\":\"string\",\"score\":0,\"evidence\":\"specific quote\",\"gap\":\"what is missing\",\"improve\":\"one actionable sentence\"}]}",
+          ["Skills:",nl,JSON.stringify(targetSkills),nl+nl,"Experience:",nl,buildExpContext(experience),nl+nl,"SOAR stories:",nl,storyCtx].join(""),
+          3000,0
+        );
+        const scoreParsed=parseJSON(scoreRaw);
+        if(!scoreParsed||!scoreParsed.scores){
+          setRescoreToast({type:'error',msg:'Re-score failed — run CPS manually to update scores.'});
+          return;
+        }
+        const prevScores=app.cpsResult.scores;
+        const changes=[];
+        prevScores.forEach(function(existing){
+          const updated=scoreParsed.scores.find(function(ns){return(ns.skill||'').toLowerCase()===(existing.skill||'').toLowerCase();});
+          if(updated&&updated.score!==existing.score)changes.push(existing.skill+' '+existing.score+' → '+updated.score);
+        });
+        setApp(function(a){
+          if(!a.cpsResult)return a;
+          const merged=a.cpsResult.scores.map(function(existing){
+            const updated=scoreParsed.scores.find(function(ns){return(ns.skill||'').toLowerCase()===(existing.skill||'').toLowerCase();});
+            return updated||existing;
+          });
+          return Object.assign({},a,{cpsResult:Object.assign({},a.cpsResult,{scores:merged})});
+        });
+        setRescoreToast({
+          type:'success',
+          msg:changes.length>0?'Re-score complete: '+changes.join(' · '):'Re-score complete (scores unchanged).'
+        });
+      }catch(e){
+        setRescoreToast({type:'error',msg:'Re-score failed — run CPS manually to update scores.'});
+      }
+    })();
+  },[rescoreRequest]);
+
   return(
     <div>
+      {rescoreToast&&(
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',padding:'10px 14px',borderRadius:8,marginBottom:'1rem',
+          background:rescoreToast.type==='success'?'#d1fae5':rescoreToast.type==='error'?'#fee2e2':'#dbeafe',
+          borderLeft:'3px solid '+(rescoreToast.type==='success'?'#10b981':rescoreToast.type==='error'?'#ef4444':'#3b82f6')}}>
+          <span style={{fontSize:13,color:rescoreToast.type==='success'?'#065f46':rescoreToast.type==='error'?'#b91c1c':'#1e40af',lineHeight:1.5}}>{rescoreToast.msg}</span>
+          <button onClick={function(){setRescoreToast(null);}} style={{marginLeft:12,background:'none',border:'none',cursor:'pointer',fontSize:14,lineHeight:1,color:'var(--color-text-tertiary)',flexShrink:0}}>x</button>
+        </div>
+      )}
       <div style={{marginBottom:'1.5rem'}}>
         <div style={{fontSize:22,fontWeight:500}}>Application Engine</div>
         <div style={{fontSize:13,color:'var(--color-text-secondary)',marginTop:2}}>
@@ -4075,6 +4144,7 @@ export default function App() {
   const [awards,setAwards]=useState([]);
   const [education,setEducation]=useState([]);
   const [profileContext,setProfileContext]=useState(null);
+  const [rescoreRequest,setRescoreRequest]=useState(null);
 
   useEffect(()=>{
     (async()=>{
@@ -4225,6 +4295,7 @@ export default function App() {
             onUpdateAwards={aw=>setAwards(aw)}
             onUpdateEducation={edu=>setEducation(edu)}
             onUpdateProfileContext={ctx=>setProfileContext(ctx)}
+            onRescore={skillNames=>setRescoreRequest(skillNames)}
             onCancel={()=>setPage("browse")}
           />
         )}
@@ -4232,7 +4303,7 @@ export default function App() {
         {page==="interview"&&<InterviewView stories={stories}/>}
         {page==="experience"&&<ExperienceView experience={experience} setExperience={exp=>{setExperience(exp);persistExp(exp);}}/>}
         {page==="awards"&&<AwardsView awards={awards}/>}
-        {page==="apply"&&<ApplyView stories={stories} setStories={updateStories} experience={experience} awards={awards} education={education} profileContext={profileContext} profile={profile}/>}
+        {page==="apply"&&<ApplyView stories={stories} setStories={updateStories} experience={experience} awards={awards} education={education} profileContext={profileContext} profile={profile} rescoreRequest={rescoreRequest} onRescoreDone={()=>setRescoreRequest(null)}/>}
         {page==="profile"&&<ProfileView profile={profile} setProfile={p=>{const next=typeof p==='function'?p(profile):p;setProfile(next);persistProfile(next);}} awards={awards} education={education} profileContext={profileContext}/>}
       </div>
 
