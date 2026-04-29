@@ -2842,18 +2842,23 @@ function FullCVExporter({stories,experience,awards,education,profileContext,onCl
 // ─── STEP 1: JD ANALYSIS ─────────────────────────────
 function compMatch(comp, profile) {
   if (!comp) return {status:"not_specified"};
-  const hasAny=comp.base_from!=null||comp.base_to!=null||comp.total_from!=null||comp.total_to!=null;
+  // support both new field names (base_min/base_max) and old (base_from/base_to)
+  const bMin=comp.base_min??comp.base_from;
+  const bMax=comp.base_max??comp.base_to;
+  const tMin=comp.total_min??comp.total_from;
+  const tMax=comp.total_max??comp.total_to;
+  const hasAny=bMin!=null||bMax!=null||tMin!=null||tMax!=null;
   if (!hasAny) return {status:"not_specified"};
   const baseFloor=profile?.baseSalaryFrom??185000;
   const tcFloor=profile?.totalCompFrom??285000;
   const K=n=>n>=1000?(n/1000).toFixed(0)+"K":""+n;
-  if (comp.base_to!=null) {
-    if (comp.base_to<baseFloor) return {status:"below",msg:"Base top "+K(comp.base_to)+" below your "+K(baseFloor)+" floor"};
-    return {status:"match",msg:"Base "+(comp.base_from!=null?K(comp.base_from)+"–":"")+K(comp.base_to)};
+  if (bMax!=null) {
+    if (bMax<baseFloor) return {status:"below",msg:"Base top "+K(bMax)+" below your "+K(baseFloor)+" floor"};
+    return {status:"match",msg:"Base "+(bMin!=null?K(bMin)+"–":"")+K(bMax)};
   }
-  if (comp.total_to!=null) {
-    if (comp.total_to<tcFloor) return {status:"below",msg:"Total comp "+K(comp.total_to)+" below your "+K(tcFloor)+" floor"};
-    return {status:"match",msg:"Total comp "+(comp.total_from!=null?K(comp.total_from)+"–":"")+K(comp.total_to)};
+  if (tMax!=null) {
+    if (tMax<tcFloor) return {status:"below",msg:"Total comp "+K(tMax)+" below your "+K(tcFloor)+" floor"};
+    return {status:"match",msg:"Total comp "+(tMin!=null?K(tMin)+"–":"")+K(tMax)};
   }
   return {status:"not_specified"};
 }
@@ -2870,9 +2875,9 @@ function JDAnalysisStep({active,jobTitle,company,jdText,profile,result,onComplet
       setLoading(true);setErr(null);
       try{
         const raw=await callClaude(
-          "You are a senior recruiter. Extract key information from this job description. Return ONLY valid JSON—no markdown fences. Schema: {\"role\":\"string\",\"company\":\"string\",\"seniority\":\"string\",\"skills\":[{\"name\":\"string\",\"weight\":1,\"category\":\"domain|leadership|technical|soft\",\"required\":true}],\"responsibilities\":[\"string\"],\"comp\":{\"base_from\":null,\"base_to\":null,\"total_from\":null,\"total_to\":null}}. Extract 10-14 skills; weight 1-10 where 10=must-have; comp fields are numbers or null if not mentioned.",
+          "You are a senior recruiter and JD analyst. Extract structured intelligence from this job description. Return ONLY valid JSON — no markdown fences, no commentary.\n\nSchema:\n{\n  \"role\": \"string\",\n  \"company\": \"string\",\n  \"seniority_level\": \"string (e.g. VP, AVP, Director, MD)\",\n  \"skills\": [{\"name\":\"string\",\"weight\":1,\"category\":\"domain|leadership|technical|soft\",\"required\":true}],\n  \"responsibilities\": [{\"description\":\"string\",\"priority\":\"high|medium|low\",\"jd_order\":1}],\n  \"distinctive_vocabulary\": [{\"phrase\":\"string\",\"context\":\"brief note on how the JD uses this term\"}],\n  \"comp_range_visible\": {\"base_min\":null,\"base_max\":null,\"total_min\":null,\"total_max\":null}\n}\n\nRULES:\n1. Extract 10-14 skills. Weight 1-10 where 10=must-have. Include domain, leadership, technical, and soft skill categories.\n2. Extract 5-10 responsibilities in the order they appear in the JD. Mark top 3 as high priority.\n3. Extract 5-10 distinctive vocabulary phrases — terms the JD uses that are specific to this company or role (not generic buzzwords). These will be mirrored in the resume.\n4. comp_range_visible: numbers in dollars or null. Extract only if explicitly stated.",
           "Job Title: "+jobTitle+" | Company: "+company+" | Job Description: "+jdText,
-          3000, 0
+          4000, 0
         );
         const parsed=parseJSON(raw);
         if(!parsed?.skills?.length) throw new Error("Could not extract skills—check the JD is complete.");
@@ -2882,7 +2887,7 @@ function JDAnalysisStep({active,jobTitle,company,jdText,profile,result,onComplet
     })();
   },[active,result]);
 
-  const cm=compMatch(data?.comp,profile);
+  const cm=compMatch(data?.comp_range_visible||data?.comp,profile);
 
   if(loading)return(
     <div style={S.card}>
@@ -2906,7 +2911,7 @@ function JDAnalysisStep({active,jobTitle,company,jdText,profile,result,onComplet
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:"1rem"}}>
         <div>
           <div style={{fontSize:14,fontWeight:500}}>Step 1 — JD Analysis</div>
-          <div style={{fontSize:12,color:"var(--color-text-secondary)",marginTop:2}}>{data.role}{data.seniority?" · "+data.seniority:""}</div>
+          <div style={{fontSize:12,color:"var(--color-text-secondary)",marginTop:2}}>{data.role}{(data.seniority_level||data.seniority)?" · "+(data.seniority_level||data.seniority):""}</div>
         </div>
         {result&&<span style={{fontSize:11,padding:"2px 8px",background:"#EAF3DE",color:"#3B6D11",borderRadius:4,fontWeight:500}}>✓ Complete</span>}
       </div>
@@ -2942,9 +2947,18 @@ function JDAnalysisStep({active,jobTitle,company,jdText,profile,result,onComplet
           <div style={{fontSize:11,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.05em",color:"var(--color-text-tertiary)",marginBottom:6}}>Key responsibilities</div>
           {data.responsibilities.slice(0,5).map((r,i)=>(
             <div key={i} style={{fontSize:12,color:"var(--color-text-secondary)",marginBottom:4,display:"flex",gap:8}}>
-              <span style={{color:"#3b82f6",flexShrink:0}}>›</span><span>{r}</span>
+              <span style={{color:"#3b82f6",flexShrink:0}}>›</span><span>{r.description||r}</span>
             </div>
           ))}
+        </div>
+      )}
+
+      {data.distinctive_vocabulary?.length>0&&(
+        <div style={{marginBottom:"1rem"}}>
+          <div style={{fontSize:11,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.05em",color:"var(--color-text-tertiary)",marginBottom:6}}>Distinctive vocabulary</div>
+          <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
+            {data.distinctive_vocabulary.map((v,i)=><span key={i} style={{...S.tag,background:"#EFF6FF",color:"#1e40af",border:"1px solid #bfdbfe"}}>{v.phrase||v}</span>)}
+          </div>
         </div>
       )}
 
@@ -3265,12 +3279,13 @@ function RescoreStep({active,jdAnalysis,cpsResult,gapResolutions,result,stories,
       const rescoreAvg=Math.round(cpsData.scores.reduce((a,s)=>a+s.score,0)/cpsData.scores.length);
       const gapCount=cpsData.scores.filter(s=>s.score<70).length;
       const addedStories=(gapResolutions||[]).filter(r=>r.status==='story_added').length;
-      const compMatchStatus=jdAnalysis.comp&&(jdAnalysis.comp.base_from||jdAnalysis.comp.base_to)?'mentioned':'not mentioned';
+      const _comp=jdAnalysis.comp_range_visible||jdAnalysis.comp;
+      const compMatchStatus=_comp&&(_comp.base_min||_comp.base_max||_comp.base_from||_comp.base_to||_comp.total_min||_comp.total_max||_comp.total_from||_comp.total_to)?'mentioned':'not mentioned';
 
       // Probabilities
       const probRaw=await callClaude(
         'You are a hiring probability estimator. Given the candidate data, estimate three probabilities. Use these explicit weights: CPS avg contributes 50% to interview probability; comp match contributes 15%; seniority match contributes 15%; remaining gaps contribute -5% each up to -20%. P(offer|interviewed) depends on CPS avg (40%), gap count (30%), story quality (30%). P(overall) = P(interview) * P(offer|interviewed). Return ONLY valid JSON—no markdown: {"p_interview":0.0,"p_interview_reason":"string","p_offer":0.0,"p_offer_reason":"string","p_overall":0.0,"p_overall_reason":"string"}',
-        'Role: '+jdAnalysis.role+' | Seniority: '+(jdAnalysis.seniority||'not specified')+' | Company: '+jdAnalysis.company+' | CPS average: '+rescoreAvg+'/100 | Initial CPS: '+initialAvg+'/100 | Gaps remaining: '+gapCount+' | Stories added in gap resolution: '+addedStories+' | Comp in JD: '+compMatchStatus,
+        'Role: '+jdAnalysis.role+' | Seniority: '+(jdAnalysis.seniority_level||jdAnalysis.seniority||'not specified')+' | Company: '+jdAnalysis.company+' | CPS average: '+rescoreAvg+'/100 | Initial CPS: '+initialAvg+'/100 | Gaps remaining: '+gapCount+' | Stories added in gap resolution: '+addedStories+' | Comp in JD: '+compMatchStatus,
         1000, 0
       );
       console.log('[probs] raw:', probRaw.slice(0,200));
@@ -3361,41 +3376,207 @@ function RescoreStep({active,jdAnalysis,cpsResult,gapResolutions,result,stories,
 // ─── STEP 5: RESUME GENERATION ───────────────────────────
 function ResumeStep({active,jdAnalysis,rescore,result,stories,experience,awards,education,profileContext,onComplete,onError}) {
   const [loading,setLoading]=useState(false);
-  const [content,setContent]=useState(result?.content||null);
+  const [loadingPhase,setLoadingPhase]=useState('');
+  const [content,setContent]=useState(result&&result.content||null);
   const [err,setErr]=useState(null);
   const [downloaded,setDownloaded]=useState(false);
+  const [qualityFlags,setQualityFlags]=useState([]);
+  const [sourceFlags,setSourceFlags]=useState([]);
 
-  const BANNED_WORDS='leveraged,spearheaded,passionate,synergy,in today\'s fast-paced,utilized,holistic,robust,transformative,cutting-edge,best-in-class,thought leader';
-  const BANNED_OPENING='excited to apply,I am writing to,perfect fit,passionate about';
+  const BANNED_WORDS_LIST=[
+    'leveraged','spearheaded','passionate','synergy','in today\'s fast-paced',
+    'utilized','holistic','robust','transformative','cutting-edge',
+    'best-in-class','thought leader','results-driven','excited','world-class','dynamic',
+  ];
 
-  function stripEmDashes(text){
-    return (text||'').replace(/[–—]/g,'-');
+  function scoreStoryAgainstJD(story){
+    var jdText=[
+      ...jdAnalysis.skills.map(function(s){return s.name;}),
+      ...(jdAnalysis.distinctive_vocabulary||[]).map(function(v){return v.phrase||v;})
+    ].join(' ').toLowerCase();
+    var jdTokens=new Set(jdText.split(/\W+/).filter(function(t){return t.length>2;}));
+    var storyText=[...(story.themes||[]),...(story.skills||[]),story.title||'',story.employer||''].join(' ').toLowerCase();
+    var storyTokens=storyText.split(/\W+/).filter(function(t){return t.length>2;});
+    return storyTokens.filter(function(t){return jdTokens.has(t);}).length;
   }
 
+  function buildExpContextDetailed(exp){
+    return (exp||EXPERIENCE_DEFAULT).map(function(e){
+      var facetStr='';
+      if(e.facets&&e.facets.length>0){
+        facetStr='\nFacets:\n'+e.facets.map(function(f){
+          return '  ['+f.name+'] '+(f.narrative||'')+(f.themes&&f.themes.length>0?' (themes: '+f.themes.join(', ')+')':'');
+        }).join('\n');
+      }
+      return e.org.toUpperCase()+', Toronto | '+e.dates+'\n'+e.role+
+        '\n\nMandate: '+(e.mandate||'')+
+        '\nSource bullets:\n'+e.bullets.map(function(b){return '• '+b;}).join('\n')+
+        facetStr;
+    }).join('\n\n---\n\n');
+  }
+
+  function validateResume(text){
+    var issues=[];
+    var flags=[];
+    if(/—/.test(text))issues.push('Em-dash (—) found');
+    if(/–/.test(text))issues.push('En-dash (–) found');
+    if(/\w\s-\s\w/.test(text))issues.push("Space-hyphen-space ' - ' pattern found");
+    var lc=text.toLowerCase();
+    BANNED_WORDS_LIST.forEach(function(w){
+      if(lc.includes(w.toLowerCase()))issues.push('Banned phrase: "'+w+'"');
+    });
+    var wc=text.split(/\s+/).filter(Boolean).length;
+    if(wc>1200)issues.push('Word count '+wc+' exceeds 1200');
+    var tuc=text.toUpperCase();
+    ['PROFESSIONAL SUMMARY:','PROFESSIONAL EXPERIENCE:','EDUCATION:','CORE COMPETENCIES:'].forEach(function(s){
+      if(!tuc.includes(s))issues.push('Missing section: '+s);
+    });
+    if(!tuc.includes('AWARDS')&&!tuc.includes('RECOGNITION'))issues.push('Missing AWARDS or RECOGNITION section');
+    if(/\d{3}[-.\s]\d{3}[-.\s]\d{4}/.test(text))issues.push('Phone number detected — model generated contact info');
+    if(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/.test(text))issues.push('Email address detected — model generated contact info');
+    if(/\[(Name|City|Phone|Email|Address)\b/i.test(text))issues.push('Bracketed placeholder detected');
+    text.split('\n').filter(function(l){return l.trim().startsWith('•');}).forEach(function(line){
+      var lw=line.toLowerCase();
+      var relCount=['led','advised','partnered','head of','directed'].filter(function(v){return lw.includes(v);}).length;
+      if(relCount>=2)flags.push('Multiple relational claims in one bullet: "'+line.trim().slice(0,90)+'"');
+    });
+    return{issues:issues,flags:flags};
+  }
+
+  const RESUME_SYS=`You are an expert executive resume writer. Generate a complete, tailored, JD-responsive resume in plain text. The output is the resume BODY only. The candidate's name and contact information are added by the application — do NOT generate a contact section, name, phone, email, or address.
+
+OUTPUT STRUCTURE (exact order, ALL CAPS section headers ending with colon):
+
+PROFESSIONAL SUMMARY:
+[3-4 sentences. Frontload the JD's primary verbs and skills. Lead with the candidate's most differentiating credential. No cliches.]
+
+PROFESSIONAL EXPERIENCE:
+[For each role:]
+EMPLOYER NAME, City | Date Range
+Role Title | Department | Date Range
+
+• Bullet 1: mirrors a JD responsibility using the JD's exact verb and framing where source data supports it
+• Bullet 2-N: descending JD relevance
+
+EDUCATION:
+[Credential, Institution, Year and relevant note]
+
+AWARDS & RECOGNITION:
+[Award, context, year — most JD-relevant first]
+
+CORE COMPETENCIES:
+[12-18 competencies, generated dynamically for THIS JD. At least 8 must explicitly map to JD top skills.]
+
+HARD RULES (non-negotiable):
+1. NEVER generate contact information — no name, no phone, no email, no address, no city.
+2. NEVER use em-dashes, en-dashes, or ' - ' (space-hyphen-space). Use commas, semicolons, or rewrite.
+3. Body length: approximately 1100 words maximum.
+4. Bullet length: 15-25 words for senior roles, 10-20 for older. NEVER exceed 30 words.
+5. Bullets per role: 5-7 for most recent two roles, 4-5 for next two, 3-4 for older.
+6. LEAD-BULLET RULE: each role's first bullet must (a) mirror a JD responsibility using the JD's verbs where source supports it, (b) establish scope at or above the level the role requires, (c) provide evidence of excellence: recognition, measurable outcome, judgment displayed, or complexity overcome.
+7. ADVISORY FRAMING: when both advisory and operational framings are honestly available from source, use advisory verbs (advised, recommended, shaped, guided, partnered) over operational verbs (provided, produced, delivered, built tools for).
+8. Quantify outcomes using specific numbers from source. Do not round up. Do not add '+' unless source has '+'. Do not substitute aspirational figures.
+9. MIRROR JD vocabulary where meaning matches. Use the JD's distinctive vocabulary where source supports it.
+10. Banned words: leveraged, spearheaded, passionate, synergy, utilized, holistic, robust, transformative, cutting-edge, best-in-class, thought leader, results-driven, excited, world-class, dynamic, drove (as filler), delivered (as filler), in today's fast-paced.
+11. Plain text only. No markdown, no asterisks. Section headers ALL CAPS with colon. Bullets start with bullet character.
+12. Generate CORE COMPETENCIES dynamically for this specific JD.
+13. SOURCE TRACE: every relational claim (led, advised, partner, head of, direct report) and every numeric claim ($, %, headcount, AUM, time period) must be supported by the source data for that specific role. Do not import context from one role into another. Do not promote titles beyond what source supports.
+14. Current role end date is 2026.`;
+
+  const FRAMING_SYS='Review the bullets in this resume. For each bullet, identify the verb and frame. Bullets framed operationally (provided X with reporting, built dashboards for, produced reports on, delivered data to) should be rewritten in advisory framing where source supports it (advised X on, recommended, shaped, guided decisions on, partnered on). Do NOT change the substance of any bullet — only the framing verb and structure. Do NOT introduce claims not already in the bullet. Return the full revised resume in the same plain-text format with the same section structure.';
+
   async function generate(){
-    setLoading(true);setErr(null);setDownloaded(false);
+    setLoading(true);setErr(null);setDownloaded(false);setQualityFlags([]);setSourceFlags([]);
+    setLoadingPhase('Generating resume...');
     const nl='\n';
     try{
-      const expCtx=buildExpContext(experience);
-      const eduCtx=(education||[]).map(e=>e.cred+' — '+e.org+(e.year?' ('+e.year+')':'')+': '+e.note).join('; ');
-      const awardsCtx=(awards||[]).slice(0,6).map(a=>a.award+' ('+a.year+')').join('; ');
-      const scores=rescore?.scores||[];
-      const topGaps=scores.filter(s=>s.score<70).map(s=>s.skill).join(', ');
-      const storyCtx=stories.map(s=>'SOAR: '+s.title+' ('+s.employer+')'+nl+'Action: '+s.action+nl+'Result: '+s.result).join(nl+nl);
+      // SOAR pre-filter: top 15 by JD relevance
+      const scored=stories.map(function(s){return Object.assign({},s,{_sc:scoreStoryAgainstJD(s)});})
+        .sort(function(a,b){return b._sc-a._sc;}).slice(0,15);
 
-      const raw=await callClaude(
-        'You are an expert resume writer. Generate resume CONTENT for the targeted role. Rules: (1) ALL CAPS section headers followed by a colon — e.g. PROFESSIONAL EXPERIENCE: (2) Bullet points start with • (3) 3 pages maximum (4) ABSOLUTELY NO em-dashes (— or –) anywhere — use commas or rewrite; this is a hard rule (5) No decorative sub-headers (6) No AI-sounding constructions — banned phrases: '+BANNED_WORDS+' (7) Current role end date is 2026 (8) Strong action verbs with quantified outcomes (9) Header appears only on page 1. Return plain text — no markdown.',
-        ['Target role: ',jdAnalysis.role,' at ',jdAnalysis.company,nl,'High-weight skills: ',jdAnalysis.skills.filter(s=>s.weight>=7).map(s=>s.name).join(', '),nl,'Gaps to address through framing: ',topGaps,nl+nl,'EXPERIENCE:',nl,expCtx,nl+nl,'SOAR STORIES (draw from these):',nl,storyCtx,nl+nl,'COMPETENCIES: ',COMPETENCIES,nl,'CAPITAL MARKETS: ',CM_EXPERTISE,nl,'EDUCATION: ',eduCtx,nl,'AWARDS: ',awardsCtx].join(''),
-        5000, 0.3
-      );
-      const cleaned=stripEmDashes(raw);
-      setContent(cleaned);
+      const expCtx=buildExpContextDetailed(experience);
+      const eduCtx=(education||[]).map(function(e){return e.cred+' — '+e.org+(e.year?' ('+e.year+')':'')+': '+e.note;}).join('; ');
+      const awardsCtx=(awards||[]).slice(0,8).map(function(a){return '• '+a.award+' ('+a.year+', '+a.org+'): '+a.narrative;}).join(nl);
+      const scores=rescore&&rescore.scores||[];
+      const topGaps=scores.filter(function(s){return s.score<70;}).map(function(s){return s.skill+(s.evidence?': '+s.evidence:'');}).join(nl)||'None';
+      const respCtx=(jdAnalysis.responsibilities||[]).slice().sort(function(a,b){return(a.jd_order||0)-(b.jd_order||0);})
+        .map(function(r){return '• '+(r.description||r)+(r.priority?' (priority: '+r.priority+')':'');}).join(nl);
+      const vocabCtx=(jdAnalysis.distinctive_vocabulary||[]).map(function(v){return v.phrase||v;}).join(', ');
+      const topSkillsCtx=jdAnalysis.skills.filter(function(s){return s.weight>=7;}).map(function(s){return s.name+' (weight '+s.weight+')';}).join(', ');
+      const storyCtx=scored.map(function(s){
+        return 'STORY: '+s.title+' | '+s.employer+nl+
+          'Themes: '+(s.themes||[]).join(', ')+nl+
+          'Situation: '+(s.situation||'')+nl+
+          'Obstacle: '+(s.obstacle||'')+nl+
+          'Action: '+(s.action||'')+nl+
+          'Result: '+(s.result||'')+nl+
+          'Impact: '+(s.impact||'');
+      }).join(nl+nl);
+
+      const userPrompt=[
+        'Target role: '+jdAnalysis.role+' at '+jdAnalysis.company,
+        '',
+        'JD responsibilities (mirror these in lead bullets using the JD\'s language):',
+        respCtx||'Not specified',
+        '',
+        'JD distinctive vocabulary (use where meaning matches):',
+        vocabCtx||'Not specified',
+        '',
+        'JD top skills: '+topSkillsCtx,
+        '',
+        'Gaps to address through reframing only — do NOT fabricate:',
+        topGaps,
+        '',
+        'CANDIDATE EXPERIENCE:',
+        expCtx,
+        '',
+        'CANDIDATE STORIES (top 15 by JD relevance):',
+        storyCtx,
+        '',
+        'EDUCATION: '+eduCtx,
+        '',
+        'AWARDS:',
+        awardsCtx,
+        '',
+        'GENERATE THE RESUME NOW.'
+      ].join(nl);
+
+      // First generation
+      let raw=await callClaude(RESUME_SYS,userPrompt,5000,0);
+
+      // Framing review pass
+      setLoadingPhase('Reviewing framing...');
+      try{
+        const framed=await callClaude(FRAMING_SYS,raw,5000,0);
+        if(framed&&framed.trim().length>raw.length*0.6)raw=framed;
+      }catch(fe){}
+
+      // Validate
+      setLoadingPhase('Validating...');
+      const vr=validateResume(raw);
+      setSourceFlags(vr.flags);
+
+      if(vr.issues.length>0){
+        setLoadingPhase('Regenerating...');
+        const fixInstr='Your previous resume output had these issues:\n'+vr.issues.map(function(x){return '• '+x;}).join('\n')+'\n\nRegenerate the resume fixing ONLY those issues. Do not change content unrelated to the issues. Apply all hard rules from the system prompt.';
+        try{
+          const raw2=await callClaude(RESUME_SYS,userPrompt+'\n\nFIX INSTRUCTIONS:\n'+fixInstr,5000,0);
+          const vr2=validateResume(raw2);
+          if(vr2.issues.length<vr.issues.length){
+            raw=raw2;setSourceFlags(vr2.flags);
+            if(vr2.issues.length>0)setQualityFlags(vr2.issues);
+          }else{setQualityFlags(vr.issues);}
+        }catch(re){setQualityFlags(vr.issues);}
+      }
+
+      setContent(raw);
     }catch(e){setErr(e.message);onError(e.message);}
+    setLoadingPhase('');
     setLoading(false);
   }
 
   function download(){
-    const rtf=buildResumeRTF(content,profileContext?.headerTagline||CANDIDATE.subtitle);
+    const rtf=buildResumeRTF(content,profileContext&&profileContext.headerTagline||CANDIDATE.subtitle);
     downloadBlob(rtf,'adam_waldman_resume_'+jdAnalysis.role.replace(/\s+/g,'_').toLowerCase()+'.rtf','application/rtf');
     setDownloaded(true);
   }
@@ -3413,7 +3594,7 @@ function ResumeStep({active,jdAnalysis,rescore,result,stories,experience,awards,
       {!content&&!loading&&(
         <>
           <div style={{fontSize:13,color:'var(--color-text-secondary)',marginBottom:'0.5rem'}}>
-            Generate a tailored resume — ALL CAPS headers, bullet points, no em-dashes, no banned phrases.
+            Generate a tailored resume with advisory framing review and post-generation validation.
           </div>
           {err&&<div style={{fontSize:12,color:'#A32D2D',padding:'8px 12px',background:'#FCEBEB',borderRadius:6,marginBottom:'0.75rem'}}>⚠ {err}</div>}
           <button onClick={generate} style={S.primary}>Generate resume →</button>
@@ -3421,15 +3602,29 @@ function ResumeStep({active,jdAnalysis,rescore,result,stories,experience,awards,
       )}
 
       {loading&&(
-        <div style={{fontSize:13,color:'var(--color-text-secondary)'}}>Generating tailored resume — this takes about 20 seconds…</div>
+        <div style={{fontSize:13,color:'var(--color-text-secondary)'}}>
+          {loadingPhase||'Working...'}<span style={{color:'var(--color-text-tertiary)',fontSize:11,marginLeft:8}}>(generate → framing review → validate)</span>
+        </div>
       )}
 
       {content&&(
         <>
+          {sourceFlags.length>0&&(
+            <div style={{fontSize:12,color:'#854F0B',padding:'8px 12px',background:'#FAEEDA',borderRadius:6,border:'1px solid #EF9F27',marginBottom:'0.75rem'}}>
+              <div style={{fontWeight:500,marginBottom:4}}>⚠ Review these claims for source accuracy:</div>
+              {sourceFlags.map(function(f,i){return <div key={i} style={{marginTop:2}}>· {f}</div>;})}
+            </div>
+          )}
+          {qualityFlags.length>0&&(
+            <div style={{fontSize:12,color:'#A32D2D',padding:'8px 12px',background:'#FCEBEB',borderRadius:6,border:'1px solid #E24B4A',marginBottom:'0.75rem'}}>
+              <div style={{fontWeight:500,marginBottom:4}}>⚠ Quality issues remain after auto-fix. Edit manually:</div>
+              {qualityFlags.map(function(f,i){return <div key={i} style={{marginTop:2}}>· {f}</div>;})}
+            </div>
+          )}
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'0.75rem'}}>
-            <div style={{fontSize:11,color:'var(--color-text-tertiary)'}}>Em-dashes removed, banned phrases avoided</div>
+            <div style={{fontSize:11,color:'var(--color-text-tertiary)'}}>Framing reviewed, validated</div>
             <div style={{display:'flex',gap:6}}>
-              <button onClick={()=>navigator.clipboard?.writeText([CANDIDATE.name+'\n'+(profileContext?.headerTagline||CANDIDATE.subtitle)+'\n'+CANDIDATE.contact,content].join('\n\n'))} style={{...S.btn,fontSize:11,padding:'4px 10px'}}>Copy ↗</button>
+              <button onClick={function(){navigator.clipboard&&navigator.clipboard.writeText([CANDIDATE.name+'\n'+(profileContext&&profileContext.headerTagline||CANDIDATE.subtitle)+'\n'+CANDIDATE.contact,content].join('\n\n'));}} style={{...S.btn,fontSize:11,padding:'4px 10px'}}>Copy ↗</button>
               <button onClick={download} style={{...S.btn,fontSize:11,padding:'4px 10px',color:downloaded?'#065f46':'var(--color-text-primary)',borderColor:downloaded?'#10b981':'var(--color-border-secondary)'}}>
                 {downloaded?'✓ Downloaded':'↓ .rtf'}
               </button>
@@ -3439,7 +3634,7 @@ function ResumeStep({active,jdAnalysis,rescore,result,stories,experience,awards,
             <ResumeOutput content={content}/>
           </div>
           {!result&&(
-            <button onClick={()=>onComplete({content})} style={S.primary}>Generate cover letter →</button>
+            <button onClick={function(){onComplete({content});}} style={S.primary}>Generate cover letter →</button>
           )}
         </>
       )}
@@ -3448,17 +3643,49 @@ function ResumeStep({active,jdAnalysis,rescore,result,stories,experience,awards,
 }
 
 
-// ─── STEP 6: COVER LETTER GENERATION ─────────────────────
+// ─── STEP 6: COVER LETTER GENERATION ───────────────────────────
 function CoverLetterStep({active,jdAnalysis,rescore,resume,result,stories,experience,profileContext,onComplete,onError}) {
   const [loading,setLoading]=useState(false);
-  const [content,setContent]=useState(result?.content||null);
+  const [loadingPhase,setLoadingPhase]=useState('');
+  const [content,setContent]=useState(result&&result.content||null);
   const [err,setErr]=useState(null);
   const [downloaded,setDownloaded]=useState(false);
+  const [qualityFlags,setQualityFlags]=useState([]);
 
-  const BANNED_WORDS='leveraged,spearheaded,passionate,synergy,in today\'s fast-paced,utilized,holistic,robust,transformative,cutting-edge,best-in-class,thought leader,I am excited to apply,I am writing to express,perfect fit,passionate about';
+  const BANNED_WORDS_LIST=[
+    'leveraged','spearheaded','passionate','synergy','in today\'s fast-paced',
+    'utilized','holistic','robust','transformative','cutting-edge',
+    'best-in-class','thought leader','i am excited to apply','i am writing to express',
+    'perfect fit','passionate about','results-driven','dynamic','world-class',
+  ];
 
-  function stripEmDashes(text){
-    return (text||'').replace(/[–—]/g,'-');
+  const today=new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
+
+  const CL_SYS='You are an expert executive cover letter writer. Write a complete, tailored cover letter in plain text. The candidate\'s name and contact information are added by the application — do NOT generate a header with name or contact details.\n\nOUTPUT STRUCTURE (exact order):\n\n'+today+'\n\n[Hiring manager name and title if known, otherwise omit and go straight to company]\n[Company name]\n\nRe: [Role title] — Application\n\nDear [Hiring Manager name, or "Hiring Committee" if unknown],\n\n[Paragraph 1 — Opening: A statement of perspective or conviction about why THIS role at THIS company. NEVER open with "I am excited to apply", "I am writing to", or any cliche opener. Open with a substantive observation about the company, sector, or the problem the role exists to solve, then connect it to the candidate\'s specific experience.]\n\n[Paragraph 2 — Fit: Connect 2-3 of the candidate\'s strongest JD-matched skills or SOAR stories to the role\'s top responsibilities. Be concrete — name the story or outcome. Mirror the JD\'s distinctive vocabulary where meaning matches.]\n\n[Paragraph 3 — Company/context: Demonstrate knowledge of the company\'s situation, strategy, or challenges and show how the candidate\'s background is specifically relevant. Not generic industry commentary — specific to this company and role.]\n\n[Paragraph 4 — Closing: Confident, brief, no groveling. Express clear interest in next steps. One or two sentences max.]\n\nSincerely,\n\n[Leave name blank — application adds it]\n\nHARD RULES:\n1. NEVER generate the candidate\'s name, phone, email, or address in the body.\n2. NEVER use em-dashes (—), en-dashes (–), or \' - \' (space-hyphen-space). Use commas, semicolons, or rewrite.\n3. Banned phrases: leveraged, spearheaded, passionate, synergy, utilized, holistic, robust, transformative, cutting-edge, best-in-class, thought leader, I am excited to apply, I am writing to express, perfect fit, passionate about, results-driven, dynamic, world-class, in today\'s fast-paced.\n4. Body paragraphs: exactly 4. Total body word count: 280-420 words.\n5. Plain text only. No markdown, no asterisks, no bullet points in body.\n6. Mirror the JD\'s distinctive vocabulary and top responsibilities where source data supports it.\n7. Every claim about the candidate must be supported by the experience or stories provided — no fabrication.';
+
+  function validateCoverLetter(text){
+    var issues=[];
+    if(/[—–]/.test(text))issues.push('Em-dash or en-dash found');
+    if(/\w\s-\s\w/.test(text))issues.push("Space-hyphen-space ' - ' pattern found");
+    var lc=text.toLowerCase();
+    BANNED_WORDS_LIST.forEach(function(w){
+      if(lc.includes(w.toLowerCase()))issues.push('Banned phrase: "'+w+'"');
+    });
+    var paras=text.split(/\n\n+/).filter(function(p){return p.trim().length>0;});
+    var bodyParas=paras.filter(function(p){
+      var t=p.trim();
+      return !(/^\w+ \d+,?\s+\d{4}/.test(t)||/^Dear\b/i.test(t)||/^Re:/i.test(t)||/^Sincerely|^Regards|^Best regards/i.test(t)||/^\w+,?\s*$/.test(t)||t.length<10);
+    });
+    var wc=bodyParas.join(' ').split(/\s+/).filter(Boolean).length;
+    if(wc<250)issues.push('Body word count '+wc+' is below 250');
+    if(wc>550)issues.push('Body word count '+wc+' exceeds 550');
+    if(bodyParas.length<4)issues.push('Only '+bodyParas.length+' body paragraphs — need 4');
+    if(bodyParas.length>5)issues.push(bodyParas.length+' body paragraphs found — keep to 4');
+    if(!/Dear\b/i.test(text))issues.push('Missing salutation (Dear ...)');
+    if(!/Sincerely|Best regards|Regards/i.test(text))issues.push('Missing professional signoff');
+    if(/\[(Name|Hiring Manager|Company|Title|Address)\b/i.test(text))issues.push('Bracketed placeholder detected');
+    if(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/.test(text))issues.push('Email address detected in body');
+    return issues;
   }
 
   function buildCoverLetterRTF(text){
@@ -3466,7 +3693,7 @@ function CoverLetterStep({active,jdAnalysis,rescore,resume,result,stories,experi
     const colorTbl='{\\colortbl ;\\red30\\green58\\blue95;\\red37\\green99\\blue235;\\red31\\green41\\blue55;\\red107\\green114\\blue128;}';
     let body='';
     body+='\\pard\\sb0\\sa50\\cf1\\f0\\fs44\\b '+escRTF(CANDIDATE.name)+'\\b0\\par\n';
-    body+='\\pard\\sb0\\sa40\\cf3\\f0\\fs20 '+escRTF(profileContext?.headerTagline||CANDIDATE.subtitle)+'\\par\n';
+    body+='\\pard\\sb0\\sa40\\cf3\\f0\\fs20 '+escRTF(profileContext&&profileContext.headerTagline||CANDIDATE.subtitle)+'\\par\n';
     body+='\\pard\\sb0\\sa200\\cf4\\f0\\fs17 '+escRTF(CANDIDATE.contact)+'\\par\n';
     body+='\\pard\\sb0\\sa0\\brdrb\\brdrs\\brdrw20\\brdrcolor1 \\par\n';
     const paras=(text||'').split(/\n\n+/).filter(p=>p.trim());
@@ -3477,21 +3704,59 @@ function CoverLetterStep({active,jdAnalysis,rescore,resume,result,stories,experi
   }
 
   async function generate(){
-    setLoading(true);setErr(null);setDownloaded(false);
+    setLoading(true);setErr(null);setDownloaded(false);setQualityFlags([]);
+    setLoadingPhase('Generating cover letter...');
     const nl='\n';
     try{
-      const scores=rescore?.scores||[];
-      const topSkills=scores.filter(s=>s.score>=75).map(s=>s.skill).slice(0,5).join(', ');
-      const storyCtx=stories.slice(0,6).map(s=>s.title+' ('+s.employer+'): '+s.result).join(nl);
+      const topSkills=jdAnalysis.skills.filter(function(s){return s.weight>=7;}).map(function(s){return s.name+' (weight '+s.weight+')';}).join(', ');
+      const respCtx=(jdAnalysis.responsibilities||[]).slice(0,8).map(function(r){return '• '+(r.description||r)+(r.priority?' (priority: '+r.priority+')':'');}).join(nl);
+      const vocabCtx=(jdAnalysis.distinctive_vocabulary||[]).map(function(v){return v.phrase||v;}).join(', ');
+      const storyCtx=stories.slice(0,8).map(function(s){
+        return s.title+' ('+s.employer+'): '+s.result+(s.impact?' — '+s.impact:'');
+      }).join(nl);
+      const resumeSnippet=resume&&resume.content?resume.content.slice(0,600):'';
 
-      const raw=await callClaude(
-        'You are an expert cover letter writer. Write a 4-paragraph cover letter. Tone: warm, confident, human — not stiff or corporate. Rules: (1) Opening paragraph: specific hook about why THIS role at THIS company — no "I am excited to apply" or "I am writing to" — open with a statement of perspective or conviction (2) Paragraph 2: connect 2-3 strongest skills/stories to what the role needs — be concrete (3) Paragraph 3: demonstrate knowledge of the company or industry context and how it connects to the candidate\'s experience (4) Closing: confident call to action, brief, no groveling. Hard rules: ABSOLUTELY NO em-dashes (use commas or rewrite), no banned phrases: '+BANNED_WORDS+'. Return plain text only — no markdown, no subject line, no date, no address block.',
-        ['Role: ',jdAnalysis.role,' at ',jdAnalysis.company,nl,'High-weight skills: ',jdAnalysis.skills.filter(s=>s.weight>=7).map(s=>s.name).join(', '),nl,'Candidate strengths: ',topSkills,nl+nl,'Top stories:',nl,storyCtx,nl+nl,'Candidate narrative: ',ADAM.narrative,nl,'Competencies: ',COMPETENCIES].join(''),
-        2000, 0.4
-      );
-      const cleaned=stripEmDashes(raw);
-      setContent(cleaned);
+      const userPrompt=[
+        'Target role: '+jdAnalysis.role+' at '+jdAnalysis.company,
+        '',
+        'JD top responsibilities (mirror in letter):',
+        respCtx||'Not specified',
+        '',
+        'JD distinctive vocabulary (use where meaning matches):',
+        vocabCtx||'Not specified',
+        '',
+        'JD top skills: '+topSkills,
+        '',
+        'Candidate\'s strongest SOAR stories (use 2-3 concretely):',
+        storyCtx,
+        '',
+        'Resume summary snippet (for tone/framing reference):',
+        resumeSnippet,
+        '',
+        'WRITE THE COVER LETTER NOW.'
+      ].join(nl);
+
+      let raw=await callClaude(CL_SYS,userPrompt,3000,0.4);
+
+      setLoadingPhase('Validating...');
+      const issues=validateCoverLetter(raw);
+
+      if(issues.length>0){
+        setLoadingPhase('Regenerating...');
+        const fixInstr='Your previous cover letter had these issues:\n'+issues.map(function(x){return '• '+x;}).join('\n')+'\n\nRegenerate the cover letter fixing ONLY those issues. Do not change content unrelated to the issues. Apply all hard rules from the system prompt.';
+        try{
+          const raw2=await callClaude(CL_SYS,userPrompt+'\n\nFIX INSTRUCTIONS:\n'+fixInstr,3000,0.4);
+          const issues2=validateCoverLetter(raw2);
+          if(issues2.length<issues.length){
+            raw=raw2;
+            if(issues2.length>0)setQualityFlags(issues2);
+          }else{setQualityFlags(issues);}
+        }catch(re){setQualityFlags(issues);}
+      }
+
+      setContent(raw);
     }catch(e){setErr(e.message);onError(e.message);}
+    setLoadingPhase('');
     setLoading(false);
   }
 
@@ -3506,7 +3771,7 @@ function CoverLetterStep({active,jdAnalysis,rescore,resume,result,stories,experi
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'1rem'}}>
         <div>
           <div style={{fontSize:14,fontWeight:500}}>Step 6 — Cover Letter</div>
-          {content&&<div style={{fontSize:12,color:'var(--color-text-secondary)',marginTop:2}}>Tailored for {jdAnalysis.role} at {jdAnalysis.company}</div>}
+          {content&&<div style={{fontSize:12,color:'var(--color-text-secondary)',marginTop:2}}>Tailored for {jdAnalysis.role} at {jdAnalysis.company} · dated {today}</div>}
         </div>
         {result&&<span style={{fontSize:11,padding:'2px 8px',background:'#EAF3DE',color:'#3B6D11',borderRadius:4,fontWeight:500}}>✓ Complete</span>}
       </div>
@@ -3514,7 +3779,7 @@ function CoverLetterStep({active,jdAnalysis,rescore,resume,result,stories,experi
       {!content&&!loading&&(
         <>
           <div style={{fontSize:13,color:'var(--color-text-secondary)',marginBottom:'0.5rem'}}>
-            Generate a 4-paragraph cover letter — warm, specific, no banned phrases, no em-dashes.
+            Generate a 4-paragraph cover letter with JD-mirrored framing, validation, and auto-fix.
           </div>
           {err&&<div style={{fontSize:12,color:'#A32D2D',padding:'8px 12px',background:'#FCEBEB',borderRadius:6,marginBottom:'0.75rem'}}>⚠ {err}</div>}
           <button onClick={generate} style={S.primary}>Generate cover letter →</button>
@@ -3522,15 +3787,23 @@ function CoverLetterStep({active,jdAnalysis,rescore,resume,result,stories,experi
       )}
 
       {loading&&(
-        <div style={{fontSize:13,color:'var(--color-text-secondary)'}}>Generating cover letter…</div>
+        <div style={{fontSize:13,color:'var(--color-text-secondary)'}}>
+          {loadingPhase||'Working...'}<span style={{color:'var(--color-text-tertiary)',fontSize:11,marginLeft:8}}>(generate → validate)</span>
+        </div>
       )}
 
       {content&&(
         <>
+          {qualityFlags.length>0&&(
+            <div style={{fontSize:12,color:'#A32D2D',padding:'8px 12px',background:'#FCEBEB',borderRadius:6,border:'1px solid #E24B4A',marginBottom:'0.75rem'}}>
+              <div style={{fontWeight:500,marginBottom:4}}>⚠ Quality issues remain after auto-fix. Edit manually:</div>
+              {qualityFlags.map(function(f,i){return <div key={i} style={{marginTop:2}}>· {f}</div>;})}
+            </div>
+          )}
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'0.75rem'}}>
-            <div style={{fontSize:11,color:'var(--color-text-tertiary)'}}>Em-dashes removed, banned phrases avoided</div>
+            <div style={{fontSize:11,color:'var(--color-text-tertiary)'}}>Validated, em-dashes removed</div>
             <div style={{display:'flex',gap:6}}>
-              <button onClick={()=>navigator.clipboard?.writeText([CANDIDATE.name+'\n'+CANDIDATE.contact,content].join('\n\n'))} style={{...S.btn,fontSize:11,padding:'4px 10px'}}>Copy ↗</button>
+              <button onClick={function(){navigator.clipboard&&navigator.clipboard.writeText([CANDIDATE.name+'\n'+(profileContext&&profileContext.headerTagline||CANDIDATE.subtitle)+'\n'+CANDIDATE.contact,content].join('\n\n'));}} style={{...S.btn,fontSize:11,padding:'4px 10px'}}>Copy ↗</button>
               <button onClick={download} style={{...S.btn,fontSize:11,padding:'4px 10px',color:downloaded?'#065f46':'var(--color-text-primary)',borderColor:downloaded?'#10b981':'var(--color-border-secondary)'}}>
                 {downloaded?'✓ Downloaded':'↓ .rtf'}
               </button>
@@ -3540,14 +3813,13 @@ function CoverLetterStep({active,jdAnalysis,rescore,resume,result,stories,experi
             <div style={{fontSize:13,lineHeight:1.8,whiteSpace:'pre-wrap',color:'var(--color-text-primary)'}}>{content}</div>
           </div>
           {!result&&(
-            <button onClick={()=>onComplete({content})} style={S.primary}>Done — save application →</button>
+            <button onClick={function(){onComplete({content});}} style={S.primary}>Done — save application →</button>
           )}
         </>
       )}
     </div>
   );
 }
-
 
 
 // ─── APPLICATION ENGINE ───────────────────────────
