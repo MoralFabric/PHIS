@@ -3066,17 +3066,27 @@ function GapCard({gap, expanded, onMarkReal, onStartCapture, onSubmit, onAccept,
   const isDone = gap.status === 'confirmed_gap' || gap.status === 'story_added';
   const t = tierStyle(gap.score);
 
-  if (isDone) return (
-    <div style={{padding:'0.75rem 1rem',background:'var(--color-background-secondary)',borderRadius:8,display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-      <div style={{display:'flex',alignItems:'center',gap:8}}>
-        <span style={{fontSize:13,fontWeight:500,color:'var(--color-text-secondary)'}}>{gap.skill}</span>
-        <span style={{fontSize:11,padding:'1px 7px',borderRadius:4,background:t.bg,color:t.color}}>{gap.score}</span>
+  if (isDone) {
+    const a = gap.assessment;
+    const storyAdded = gap.status === 'story_added';
+    const deltaText = storyAdded && a
+      ? a.closesGap === 'none'
+        ? `Saved — score unchanged (${gap.score})`
+        : `✓ Story added — ${gap.score} → ${a.estimatedNewScore} (${a.closesGap === 'full' ? 'closed' : 'partial'})`
+      : storyAdded ? '✓ Story added' : 'Confirmed gap';
+    const deltaColor = storyAdded && a
+      ? a.closesGap === 'none' ? 'var(--color-text-tertiary)' : '#3B6D11'
+      : storyAdded ? '#3B6D11' : 'var(--color-text-tertiary)';
+    return (
+      <div style={{padding:'0.75rem 1rem',background:'var(--color-background-secondary)',borderRadius:8,display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+        <div style={{display:'flex',alignItems:'center',gap:8}}>
+          <span style={{fontSize:13,fontWeight:500,color:'var(--color-text-secondary)'}}>{gap.skill}</span>
+          <span style={{fontSize:11,padding:'1px 7px',borderRadius:4,background:t.bg,color:t.color}}>{gap.score}</span>
+        </div>
+        <span style={{fontSize:12,color:deltaColor}}>{deltaText}</span>
       </div>
-      <span style={{fontSize:12,color:gap.status==='story_added'?'#3B6D11':'var(--color-text-tertiary)'}}>
-        {gap.status==='story_added'?'✓ Story added':'Confirmed gap'}
-      </span>
-    </div>
-  );
+    );
+  }
 
   return (
     <div style={{...S.card,padding:'1rem'}}>
@@ -3102,14 +3112,14 @@ function GapCard({gap, expanded, onMarkReal, onStartCapture, onSubmit, onAccept,
             value={cap.text}
             onChange={e=>onSubmit('change',e.target.value)}
             style={{...S.textarea,minHeight:90,marginBottom:'0.75rem'}}
-            placeholder={'Be specific — name the project, metrics, outcome, and your role. Claude will validate whether this genuinely demonstrates "'+gap.skill+'".'}
+            placeholder={'Be specific — name the project, metrics, outcome, and your role. The more detail you provide, the better Claude can structure your story and assess how it addresses the "'+gap.skill+'" gap.'}
             disabled={cap.loading}
           />
           {cap.error && <div style={{fontSize:12,color:'#A32D2D',marginBottom:8,padding:'6px 10px',background:'#FCEBEB',borderRadius:5}}>⚠ {cap.error}</div>}
           <div style={{display:'flex',gap:8}}>
             <button onClick={()=>onSubmit('submit')} disabled={!cap.text.trim()||cap.loading}
               style={{...S.primary,fontSize:12,padding:'6px 14px',opacity:!cap.text.trim()||cap.loading?0.5:1}}>
-              {cap.loading?'Evaluating…':'Submit for evaluation →'}
+              {cap.loading?'Structuring story…':'Submit →'}
             </button>
             <button onClick={()=>onSubmit('cancel')} style={{...S.btn,fontSize:12}}>Cancel</button>
           </div>
@@ -3128,9 +3138,19 @@ function GapCard({gap, expanded, onMarkReal, onStartCapture, onSubmit, onAccept,
               {cap.preview.skills?.map(s=><span key={s} style={S.tag}>{s}</span>)}
             </div>
           </div>
+          {cap.assessment && (
+            <div style={{fontSize:12,padding:'8px 12px',background:'#EFF6FF',color:'#1e40af',borderRadius:5,marginBottom:'0.75rem',lineHeight:1.5}}>
+              {cap.assessment.closesGap==='full'
+                ? `Closes gap — estimated score ${gap.score} → ${cap.assessment.estimatedNewScore}. `
+                : cap.assessment.closesGap==='partial'
+                  ? `Partially closes gap — estimated score ${gap.score} → ${cap.assessment.estimatedNewScore}. `
+                  : 'Saved — gap remains open. '}
+              {cap.assessment.reasoning}
+            </div>
+          )}
           <div style={{display:'flex',gap:8}}>
-            <button onClick={onAccept} style={S.primary}>Accept & save to library</button>
-            <button onClick={onReject} style={S.btn}>Reject</button>
+            <button onClick={onAccept} style={S.primary}>Save to library</button>
+            <button onClick={onReject} style={S.btn}>Discard</button>
           </div>
         </div>
       )}
@@ -3167,21 +3187,15 @@ function GapResolutionStep({active,jdAnalysis,cpsResult,result,stories,setStorie
       if(!cap?.text?.trim())return;
       setExpanded(e=>({...e,[skill]:{...e[skill],loading:true,error:null}}));
       const gap=resolutions.find(r=>r.skill===skill);
-      const schemaExample=JSON.stringify({accepted:true,story:{title:"",type:"career",employer:"",situation:"",obstacle:"",action:"",result:"",impact:"",fullStory:"",themes:[],skills:[],useFor:["Resume","Interview"],notes:""}});
+      const schemaExample=JSON.stringify({story:{title:"",type:"career",employer:"",situation:"",obstacle:"",action:"",result:"",impact:"",fullStory:"",themes:[],skills:[],useFor:["Resume","Interview"],notes:""},assessment:{closesGap:"full|partial|none",estimatedNewScore:0,reasoning:""}});
       callClaude(
-        'You are a career story evaluator. The candidate claims to have experience for a skill gap. Evaluate strictly. If the description genuinely demonstrates the skill, return a complete SOAR JSON. If not, explain why. Return ONLY valid JSON—no markdown fences. If accepted: '+schemaExample+'. If rejected: {"accepted":false,"reason":"one sentence"}',
-        'Skill to demonstrate: '+skill+' | Gap context: '+gap.improve+' | Candidate description: '+cap.text,
+        'You are a career story structurer. Always structure the evidence as a complete SOAR story and assess how well it addresses the skill gap. closesGap must be "full" (evidence clearly demonstrates the skill), "partial" (demonstrates related experience but not the full requirement), or "none" (story is captured but gap remains open). estimatedNewScore is your best estimate of the skill score after this story is added (0-100). Return ONLY valid JSON—no markdown fences: '+schemaExample,
+        'Skill gap: '+skill+' (current score: '+gap.score+'/100) | Gap context: '+gap.improve+' | Evidence: '+cap.text,
         2000, 0
       ).then(raw=>{
         const parsed=parseJSON(raw);
-        if(!parsed) throw new Error('Could not parse Claude response—please try again.');
-        if(parsed.accepted===false){
-          setExpanded(e=>({...e,[skill]:{...e[skill],loading:false,error:parsed.reason||'Not accepted. Try describing more specifically.'}}));
-        } else if(parsed.story){
-          setExpanded(e=>({...e,[skill]:{...e[skill],loading:false,preview:parsed.story}}));
-        } else {
-          throw new Error('Unexpected response format.');
-        }
+        if(!parsed?.story) throw new Error('Could not parse Claude response—please try again.');
+        setExpanded(e=>({...e,[skill]:{...e[skill],loading:false,preview:parsed.story,assessment:parsed.assessment||null}}));
       }).catch(err=>{
         setExpanded(e=>({...e,[skill]:{...e[skill],loading:false,error:err.message}}));
       });
@@ -3189,13 +3203,13 @@ function GapResolutionStep({active,jdAnalysis,cpsResult,result,stories,setStorie
   }
 
   async function acceptStory(skill){
-    const story=expanded[skill]?.preview;
+    const {preview:story,assessment}=expanded[skill]||{};
     if(!story)return;
     const newStory=normalizeStory({...story,id:Date.now(),dateAdded:new Date().toISOString().split('T')[0]});
     const updated=[...stories,newStory];
     setStories(updated);
     try{await upsertStory(newStory);}catch(e){}
-    setResolutions(rs=>rs.map(r=>r.skill===skill?{...r,status:'story_added',story:newStory}:r));
+    setResolutions(rs=>rs.map(r=>r.skill===skill?{...r,status:'story_added',story:newStory,assessment}:r));
     setExpanded(e=>{const n={...e};delete n[skill];return n;});
   }
 
