@@ -27,6 +27,8 @@ lib/
                        #   getProfileContext, saveProfileContext
 scripts/
   import-extra-soars.js      # One-time import: reads soar_*.json from root, upserts to Supabase
+  export-stories.js          # Admin: exports all stories table rows to soar_export_for_review.json
+  apply_soar_patch.js        # Admin: applies a JSON patch file to stories rows (targeted field updates)
   migration_001_profile.sql  # Adds salary columns to profile table
   migration_002_schema.sql   # Adds awards, education, profile_context tables; facets column on experience
   step5_resume_v2.js         # ResumeStep source (Phase 3)
@@ -47,7 +49,7 @@ Stored in `.env.local` (gitignored — never commit this file).
 | `NEXT_PUBLIC_SUPABASE_URL` | browser + server | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | browser + server | Supabase anon/publishable key |
 | `ANTHROPIC_API_KEY` | server only (`/api/claude`) | Anthropic API key — never expose to browser |
-| `SUPABASE_SERVICE_ROLE_KEY` | `scripts/import-extra-soars.js` only | Bypasses RLS for one-time imports |
+| `SUPABASE_SERVICE_ROLE_KEY` | admin scripts only | Bypasses RLS — used by `import-extra-soars.js`, `export-stories.js`, `apply_soar_patch.js` |
 
 ## Supabase schema
 
@@ -209,8 +211,11 @@ Output schema:
 1. Pre-filter: `scoreStoryAgainstJD(story)` ranks all SOAR stories by token overlap with JD skills + vocabulary; top 15 sent to Claude
 2. Pass 1: generate with `RESUME_SYS` (14-rule prompt — no contact info, source trace, advisory framing, dynamic competencies for THIS JD)
 3. Pass 2: framing review via `FRAMING_SYS` — rewrites operational bullets to advisory framing without changing substance
-4. Validate: `validateResume(text)` returns `{issues, flags}` — issues are blocking (em-dashes, banned words, word count, required sections), flags are non-blocking source-trace warnings (multiple relational claims in one bullet)
-5. If issues: regenerate once with fix instructions appended. If still failing, show `qualityFlags` red banner; source flags always shown as yellow banner.
+4. **Dash strip** — em-dashes (U+2014) and en-dashes (U+2013) are replaced with hyphens unconditionally before validation. This prevents the model from producing an unfixable dash warning in the next step.
+5. Validate: `validateResume(text)` returns `{issues, flags}` — issues are blocking (banned words, word count, required sections), flags are non-blocking source-trace warnings (multiple relational claims in one bullet)
+6. If issues: regenerate once with fix instructions appended; dash-strip applied again before re-validating. If still failing, show `qualityFlags` red banner; source flags always shown as yellow banner.
+
+**Headline (per application)** — `ResumeStep` holds a `headline` state initialized from `profileContext.headerTagline` (if set) falling back to `CANDIDATE.subtitle`. Once a resume is generated, an editable "Resume headline (top of page)" text input appears above the export buttons. Both the `.rtf` download and the Copy button use this state, so the headline can differ across applications without touching profile settings.
 
 **Step 6 — Cover Letter (Phase 3 structured prompt + validator)**
 
@@ -220,7 +225,9 @@ Output schema:
 
 **Banned phrases** (both resume and cover letter): `leveraged, spearheaded, passionate, synergy, in today's fast-paced, utilized, holistic, robust, transformative, cutting-edge, best-in-class, thought leader, results-driven, dynamic, world-class`.
 
-**RTF export** — `buildResumeRTF(text, subtitle)` and `buildCoverLetterRTF(text)` in CoverLetterStep both use `escRTF()` for escaping. `buildFullCVRTF(exp, edu, awards, subtitle)` generates the full structured CV for download from ProfileView.
+**RTF export** — `buildResumeRTF(text, headline)` takes the per-application `headline` state from `ResumeStep` as its second argument (not a direct `profileContext` lookup). `buildCoverLetterRTF(text)` and `buildFullCVRTF(exp, edu, awards, subtitle)` use `escRTF()` for escaping; the full CV subtitle falls back to `profileContext?.headerTagline || CANDIDATE.subtitle`.
+
+**`CANDIDATE` constants** (`app/page.js` top of file) — `CANDIDATE.subtitle` is the last-resort headline fallback: `"Data and Analytics Leader  |  Insight Strategy  |  Enterprise Decision Systems"`. Do not change it to a job title — it must be accurate without any active application context. The `profileContext.headerTagline` field (editable in ProfileView) and the per-application `headline` input in ResumeStep both take precedence over this default.
 
 ## FreeAddView — AI-assisted Capture (Phase 2)
 
