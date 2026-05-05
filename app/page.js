@@ -10,7 +10,7 @@ const EXP_SK   = "phis5_exp";
 // ─── CANDIDATE ────────────────────────────────────────────
 const CANDIDATE = {
   name:     "Adam Waldman, CFA",
-  subtitle: "VP, Enterprise Strategy  |  Insight & Analytics Leadership  |  Executive Advisory",
+  subtitle: "Data and Analytics Leader  |  Insight Strategy  |  Enterprise Decision Systems",
   contact:  "Toronto, ON  ·  647-999-2791  ·  adam.c.waldman@gmail.com  ·  linkedin.com/in/adam-waldman-cfa",
 };
 const ADAM = {
@@ -3405,6 +3405,7 @@ function ResumeStep({active,jdAnalysis,rescore,result,stories,experience,awards,
   const [downloaded,setDownloaded]=useState(false);
   const [qualityFlags,setQualityFlags]=useState([]);
   const [sourceFlags,setSourceFlags]=useState([]);
+  const [headline,setHeadline]=useState(profileContext&&profileContext.headerTagline||CANDIDATE.subtitle);
 
   const BANNED_WORDS_LIST=[
     'leveraged','spearheaded','passionate','synergy','in today\'s fast-paced',
@@ -3574,6 +3575,9 @@ HARD RULES (non-negotiable):
         if(framed&&framed.trim().length>raw.length*0.6)raw=framed;
       }catch(fe){}
 
+      // Strip em/en-dashes before validation so the model can't produce an unfixable dash warning
+      raw=raw.replace(/[–—]/g,'-');
+
       // Validate
       setLoadingPhase('Validating...');
       const vr=validateResume(raw);
@@ -3583,7 +3587,8 @@ HARD RULES (non-negotiable):
         setLoadingPhase('Regenerating...');
         const fixInstr='Your previous resume output had these issues:\n'+vr.issues.map(function(x){return '• '+x;}).join('\n')+'\n\nRegenerate the resume fixing ONLY those issues. Do not change content unrelated to the issues. Apply all hard rules from the system prompt.';
         try{
-          const raw2=await callClaude(RESUME_SYS,userPrompt+'\n\nFIX INSTRUCTIONS:\n'+fixInstr,5000,0);
+          let raw2=await callClaude(RESUME_SYS,userPrompt+'\n\nFIX INSTRUCTIONS:\n'+fixInstr,5000,0);
+          raw2=raw2.replace(/[–—]/g,'-');
           const vr2=validateResume(raw2);
           if(vr2.issues.length<vr.issues.length){
             raw=raw2;setSourceFlags(vr2.flags);
@@ -3599,7 +3604,7 @@ HARD RULES (non-negotiable):
   }
 
   function download(){
-    const rtf=buildResumeRTF(content,profileContext&&profileContext.headerTagline||CANDIDATE.subtitle);
+    const rtf=buildResumeRTF(content,headline);
     downloadBlob(rtf,'adam_waldman_resume_'+jdAnalysis.role.replace(/\s+/g,'_').toLowerCase()+'.rtf','application/rtf');
     setDownloaded(true);
   }
@@ -3644,10 +3649,14 @@ HARD RULES (non-negotiable):
               {qualityFlags.map(function(f,i){return <div key={i} style={{marginTop:2}}>· {f}</div>;})}
             </div>
           )}
+          <div style={{marginBottom:'0.75rem'}}>
+            <label style={{fontSize:11,color:'var(--color-text-secondary)',display:'block',marginBottom:3}}>Resume headline (top of page)</label>
+            <input value={headline} onChange={function(e){setHeadline(e.target.value);setDownloaded(false);}} style={{width:'100%',fontSize:12,padding:'6px 8px',border:'1px solid var(--color-border-secondary)',borderRadius:4,background:'var(--color-background)',color:'var(--color-text-primary)',boxSizing:'border-box'}}/>
+          </div>
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'0.75rem'}}>
             <div style={{fontSize:11,color:'var(--color-text-tertiary)'}}>Framing reviewed, validated</div>
             <div style={{display:'flex',gap:6}}>
-              <button onClick={function(){navigator.clipboard&&navigator.clipboard.writeText([CANDIDATE.name+'\n'+(profileContext&&profileContext.headerTagline||CANDIDATE.subtitle)+'\n'+CANDIDATE.contact,content].join('\n\n'));}} style={{...S.btn,fontSize:11,padding:'4px 10px'}}>Copy ↗</button>
+              <button onClick={function(){navigator.clipboard&&navigator.clipboard.writeText([CANDIDATE.name+'\n'+headline+'\n'+CANDIDATE.contact,content].join('\n\n'));}} style={{...S.btn,fontSize:11,padding:'4px 10px'}}>Copy ↗</button>
               <button onClick={download} style={{...S.btn,fontSize:11,padding:'4px 10px',color:downloaded?'#065f46':'var(--color-text-primary)',borderColor:downloaded?'#10b981':'var(--color-border-secondary)'}}>
                 {downloaded?'✓ Downloaded':'↓ .rtf'}
               </button>
