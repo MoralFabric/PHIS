@@ -4207,7 +4207,7 @@ function ProfileView({profile,setProfile,awards,education,profileContext}) {
 
 // ─── ENTRY GATE ───────────────────────────────────────────
 function EntryGate({ onAdam, onGuest }) {
-  const ADAM_CODE = "change-me";
+  const ADAM_CODE = "phisphis";
   const ACCENT = "#A32D2D";
   const [step, setStep] = useState("choose");
   const [pin, setPin] = useState("");
