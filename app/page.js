@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useMemo } from "react";
-import { seedAndGetStories, upsertStory, upsertStories, deleteStory as dbDeleteStory, getExperience, saveExperience, getProfile, saveProfile, getAwards, insertAward, getEducation, insertEducation, getProfileContext, saveProfileContext } from '@/lib/data';
+import { seedAndGetStories, upsertStory, upsertStories, deleteStory as dbDeleteStory, getExperience, saveExperience, getProfile, saveProfile, getAwards, insertAward, getEducation, insertEducation, getProfileContext, saveProfileContext, createGuestSession, logFitRun } from '@/lib/data';
 
 // ─── CONFIG ───────────────────────────────────────────────
 const MODEL   = "claude-sonnet-4-6";
@@ -4302,7 +4302,7 @@ CRITICAL RULES:
 - No em-dashes, no en-dashes. Use plain hyphens or rewrite.
 - Tone: a sharp, well-briefed colleague advocating for a strong candidate. Not a brochure. Not a critic.`;
 
-function GuestFitView({ stories, experience }) {
+function GuestFitView({ stories, experience, guestSessionId }) {
   const ACCENT = "#A32D2D";
   const BAND_COLOR = {
     "Ideal":                  "#2f7d52",
@@ -4341,6 +4341,7 @@ function GuestFitView({ stories, experience }) {
       const parsed = parseJSON(raw);
       if (!parsed?.bands?.length) throw new Error("Could not parse fit assessment. Please try again.");
       setResult(parsed);
+      logFitRun(guestSessionId, input.trim(), parsed.role_understood);
     } catch (e) { setErr(e.message); }
     setLoading(false);
   }
@@ -4407,7 +4408,7 @@ function GuestFitView({ stories, experience }) {
   );
 }
 
-function GuestShell({ guest, stories, experience, awards, education, onExit }) {
+function GuestShell({ guest, stories, experience, awards, education, guestSessionId, onExit }) {
   const ACCENT = "#A32D2D";
   const [gpage, setGpage] = useState("home");
   const item = (id, lbl) => (
@@ -4428,7 +4429,7 @@ function GuestShell({ guest, stories, experience, awards, education, onExit }) {
       <div style={{ flex: 1, paddingLeft: "1.5rem", minWidth: 0, overflowY: "auto" }}>
         {gpage === "home" && <HomeView stories={stories} experience={experience} awards={awards} education={education} onStoryClick={() => {}} />}
         {gpage === "interview" && <InterviewView stories={stories} />}
-        {gpage === "fit" && <GuestFitView stories={stories} experience={experience} />}
+        {gpage === "fit" && <GuestFitView stories={stories} experience={experience} guestSessionId={guestSessionId} />}
       </div>
     </div>
   );
@@ -4441,6 +4442,7 @@ export default function App() {
   const [page,setPage]=useState("home");
   const [mode, setMode] = useState(null);
   const [guest, setGuest] = useState(null);
+  const [guestSessionId, setGuestSessionId] = useState(null);
   const [selected,setSelected]=useState(null);
   const [editing,setEditing]=useState(null);
   const [filters,setFilters]=useState({type:"",employer:"",search:""});
@@ -4512,8 +4514,8 @@ export default function App() {
   );
 
   if(loading)return <div style={{padding:"2rem",color:"var(--color-text-secondary)",fontSize:14}}>Loading PHIS…</div>;
-  if (!mode) return <EntryGate onAdam={() => setMode("adam")} onGuest={(info) => { setGuest(info); setMode("guest"); }} />;
-  if (mode === "guest") return <GuestShell guest={guest} stories={stories} experience={experience} awards={awards} education={education} onExit={() => { setMode(null); setGuest(null); }} />;
+  if (!mode) return <EntryGate onAdam={() => setMode("adam")} onGuest={(info) => { setGuest(info); setMode("guest"); createGuestSession(info).then(row => { if (row?.id) setGuestSessionId(row.id); }); }} />;
+  if (mode === "guest") return <GuestShell guest={guest} stories={stories} experience={experience} awards={awards} education={education} guestSessionId={guestSessionId} onExit={() => { setMode(null); setGuest(null); setGuestSessionId(null); }} />;
 
   return(
     <div style={{display:"flex",fontFamily:"var(--font-sans)",minHeight:600}}>
