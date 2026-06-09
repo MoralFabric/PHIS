@@ -4514,7 +4514,7 @@ export default function App() {
   );
 
   if(loading)return <div style={{padding:"2rem",color:"var(--color-text-secondary)",fontSize:14}}>Loading PHIS…</div>;
-  if (!mode) return <EntryGate onAdam={() => setMode("adam")} onGuest={(info) => { setGuest(info); setMode("guest"); createGuestSession(info).then(row => { if (row?.__error) alert('Guest session error: ' + row.__error); else if (row?.id) setGuestSessionId(row.id); }); }} />;
+  if (!mode) return <EntryGate onAdam={() => setMode("adam")} onGuest={(info) => { setGuest(info); setMode("guest"); createGuestSession(info).then(row => { if (row?.id) setGuestSessionId(row.id); }); }} />;
   if (mode === "guest") return <GuestShell guest={guest} stories={stories} experience={experience} awards={awards} education={education} guestSessionId={guestSessionId} onExit={() => { setMode(null); setGuest(null); setGuestSessionId(null); }} />;
 
   return(
