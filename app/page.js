@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useMemo } from "react";
-import { seedAndGetStories, upsertStory, upsertStories, deleteStory as dbDeleteStory, getExperience, saveExperience, getProfile, saveProfile, getAwards, insertAward, getEducation, insertEducation, getProfileContext, saveProfileContext, createGuestSession, logFitRun, logGuestQuestion, logInterviewQuestion } from '@/lib/data';
+import { seedAndGetStories, upsertStory, upsertStories, deleteStory as dbDeleteStory, getExperience, saveExperience, getProfile, saveProfile, getAwards, insertAward, getEducation, insertEducation, getProfileContext, saveProfileContext, createGuestSession, logFitRun, logGuestQuestion, logInterviewQuestion, getGuestSessions } from '@/lib/data';
 
 // ─── CONFIG ───────────────────────────────────────────────
 const MODEL   = "claude-sonnet-4-6";
@@ -4206,6 +4206,85 @@ function ProfileView({profile,setProfile,awards,education,profileContext}) {
   );
 }
 
+// ─── GUEST VISITORS VIEW (Adam only) ─────────────────────
+function GuestVisitorsView() {
+  const ACCENT = "#A32D2D";
+  const [sessions, setSessions] = useState(null);
+
+  useEffect(() => {
+    getGuestSessions().then(setSessions);
+  }, []);
+
+  function fmt(iso) {
+    if (!iso) return "";
+    const d = new Date(iso);
+    return d.toLocaleDateString("en-CA", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+  }
+
+  if (sessions === null) return <div style={{ padding: "2rem", fontSize: 13, color: "var(--color-text-secondary)" }}>Loading visitors…</div>;
+
+  return (
+    <div style={{ paddingTop: "1.75rem", maxWidth: 620 }}>
+      <div style={{ fontSize: 17, fontWeight: 700, color: "var(--color-text-primary)", marginBottom: 4 }}>Visitors</div>
+      <div style={{ fontSize: 13, color: "var(--color-text-secondary)", marginBottom: "1.5rem" }}>{sessions.length} visitor{sessions.length !== 1 ? "s" : ""}</div>
+
+      {sessions.length === 0 && (
+        <div style={{ fontSize: 13, color: "var(--color-text-tertiary)" }}>No guest sessions yet.</div>
+      )}
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        {sessions.map(s => (
+          <div key={s.id} style={{ padding: "16px 18px", borderRadius: 10, border: "0.5px solid var(--color-border-tertiary)", background: "#fff" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "var(--color-text-primary)" }}>{s.name}</div>
+              <div style={{ fontSize: 11, color: "var(--color-text-tertiary)", flexShrink: 0, marginLeft: 12 }}>{fmt(s.created_at)}</div>
+            </div>
+            <div style={{ fontSize: 12, color: "var(--color-text-secondary)", marginBottom: (s.company || s.role) ? 4 : 0 }}>{s.email}</div>
+            {(s.company || s.role) && (
+              <div style={{ fontSize: 12, color: "var(--color-text-secondary)", marginBottom: 8 }}>
+                {[s.role, s.company].filter(Boolean).join(" · ")}
+              </div>
+            )}
+
+            {s.fit_runs && s.fit_runs.length > 0 && (
+              <div style={{ marginTop: 10 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: "var(--color-text-tertiary)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>Roles tested</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                  {s.fit_runs.map((r, i) => (
+                    <div key={i} style={{ fontSize: 13, color: "var(--color-text-primary)", paddingLeft: 8, borderLeft: "2px solid #f3c4c4" }}>{r.role_understood}</div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {s.questions && s.questions.length > 0 && (
+              <div style={{ marginTop: 10 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: "var(--color-text-tertiary)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>Questions for Adam</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                  {s.questions.map((q, i) => (
+                    <div key={i} style={{ fontSize: 13, color: "var(--color-text-primary)", paddingLeft: 8, borderLeft: "2px solid #f3c4c4" }}>{q.question}</div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {s.interview_questions && s.interview_questions.length > 0 && (
+              <div style={{ marginTop: 10 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: "var(--color-text-tertiary)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>Interview questions asked</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                  {s.interview_questions.map((q, i) => (
+                    <div key={i} style={{ fontSize: 13, color: "var(--color-text-primary)", paddingLeft: 8, borderLeft: "2px solid #f3c4c4" }}>{q.question}</div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ─── ENTRY GATE ───────────────────────────────────────────
 function EntryGate({ onAdam, onGuest }) {
   const ADAM_CODE = "phisphis";
@@ -4591,6 +4670,7 @@ export default function App() {
         <div style={{fontSize:10,fontWeight:600,color:"var(--color-text-tertiary)",textTransform:"uppercase",letterSpacing:"0.07em",marginBottom:4,padding:"0 10px"}}>Job Search</div>
         <div style={{display:"flex",flexDirection:"column",gap:1,marginBottom:"1.25rem"}}>
           {navBtn("apply","Application Engine ✦",page==="apply","#1d4ed8")}
+          {navBtn("visitors","Visitors",page==="visitors")}
         </div>
 
         <div style={{fontSize:10,fontWeight:600,color:"var(--color-text-tertiary)",textTransform:"uppercase",letterSpacing:"0.07em",marginBottom:4,padding:"0 10px"}}>Settings</div>
@@ -4638,6 +4718,7 @@ export default function App() {
         {page==="experience"&&<ExperienceView experience={experience} setExperience={exp=>{setExperience(exp);persistExp(exp);}}/>}
         {page==="awards"&&<AwardsView awards={awards}/>}
         {page==="apply"&&<ApplyView stories={stories} setStories={updateStories} experience={experience} awards={awards} education={education} profileContext={profileContext} profile={profile} rescoreRequest={rescoreRequest} onRescoreDone={()=>setRescoreRequest(null)}/>}
+        {page==="visitors"&&<GuestVisitorsView/>}
         {page==="profile"&&<ProfileView profile={profile} setProfile={p=>{const next=typeof p==='function'?p(profile):p;setProfile(next);persistProfile(next);}} awards={awards} education={education} profileContext={profileContext}/>}
       </div>
 
