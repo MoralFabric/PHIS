@@ -2635,7 +2635,7 @@ function CPSScorecard({scores,onAddEvidence}) {
   return(
     <div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(4,minmax(0,1fr))",gap:8,marginBottom:"1rem"}}>
-        {[{label:"Overall CPS",val:avg,color:avgColor},{label:"Strong (75+)",val:scores?.filter(s=>s.score>=75).length||0,color:"#639922"},{label:"Partial (60–74)",val:scores?.filter(s=>s.score>=60&&s.score<75).length||0,color:"#BA7517"},{label:"Gaps (<70)",val:scores?.filter(s=>s.score<70).length||0,color:"#A32D2D"}].map(c=>(
+        {[{label:"Overall CPS",val:avg,color:avgColor},{label:"Strong (75+)",val:scores?.filter(s=>s.score>=75).length||0,color:"#639922"},{label:"Partial (60–74)",val:scores?.filter(s=>s.score>=60&&s.score<75).length||0,color:"#BA7517"},{label:"Gaps (<60)",val:scores?.filter(s=>s.score<60).length||0,color:"#A32D2D"}].map(c=>(
           <div key={c.label} style={{background:"var(--color-background-secondary)",borderRadius:8,padding:"0.75rem"}}>
             <div style={{fontSize:20,fontWeight:500,color:c.color}}>{c.val}</div>
             <div style={{fontSize:11,color:"var(--color-text-secondary)",marginTop:1}}>{c.label}</div>
@@ -3004,16 +3004,12 @@ function CPSStep({active,jdAnalysis,result,stories,experience,education,onComple
     setLoading(false);
   }
 
-  const avg=scores?Math.round(scores.reduce((a,s)=>a+s.score,0)/scores.length):0;
-  const avgColor=avg>=75?"#639922":avg>=60?"#BA7517":"#A32D2D";
-  const gapCount=scores?scores.filter(s=>s.score<70).length:0;
-
   return(
     <div style={S.card}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:"1rem"}}>
         <div>
           <div style={{fontSize:14,fontWeight:500}}>Step 2 — CPS Scorecard</div>
-          {scores&&<div style={{fontSize:12,color:"var(--color-text-secondary)",marginTop:2}}>{jdAnalysis.skills.length} skills scored</div>}
+          {scores&&<div style={{fontSize:12,color:"var(--color-text-secondary)",marginTop:2}}>{scores.length} skills scored</div>}
         </div>
         {result&&<span style={{fontSize:11,padding:"2px 8px",background:"#EAF3DE",color:"#3B6D11",borderRadius:4,fontWeight:500}}>✓ Complete</span>}
       </div>
@@ -3036,20 +3032,6 @@ function CPSStep({active,jdAnalysis,result,stories,experience,education,onComple
 
       {scores&&(
         <>
-          <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr",gap:8,marginBottom:"1.25rem"}}>
-            <div style={{background:"var(--color-background-secondary)",borderRadius:8,padding:"1rem"}}>
-              <div style={{fontSize:36,fontWeight:600,color:avgColor,lineHeight:1}}>{avg}</div>
-              <div style={{fontSize:11,color:"var(--color-text-secondary)",marginTop:4}}>Overall CPS / 100</div>
-            </div>
-            <div style={{background:"var(--color-background-secondary)",borderRadius:8,padding:"1rem"}}>
-              <div style={{fontSize:28,fontWeight:500,color:"#A32D2D",lineHeight:1}}>{gapCount}</div>
-              <div style={{fontSize:11,color:"var(--color-text-secondary)",marginTop:4}}>Gaps (score &lt;70)</div>
-            </div>
-            <div style={{background:"var(--color-background-secondary)",borderRadius:8,padding:"1rem"}}>
-              <div style={{fontSize:28,fontWeight:500,color:"#639922",lineHeight:1}}>{scores.filter(s=>s.score>=75).length}</div>
-              <div style={{fontSize:11,color:"var(--color-text-secondary)",marginTop:4}}>Strong (75+)</div>
-            </div>
-          </div>
           <CPSScorecard scores={scores} onAddEvidence={()=>{}}/>
           {!result&&(
             <button onClick={()=>onComplete({scores})} style={{...S.primary,marginTop:"1rem"}}>Review gaps →</button>
@@ -3063,20 +3045,29 @@ function CPSStep({active,jdAnalysis,result,stories,experience,education,onComple
 // ─── STEP 3: GAP RESOLUTION ──────────────────────────────
 function GapCard({gap, expanded, onMarkReal, onStartCapture, onSubmit, onAccept, onReject}) {
   const cap = expanded || null;
-  const isDone = gap.status === 'confirmed_gap' || gap.status === 'story_added';
+  const isDone = gap.status === 'confirmed_gap' || gap.status === 'story_added' || gap.status === 'auto_resolved';
   const t = tierStyle(gap.score);
 
   if (isDone) {
     const a = gap.assessment;
     const storyAdded = gap.status === 'story_added';
-    const deltaText = storyAdded && a
-      ? a.closesGap === 'none'
-        ? `Saved — score unchanged (${gap.score})`
-        : `✓ Story added — ${gap.score} → ${a.estimatedNewScore} (${a.closesGap === 'full' ? 'closed' : 'partial'})`
-      : storyAdded ? '✓ Story added' : 'Confirmed gap';
-    const deltaColor = storyAdded && a
-      ? a.closesGap === 'none' ? 'var(--color-text-tertiary)' : '#3B6D11'
-      : storyAdded ? '#3B6D11' : 'var(--color-text-tertiary)';
+    const autoResolved = gap.status === 'auto_resolved';
+    let deltaText, deltaColor;
+    if (autoResolved) {
+      deltaText = 'Resolved by new story (score: '+gap.score+')';
+      deltaColor = '#3B6D11';
+    } else if (gap.alreadyInLibrary) {
+      deltaText = 'Already in library — '+(gap.story&&gap.story.title?gap.story.title:'story found');
+      deltaColor = 'var(--color-text-tertiary)';
+    } else if (storyAdded && a) {
+      deltaText = a.closesGap==='none'
+        ? 'Saved — score unchanged ('+gap.score+')'
+        : 'Story added — '+gap.score+' -> '+a.estimatedNewScore+' ('+(a.closesGap==='full'?'closed':'partial')+')';
+      deltaColor = a.closesGap==='none' ? 'var(--color-text-tertiary)' : '#3B6D11';
+    } else {
+      deltaText = storyAdded ? 'Story added' : 'Confirmed gap';
+      deltaColor = storyAdded ? '#3B6D11' : 'var(--color-text-tertiary)';
+    }
     return (
       <div style={{padding:'0.75rem 1rem',background:'var(--color-background-secondary)',borderRadius:8,display:'flex',alignItems:'center',justifyContent:'space-between'}}>
         <div style={{display:'flex',alignItems:'center',gap:8}}>
@@ -3101,7 +3092,7 @@ function GapCard({gap, expanded, onMarkReal, onStartCapture, onSubmit, onAccept,
       {!cap && (
         <div style={{display:'flex',gap:8}}>
           <button onClick={onMarkReal} style={{...S.btn,fontSize:12}}>This is a real gap</button>
-          <button onClick={onStartCapture} style={{...S.primary,fontSize:12,padding:'6px 14px'}}>I have experience for this →</button>
+          <button onClick={onStartCapture} style={{...S.primary,fontSize:12,padding:'6px 14px'}}>I have experience for this -&gt;</button>
         </div>
       )}
 
@@ -3115,18 +3106,18 @@ function GapCard({gap, expanded, onMarkReal, onStartCapture, onSubmit, onAccept,
             placeholder={'Be specific — name the project, metrics, outcome, and your role. The more detail you provide, the better Claude can structure your story and assess how it addresses the "'+gap.skill+'" gap.'}
             disabled={cap.loading}
           />
-          {cap.error && <div style={{fontSize:12,color:'#A32D2D',marginBottom:8,padding:'6px 10px',background:'#FCEBEB',borderRadius:5}}>⚠ {cap.error}</div>}
+          {cap.error && <div style={{fontSize:12,color:'#A32D2D',marginBottom:8,padding:'6px 10px',background:'#FCEBEB',borderRadius:5}}>Warning: {cap.error}</div>}
           <div style={{display:'flex',gap:8}}>
             <button onClick={()=>onSubmit('submit')} disabled={!cap.text.trim()||cap.loading}
               style={{...S.primary,fontSize:12,padding:'6px 14px',opacity:!cap.text.trim()||cap.loading?0.5:1}}>
-              {cap.loading?'Structuring story…':'Submit →'}
+              {cap.loading?'Structuring story...':'Submit ->'}
             </button>
             <button onClick={()=>onSubmit('cancel')} style={{...S.btn,fontSize:12}}>Cancel</button>
           </div>
         </div>
       )}
 
-      {cap?.preview && (
+      {cap&&cap.preview && (
         <div>
           <div style={{fontSize:12,color:'var(--color-text-secondary)',marginBottom:8}}>AI-structured — review before saving:</div>
           <div style={{background:'var(--color-background-secondary)',borderRadius:8,padding:'1rem',marginBottom:'0.75rem',fontSize:12}}>
@@ -3135,15 +3126,20 @@ function GapCard({gap, expanded, onMarkReal, onStartCapture, onSubmit, onAccept,
             <div style={{marginBottom:4}}><strong>Action:</strong> {cap.preview.action}</div>
             <div style={{marginBottom:8}}><strong>Result:</strong> {cap.preview.result}</div>
             <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
-              {cap.preview.skills?.map(s=><span key={s} style={S.tag}>{s}</span>)}
+              {cap.preview.skills&&cap.preview.skills.map(s=><span key={s} style={S.tag}>{s}</span>)}
             </div>
           </div>
+          {cap.dupWarning && (
+            <div style={{fontSize:12,padding:'8px 12px',background:'#FEF9C3',color:'#92400E',borderRadius:5,marginBottom:'0.75rem',lineHeight:1.5}}>
+              Similar story already in library: &quot;{cap.dupWarning}&quot;. You can still save this as a new story if the details differ.
+            </div>
+          )}
           {cap.assessment && (
             <div style={{fontSize:12,padding:'8px 12px',background:'#EFF6FF',color:'#1e40af',borderRadius:5,marginBottom:'0.75rem',lineHeight:1.5}}>
               {cap.assessment.closesGap==='full'
-                ? `Closes gap — estimated score ${gap.score} → ${cap.assessment.estimatedNewScore}. `
+                ? 'Closes gap — estimated score '+gap.score+' -> '+cap.assessment.estimatedNewScore+'. '
                 : cap.assessment.closesGap==='partial'
-                  ? `Partially closes gap — estimated score ${gap.score} → ${cap.assessment.estimatedNewScore}. `
+                  ? 'Partially closes gap — estimated score '+gap.score+' -> '+cap.assessment.estimatedNewScore+'. '
                   : 'Saved — gap remains open. '}
               {cap.assessment.reasoning}
             </div>
@@ -3158,19 +3154,21 @@ function GapCard({gap, expanded, onMarkReal, onStartCapture, onSubmit, onAccept,
   );
 }
 
-function GapResolutionStep({active,jdAnalysis,cpsResult,result,stories,setStories,onComplete,onError}) {
+function GapResolutionStep({active,jdAnalysis,cpsResult,result,stories,setStories,experience,onComplete,onError}) {
   const gaps = cpsResult.scores.filter(s=>s.score<70);
   const [resolutions,setResolutions] = useState(
     result || gaps.map(g=>({skill:g.skill,score:g.score,improve:g.improve,status:'pending'}))
   );
   const [expanded,setExpanded] = useState({});
+  const [rechecking,setRechecking] = useState(false);
+  const [recheckError,setRecheckError] = useState(null);
 
   function markReal(skill){
     setResolutions(rs=>rs.map(r=>r.skill===skill?{...r,status:'confirmed_gap'}:r));
   }
 
   function startCapture(skill){
-    setExpanded(e=>({...e,[skill]:{text:'',loading:false,preview:null,error:null}}));
+    setExpanded(e=>({...e,[skill]:{text:'',loading:false,preview:null,error:null,dupWarning:null}}));
   }
 
   function handleCapture(skill,action,val){
@@ -3184,41 +3182,84 @@ function GapResolutionStep({active,jdAnalysis,cpsResult,result,stories,setStorie
     }
     if(action==='submit'){
       const cap=expanded[skill];
-      if(!cap?.text?.trim())return;
+      if(!cap||!cap.text||!cap.text.trim())return;
       setExpanded(e=>({...e,[skill]:{...e[skill],loading:true,error:null}}));
       const gap=resolutions.find(r=>r.skill===skill);
       const schemaExample=JSON.stringify({story:{title:"",type:"career",employer:"",situation:"",obstacle:"",action:"",result:"",impact:"",fullStory:"",themes:[],skills:[],useFor:["Resume","Interview"],notes:""},assessment:{closesGap:"full|partial|none",estimatedNewScore:0,reasoning:""}});
       callClaude(
-        'You are a career story structurer. Always structure the evidence as a complete SOAR story and assess how well it addresses the skill gap. closesGap must be "full" (evidence clearly demonstrates the skill), "partial" (demonstrates related experience but not the full requirement), or "none" (story is captured but gap remains open). estimatedNewScore is your best estimate of the skill score after this story is added (0-100). Return ONLY valid JSON—no markdown fences: '+schemaExample,
+        'You are a career story structurer. Always structure the evidence as a complete SOAR story and assess how well it addresses the skill gap. closesGap must be "full" (evidence clearly demonstrates the skill), "partial" (demonstrates related experience but not the full requirement), or "none" (story is captured but gap remains open). estimatedNewScore is your best estimate of the skill score after this story is added (0-100). Return ONLY valid JSON — no markdown fences: '+schemaExample,
         'Skill gap: '+skill+' (current score: '+gap.score+'/100) | Gap context: '+gap.improve+' | Evidence: '+cap.text,
         2000, 0
-      ).then(raw=>{
+      ).then(function(raw){
         const parsed=parseJSON(raw);
-        if(!parsed?.story) throw new Error('Could not parse Claude response—please try again.');
-        setExpanded(e=>({...e,[skill]:{...e[skill],loading:false,preview:parsed.story,assessment:parsed.assessment||null}}));
-      }).catch(err=>{
-        setExpanded(e=>({...e,[skill]:{...e[skill],loading:false,error:err.message}}));
+        if(!parsed||!parsed.story) throw new Error('Could not parse Claude response — please try again.');
+        // Check for duplicate story in library
+        const newTitle=(parsed.story.title||'').toLowerCase();
+        const newAction=(parsed.story.action||'').slice(0,200).toLowerCase();
+        let dupWarning=null;
+        stories.forEach(function(s){
+          const sc=tokenOverlap(newTitle+' '+newAction,(s.title||'').toLowerCase()+' '+(s.action||'').slice(0,200).toLowerCase());
+          if(sc>0.5&&!dupWarning) dupWarning=s.title||'existing story';
+        });
+        setExpanded(function(e){return {...e,[skill]:{...e[skill],loading:false,preview:parsed.story,assessment:parsed.assessment||null,dupWarning}};});
+      }).catch(function(err){
+        setExpanded(function(e){return {...e,[skill]:{...e[skill],loading:false,error:err.message}};});
       });
     }
   }
 
   async function acceptStory(skill){
-    const {preview:story,assessment}=expanded[skill]||{};
+    const cap=expanded[skill]||{};
+    const story=cap.preview;
+    const assessment=cap.assessment;
     if(!story)return;
     const newStory=normalizeStory({...story,id:Date.now(),dateAdded:new Date().toISOString().split('T')[0]});
-    const updated=[...stories,newStory];
-    setStories(updated);
+    setStories(function(prev){return [...prev,newStory];});
     try{await upsertStory(newStory);}catch(e){}
-    setResolutions(rs=>rs.map(r=>r.skill===skill?{...r,status:'story_added',story:newStory,assessment}:r));
-    setExpanded(e=>{const n={...e};delete n[skill];return n;});
+    setResolutions(function(rs){return rs.map(function(r){return r.skill===skill?{...r,status:'story_added',story:newStory,assessment}:r;});});
+    setExpanded(function(e){const n={...e};delete n[skill];return n;});
   }
 
   function rejectStory(skill){
-    setExpanded(e=>({...e,[skill]:{...e[skill],preview:null}}));
+    setExpanded(e=>({...e,[skill]:{...e[skill],preview:null,dupWarning:null}}));
   }
 
-  const allResolved=resolutions.every(r=>r.status!=='pending');
-  const addedCount=resolutions.filter(r=>r.status==='story_added').length;
+  async function recheckGaps(){
+    const pending=resolutions.filter(function(r){return r.status==='pending';});
+    if(pending.length===0)return;
+    setRechecking(true);
+    setRecheckError(null);
+    try{
+      const pendingSkillNames=pending.map(function(r){return r.skill;});
+      const filteredSkills=(jdAnalysis.skills||[]).filter(function(s){return pendingSkillNames.indexOf(s.name)!==-1;});
+      const nl='\n';
+      const storyCtx=stories.map(function(s){return ['SOAR: '+s.title+' ('+(s.employer||'')+')',nl+'Skills: '+(s.skills||s.themes||[]).join(', '),nl+'Action: '+(s.action||''),nl+'Result: '+(s.result||'')].join('');}).join(nl+nl);
+      const expCtx=buildExpContext(experience);
+      const raw=await callClaude(
+        'You are a career scoring expert. Score the candidate against each skill 0-100 using the provided stories and experience. Return ONLY valid JSON — no markdown fences. Schema: {"scores":[{"skill":"string","score":0,"evidence":"string","gap":"string","improve":"string"}]}',
+        'Skills:'+nl+JSON.stringify(filteredSkills)+nl+nl+'SOAR stories:'+nl+storyCtx+nl+nl+'Experience:'+nl+expCtx,
+        2000, 0
+      );
+      const parsed=parseJSON(raw);
+      if(!parsed||!parsed.scores) throw new Error('Could not parse re-check response');
+      setResolutions(function(rs){
+        return rs.map(function(r){
+          if(r.status!=='pending')return r;
+          const updated=parsed.scores.find(function(s){return s.skill===r.skill;});
+          if(!updated)return r;
+          if(updated.score>=70) return {...r,score:updated.score,status:'auto_resolved',improve:updated.improve};
+          return {...r,score:updated.score,improve:updated.improve};
+        });
+      });
+    }catch(e){
+      setRecheckError(e.message);
+    }
+    setRechecking(false);
+  }
+
+  const allResolved=resolutions.every(function(r){return r.status!=='pending';});
+  const addedCount=resolutions.filter(function(r){return r.status==='story_added';}).length;
+  const pendingCount=resolutions.filter(function(r){return r.status==='pending';}).length;
 
   return(
     <div style={S.card}>
@@ -3229,32 +3270,42 @@ function GapResolutionStep({active,jdAnalysis,cpsResult,result,stories,setStorie
             {gaps.length} skill{gaps.length!==1?'s':''} below 70 — confirm gaps or add evidence
           </div>
         </div>
-        {result&&<span style={{fontSize:11,padding:'2px 8px',background:'#EAF3DE',color:'#3B6D11',borderRadius:4,fontWeight:500}}>✓ Complete</span>}
+        {result&&<span style={{fontSize:11,padding:'2px 8px',background:'#EAF3DE',color:'#3B6D11',borderRadius:4,fontWeight:500}}>Complete</span>}
       </div>
 
       <div style={{display:'flex',flexDirection:'column',gap:8,marginBottom:'1rem'}}>
-        {resolutions.map(gap=>(
+        {resolutions.map(function(gap){return(
           <GapCard
             key={gap.skill}
             gap={gap}
             expanded={expanded[gap.skill]||null}
-            onMarkReal={()=>markReal(gap.skill)}
-            onStartCapture={()=>startCapture(gap.skill)}
-            onSubmit={(action,val)=>handleCapture(gap.skill,action,val)}
-            onAccept={()=>acceptStory(gap.skill)}
-            onReject={()=>rejectStory(gap.skill)}
+            onMarkReal={function(){return markReal(gap.skill);}}
+            onStartCapture={function(){return startCapture(gap.skill);}}
+            onSubmit={function(action,val){return handleCapture(gap.skill,action,val);}}
+            onAccept={function(){return acceptStory(gap.skill);}}
+            onReject={function(){return rejectStory(gap.skill);}}
           />
-        ))}
+        );})}
       </div>
+
+      {addedCount>0&&pendingCount>0&&!result&&(
+        <div style={{marginBottom:'0.75rem'}}>
+          <button onClick={recheckGaps} disabled={rechecking}
+            style={{...S.btn,fontSize:12,opacity:rechecking?0.6:1}}>
+            {rechecking?'Re-checking gaps...':'Re-check remaining gaps with new stories ->'}
+          </button>
+          {recheckError&&<div style={{fontSize:12,color:'#A32D2D',marginTop:6}}>Warning: {recheckError}</div>}
+        </div>
+      )}
 
       {allResolved&&!result&&(
         <div>
           {addedCount>0&&(
             <div style={{fontSize:12,color:'#3B6D11',marginBottom:'0.75rem',padding:'8px 12px',background:'#EAF3DE',borderRadius:6}}>
-              ✓ {addedCount} new stor{addedCount!==1?'ies':'y'} added to your library
+              {addedCount} new stor{addedCount!==1?'ies':'y'} added to your library
             </div>
           )}
-          <button onClick={()=>onComplete(resolutions)} style={S.primary}>Re-score with updates →</button>
+          <button onClick={function(){return onComplete(resolutions);}} style={S.primary}>Re-score with updates -&gt;</button>
         </div>
       )}
 
@@ -4031,6 +4082,7 @@ function ApplyView({stories,setStories,experience,awards,education,profileContex
               result={app.gapResolutions}
               stories={stories}
               setStories={setStories}
+              experience={experience}
               onComplete={gapResolutions=>setApp(a=>({...a,gapResolutions,currentStep:'rescore',rescore:null,resume:null,coverLetter:null}))}
               onError={setError}
             />
@@ -4153,11 +4205,109 @@ function ProfileView({profile,setProfile,awards,education,profileContext}) {
   );
 }
 
+// ─── ENTRY GATE ───────────────────────────────────────────
+function EntryGate({ onAdam, onGuest }) {
+  const ADAM_CODE = "change-me";
+  const ACCENT = "#A32D2D";
+  const [step, setStep] = useState("choose");
+  const [pin, setPin] = useState("");
+  const [pinErr, setPinErr] = useState(false);
+  const [g, setG] = useState({ name: "", email: "", company: "", role: "" });
+  const [gErr, setGErr] = useState("");
+
+  const wrap = { minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--font-sans)", padding: "2rem", background: "var(--color-background-primary, #fafafa)" };
+  const card = { width: "100%", maxWidth: 460, background: "#fff", border: "0.5px solid var(--color-border-tertiary)", borderRadius: 12, padding: "2.75rem", boxShadow: "0 1px 4px rgba(0,0,0,0.05)" };
+  const inp = { width: "100%", padding: "9px 11px", fontSize: 14, borderRadius: 7, border: "0.5px solid var(--color-border-tertiary)", fontFamily: "var(--font-sans)", marginBottom: 10, boxSizing: "border-box" };
+  const primaryBtn = { width: "100%", padding: "12px", fontSize: 14, fontWeight: 600, color: "#fff", background: ACCENT, border: "none", borderRadius: 8, cursor: "pointer", marginTop: 4 };
+  const ghostBtn = { width: "100%", padding: "12px", fontSize: 14, fontWeight: 500, color: "var(--color-text-primary)", background: "none", border: "0.5px solid var(--color-border-tertiary)", borderRadius: 8, cursor: "pointer", marginTop: 10 };
+
+  const validEmail = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+
+  return (
+    <div style={wrap}>
+      <div style={card}>
+        <div style={{ width: 28, height: 3, background: ACCENT, borderRadius: 2, marginBottom: 18 }} />
+        <div style={{ fontSize: 21, fontWeight: 700, color: "var(--color-text-primary)", letterSpacing: "-0.01em" }}>Adam Waldman</div>
+        <div style={{ fontSize: 13, color: "var(--color-text-secondary)", marginTop: 4, marginBottom: 28 }}>Insight, strategy, and decision systems. A live look at how I think and where I fit.</div>
+
+        {step === "choose" && (
+          <>
+            <button style={primaryBtn} onClick={() => setStep("guest")}>Explore Adam&rsquo;s profile</button>
+            <button style={ghostBtn} onClick={() => setStep("adam")}>I&rsquo;m Adam</button>
+          </>
+        )}
+
+        {step === "adam" && (
+          <>
+            <input style={inp} type="password" placeholder="Passcode" value={pin}
+              onChange={(e) => { setPin(e.target.value); setPinErr(false); }}
+              onKeyDown={(e) => { if (e.key === "Enter") { pin === ADAM_CODE ? onAdam() : setPinErr(true); } }} autoFocus />
+            {pinErr && <div style={{ fontSize: 12, color: ACCENT, marginBottom: 8 }}>Incorrect passcode.</div>}
+            <button style={primaryBtn} onClick={() => { pin === ADAM_CODE ? onAdam() : setPinErr(true); }}>Enter</button>
+            <button style={ghostBtn} onClick={() => { setStep("choose"); setPin(""); setPinErr(false); }}>Back</button>
+          </>
+        )}
+
+        {step === "guest" && (
+          <>
+            <div style={{ fontSize: 12, color: "var(--color-text-secondary)", marginBottom: 14 }}>A quick intro so Adam knows who stopped by.</div>
+            <input style={inp} placeholder="Your name *" value={g.name} onChange={(e) => setG({ ...g, name: e.target.value })} autoFocus />
+            <input style={inp} placeholder="Email *" value={g.email} onChange={(e) => setG({ ...g, email: e.target.value })} />
+            <input style={inp} placeholder="Company (optional)" value={g.company} onChange={(e) => setG({ ...g, company: e.target.value })} />
+            <input style={inp} placeholder="Role you're hiring for (optional)" value={g.role} onChange={(e) => setG({ ...g, role: e.target.value })} />
+            {gErr && <div style={{ fontSize: 12, color: ACCENT, marginBottom: 8 }}>{gErr}</div>}
+            <button style={primaryBtn} onClick={() => {
+              if (!g.name.trim()) return setGErr("Please add your name.");
+              if (!validEmail(g.email)) return setGErr("Please add a valid email.");
+              onGuest({ name: g.name.trim(), email: g.email.trim(), company: g.company.trim(), role: g.role.trim() });
+            }}>Continue</button>
+            <button style={ghostBtn} onClick={() => { setStep("choose"); setGErr(""); }}>Back</button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function GuestShell({ guest, stories, experience, awards, education, onExit }) {
+  const ACCENT = "#A32D2D";
+  const [gpage, setGpage] = useState("home");
+  const item = (id, lbl) => (
+    <button onClick={() => setGpage(id)} style={{ textAlign: "left", padding: "8px 10px", borderRadius: 6, border: "none", cursor: "pointer", fontSize: 13, fontWeight: gpage === id ? 600 : 400, background: gpage === id ? "var(--color-background-secondary)" : "none", color: "var(--color-text-primary)" }}>{lbl}</button>
+  );
+  return (
+    <div style={{ display: "flex", fontFamily: "var(--font-sans)", minHeight: 600 }}>
+      <div style={{ width: 196, flexShrink: 0, borderRight: "0.5px solid var(--color-border-tertiary)", paddingRight: "1rem", paddingTop: "1.25rem", display: "flex", flexDirection: "column", gap: 1 }}>
+        <div style={{ width: 24, height: 3, background: ACCENT, borderRadius: 2, marginBottom: 12, marginLeft: 10 }} />
+        <div style={{ fontSize: 14, fontWeight: 700, color: "var(--color-text-primary)", padding: "0 10px" }}>Adam Waldman</div>
+        <div style={{ fontSize: 11, color: "var(--color-text-tertiary)", marginBottom: "1.5rem", padding: "0 10px" }}>Hi {guest.name.split(" ")[0]} 👋</div>
+        {item("home", "Dashboard")}
+        {item("interview", "Interview Adam ✦")}
+        {item("fit", "How I fit your role ✦")}
+        <div style={{ flex: 1 }} />
+        <button onClick={onExit} style={{ textAlign: "left", padding: "8px 10px", borderRadius: 6, border: "none", cursor: "pointer", fontSize: 12, background: "none", color: "var(--color-text-tertiary)" }}>← Exit</button>
+      </div>
+      <div style={{ flex: 1, paddingLeft: "1.5rem", minWidth: 0, overflowY: "auto" }}>
+        {gpage === "home" && <HomeView stories={stories} experience={experience} awards={awards} education={education} onStoryClick={() => {}} />}
+        {gpage === "interview" && <InterviewView stories={stories} />}
+        {gpage === "fit" && (
+          <div style={{ paddingTop: "3rem", maxWidth: 520 }}>
+            <div style={{ fontSize: 17, fontWeight: 700, color: "var(--color-text-primary)", marginBottom: 8 }}>How I fit your role</div>
+            <div style={{ fontSize: 14, color: "var(--color-text-secondary)", lineHeight: 1.6 }}>Type a role or title and I&rsquo;ll show where Adam maps. Coming in the next build.</div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── APP ──────────────────────────────────────────────────
 export default function App() {
   const [stories,setStories]=useState([]);
   const [loading,setLoading]=useState(true);
   const [page,setPage]=useState("home");
+  const [mode, setMode] = useState(null);
+  const [guest, setGuest] = useState(null);
   const [selected,setSelected]=useState(null);
   const [editing,setEditing]=useState(null);
   const [filters,setFilters]=useState({type:"",employer:"",search:""});
@@ -4229,6 +4379,8 @@ export default function App() {
   );
 
   if(loading)return <div style={{padding:"2rem",color:"var(--color-text-secondary)",fontSize:14}}>Loading PHIS…</div>;
+  if (!mode) return <EntryGate onAdam={() => setMode("adam")} onGuest={(info) => { setGuest(info); setMode("guest"); }} />;
+  if (mode === "guest") return <GuestShell guest={guest} stories={stories} experience={experience} awards={awards} education={education} onExit={() => { setMode(null); setGuest(null); }} />;
 
   return(
     <div style={{display:"flex",fontFamily:"var(--font-sans)",minHeight:600}}>
