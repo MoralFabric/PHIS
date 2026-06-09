@@ -4269,6 +4269,121 @@ function EntryGate({ onAdam, onGuest }) {
   );
 }
 
+const GUEST_FIT_SYS = `You are the fit-assessment engine on Adam Waldman's candidate portal. A recruiter or hiring manager has entered either a full job description or just a role and company. Your job is to make the strongest HONEST case for Adam against that role.
+
+WHO ADAM IS: A senior finance and analytics executive, ~20 years in financial services (Manulife, OMERS, State Street). CFA charterholder. Led teams up to ~150. Differentiated by building the systems that turn data into decisions: planning models, KPI/OKR architecture, insight engines, executive advisory. Capital markets fluency. Toronto-based, targeting AVP/VP-level roles.
+
+YOU WILL BE GIVEN: Adam's real experience and a library of his actual accomplishment stories. Assess ONLY against what is actually there. You may frame generously. You may NOT invent experience he does not have. A recruiter will interview him next week; any fabricated claim surfaces in that room and destroys his credibility and this tool's. Honest framing is the entire point.
+
+IF THE INPUT IS THIN (just a title, or title + company): infer the competencies a strong candidate for that role would need, then assess Adam against them. Name the role you inferred so the reader sees you understood it.
+
+OUTPUT: Return ONLY valid JSON, no markdown, no preamble. Shape:
+{
+  "role_understood": "one sentence naming the role and seniority you are assessing against",
+  "summary": "2-3 sentences, warm and confident, written ABOUT Adam in the third person, making the case for why he fits this role. Lead with the strongest true thing. No hedging. No numbers.",
+  "bands": [
+    { "competency": "short competency name drawn from the role", "band": "Ideal", "note": "one sentence of specific, honest evidence from his real background, framed favorably" }
+  ]
+}
+
+BAND VALUES: each band must be exactly one of "Ideal", "Strong", "Relevant Experience", or "Worth a conversation".
+
+BAND RULES (this is where honesty and advocacy meet):
+- "Ideal": Adam has direct, substantial, demonstrable experience. The story library clearly supports it.
+- "Strong": Adam has solid, real experience even if not the deepest. When genuinely unsure between Strong and Relevant, choose Strong.
+- "Relevant Experience": no direct match, but adjacent or transferable experience genuinely exists. Frame the bridge honestly: name the real adjacent experience, do not claim the direct thing.
+- "Worth a conversation": Adam has genuinely not touched this area. Do NOT manufacture a fit. Frame it as an honest, inviting open question: something the reader should ask Adam about directly. This is an engagement hook, not a confession. Use this band sparingly and only when true.
+
+CRITICAL RULES:
+- NEVER output a number, score, percentage, or rating of any kind, anywhere.
+- NEVER quote or expose the raw accomplishment stories. Synthesize. The reader sees conclusions, never the underlying database.
+- Produce 6 to 9 bands. Order them strongest first.
+- Every note must be defensible against his real record. If you cannot ground a claim, lower the band, do not embellish.
+- No em-dashes, no en-dashes. Use plain hyphens or rewrite.
+- Tone: a sharp, well-briefed colleague advocating for a strong candidate. Not a brochure. Not a critic.`;
+
+function GuestFitView({ stories, experience }) {
+  const ACCENT = "#A32D2D";
+  const BAND_COLOR = {
+    "Ideal":                  "#2f7d52",
+    "Strong":                 "#2f7d52",
+    "Relevant Experience":    "#64748b",
+    "Worth a conversation":   ACCENT,
+  };
+
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState(null);
+  const [err, setErr] = useState(null);
+
+  async function run() {
+    if (!input.trim()) return;
+    setLoading(true); setErr(null); setResult(null);
+    try {
+      const expCtx = buildExpContext(experience);
+      const storyCtx = buildStoryContext(stories);
+      const userMsg = [
+        "Role / JD input:\n" + input.trim(),
+        "\n\nExperience:\n" + expCtx,
+        "\n\nSOAR stories:\n" + storyCtx,
+      ].join("");
+      const raw = await callClaude(GUEST_FIT_SYS, userMsg, 3000, 0);
+      const parsed = parseJSON(raw);
+      if (!parsed?.bands?.length) throw new Error("Could not parse fit assessment. Please try again.");
+      setResult(parsed);
+    } catch (e) { setErr(e.message); }
+    setLoading(false);
+  }
+
+  const inp = { width: "100%", padding: "10px 12px", fontSize: 14, borderRadius: 7, border: "0.5px solid var(--color-border-tertiary)", fontFamily: "var(--font-sans)", resize: "vertical", minHeight: 80, boxSizing: "border-box" };
+
+  return (
+    <div style={{ paddingTop: "2rem", maxWidth: 580 }}>
+      <div style={{ fontSize: 17, fontWeight: 700, color: "var(--color-text-primary)", marginBottom: 4 }}>How I fit your role</div>
+      <div style={{ fontSize: 13, color: "var(--color-text-secondary)", marginBottom: "1.25rem" }}>Paste a job description, or just type a role and company.</div>
+
+      <textarea
+        style={inp}
+        placeholder="e.g. VP Strategy at a pension fund, or paste a full JD…"
+        value={input}
+        onChange={e => setInput(e.target.value)}
+        disabled={loading}
+      />
+      <button
+        onClick={run}
+        disabled={loading || !input.trim()}
+        style={{ marginTop: 10, padding: "10px 20px", fontSize: 14, fontWeight: 600, color: "#fff", background: loading || !input.trim() ? "#9ca3af" : ACCENT, border: "none", borderRadius: 8, cursor: loading || !input.trim() ? "default" : "pointer" }}
+      >{loading ? "Assessing…" : "Show fit →"}</button>
+
+      {err && (
+        <div style={{ marginTop: "1rem", fontSize: 13, color: ACCENT, padding: "10px 14px", background: "#FCEBEB", borderRadius: 7 }}>⚠ {err}</div>
+      )}
+
+      {result && (
+        <div style={{ marginTop: "1.75rem" }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: "var(--color-text-tertiary)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>Role understood</div>
+          <div style={{ fontSize: 15, fontWeight: 600, color: "var(--color-text-primary)", marginBottom: "1.25rem" }}>{result.role_understood}</div>
+
+          <div style={{ fontSize: 13, color: "var(--color-text-primary)", lineHeight: 1.65, marginBottom: "1.75rem", padding: "14px 16px", background: "var(--color-background-secondary)", borderRadius: 8 }}>{result.summary}</div>
+
+          <div style={{ fontSize: 13, fontWeight: 600, color: "var(--color-text-tertiary)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>Fit by competency</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {result.bands.map((b, i) => (
+              <div key={i} style={{ padding: "12px 14px", borderRadius: 8, border: "0.5px solid var(--color-border-tertiary)", background: "#fff" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: b.note ? 5 : 0 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: "var(--color-text-primary)" }}>{b.competency}</div>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: BAND_COLOR[b.band] || "var(--color-text-secondary)", marginLeft: 12, flexShrink: 0 }}>{b.band}</div>
+                </div>
+                {b.note && <div style={{ fontSize: 13, color: "var(--color-text-secondary)", lineHeight: 1.55 }}>{b.note}</div>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function GuestShell({ guest, stories, experience, awards, education, onExit }) {
   const ACCENT = "#A32D2D";
   const [gpage, setGpage] = useState("home");
@@ -4290,12 +4405,7 @@ function GuestShell({ guest, stories, experience, awards, education, onExit }) {
       <div style={{ flex: 1, paddingLeft: "1.5rem", minWidth: 0, overflowY: "auto" }}>
         {gpage === "home" && <HomeView stories={stories} experience={experience} awards={awards} education={education} onStoryClick={() => {}} />}
         {gpage === "interview" && <InterviewView stories={stories} />}
-        {gpage === "fit" && (
-          <div style={{ paddingTop: "3rem", maxWidth: 520 }}>
-            <div style={{ fontSize: 17, fontWeight: 700, color: "var(--color-text-primary)", marginBottom: 8 }}>How I fit your role</div>
-            <div style={{ fontSize: 14, color: "var(--color-text-secondary)", lineHeight: 1.6 }}>Type a role or title and I&rsquo;ll show where Adam maps. Coming in the next build.</div>
-          </div>
-        )}
+        {gpage === "fit" && <GuestFitView stories={stories} experience={experience} />}
       </div>
     </div>
   );
