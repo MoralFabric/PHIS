@@ -4288,27 +4288,26 @@ function GuestVisitorsView() {
 // ─── ENTRY GATE ───────────────────────────────────────────
 function EntryGate({ onAdam, onGuest }) {
   const ADAM_CODE = "phisphis";
-  const ACCENT = "#A32D2D";
+  const GP = "'Poppins', system-ui, sans-serif";
   const [step, setStep] = useState("choose");
   const [pin, setPin] = useState("");
   const [pinErr, setPinErr] = useState(false);
   const [g, setG] = useState({ name: "", email: "", company: "", role: "" });
   const [gErr, setGErr] = useState("");
 
-  const wrap = { minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--font-sans)", padding: "2rem", background: "var(--color-background-primary, #fafafa)" };
-  const card = { width: "100%", maxWidth: 460, background: "#fff", border: "0.5px solid var(--color-border-tertiary)", borderRadius: 12, padding: "2.75rem", boxShadow: "0 1px 4px rgba(0,0,0,0.05)" };
-  const inp = { width: "100%", padding: "9px 11px", fontSize: 14, borderRadius: 7, border: "0.5px solid var(--color-border-tertiary)", fontFamily: "var(--font-sans)", marginBottom: 10, boxSizing: "border-box" };
-  const primaryBtn = { width: "100%", padding: "12px", fontSize: 14, fontWeight: 600, color: "#fff", background: ACCENT, border: "none", borderRadius: 8, cursor: "pointer", marginTop: 4 };
-  const ghostBtn = { width: "100%", padding: "12px", fontSize: 14, fontWeight: 500, color: "var(--color-text-primary)", background: "none", border: "0.5px solid var(--color-border-tertiary)", borderRadius: 8, cursor: "pointer", marginTop: 10 };
+  const wrap = { minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: GP, padding: "2rem", background: "var(--g-stone)" };
+  const card = { width: "100%", maxWidth: 460, background: "var(--g-paper)", border: "1px solid var(--g-hair)", borderTop: "3px solid var(--g-marigold)", borderRadius: "5px", padding: "2.75rem", boxShadow: "0 4px 20px rgba(20,41,63,.07)" };
+  const inp = { width: "100%", padding: "9px 11px", fontSize: 14, borderRadius: 4, border: "1px solid var(--g-hair)", fontFamily: GP, marginBottom: 10, boxSizing: "border-box", background: "var(--g-paper)", color: "var(--g-ink)" };
+  const primaryBtn = { width: "100%", padding: "12px", fontSize: 14, fontWeight: 500, color: "#fff", background: "var(--g-vermilion)", border: "none", borderRadius: 4, cursor: "pointer", marginTop: 4 };
+  const ghostBtn = { width: "100%", padding: "12px", fontSize: 14, fontWeight: 400, color: "var(--g-ink)", background: "var(--g-paper)", border: "1px solid var(--g-hair)", borderRadius: 4, cursor: "pointer", marginTop: 10 };
 
   const validEmail = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
 
   return (
     <div style={wrap}>
       <div style={card}>
-        <div style={{ width: 28, height: 3, background: ACCENT, borderRadius: 2, marginBottom: 18 }} />
-        <div style={{ fontSize: 21, fontWeight: 700, color: "var(--color-text-primary)", letterSpacing: "-0.01em" }}>Adam Waldman</div>
-        <div style={{ fontSize: 13, color: "var(--color-text-secondary)", marginTop: 4, marginBottom: 28 }}>Insight, strategy, and decision systems. A live look at how I think and where I fit.</div>
+        <div style={{ fontSize: 22, fontWeight: 500, color: "var(--g-ink)", marginBottom: 6 }}>Adam Waldman</div>
+        <div style={{ fontSize: 13, fontWeight: 300, color: "var(--g-slate)", marginTop: 2, marginBottom: 28 }}>Insight, strategy, and decision systems. A live look at how I think and where I fit.</div>
 
         {step === "choose" && (
           <>
@@ -4322,7 +4321,7 @@ function EntryGate({ onAdam, onGuest }) {
             <input style={inp} type="password" placeholder="Passcode" value={pin}
               onChange={(e) => { setPin(e.target.value); setPinErr(false); }}
               onKeyDown={(e) => { if (e.key === "Enter") { pin === ADAM_CODE ? onAdam() : setPinErr(true); } }} autoFocus />
-            {pinErr && <div style={{ fontSize: 12, color: ACCENT, marginBottom: 8 }}>Incorrect passcode.</div>}
+            {pinErr && <div style={{ fontSize: 12, color: "var(--g-vermilion)", marginBottom: 8 }}>Incorrect passcode.</div>}
             <button style={primaryBtn} onClick={() => { pin === ADAM_CODE ? onAdam() : setPinErr(true); }}>Enter</button>
             <button style={ghostBtn} onClick={() => { setStep("choose"); setPin(""); setPinErr(false); }}>Back</button>
           </>
@@ -4335,7 +4334,7 @@ function EntryGate({ onAdam, onGuest }) {
             <input style={inp} placeholder="Email *" value={g.email} onChange={(e) => setG({ ...g, email: e.target.value })} />
             <input style={inp} placeholder="Company (optional)" value={g.company} onChange={(e) => setG({ ...g, company: e.target.value })} />
             <input style={inp} placeholder="Role you're hiring for (optional)" value={g.role} onChange={(e) => setG({ ...g, role: e.target.value })} />
-            {gErr && <div style={{ fontSize: 12, color: ACCENT, marginBottom: 8 }}>{gErr}</div>}
+            {gErr && <div style={{ fontSize: 12, color: "var(--g-vermilion)", marginBottom: 8 }}>{gErr}</div>}
             <button style={primaryBtn} onClick={() => {
               if (!g.name.trim()) return setGErr("Please add your name.");
               if (!validEmail(g.email)) return setGErr("Please add a valid email.");
@@ -4383,12 +4382,12 @@ CRITICAL RULES:
 - Tone: a sharp, well-briefed colleague advocating for a strong candidate. Not a brochure. Not a critic.`;
 
 function GuestFitView({ stories, experience, guestSessionId }) {
-  const ACCENT = "#A32D2D";
-  const BAND_COLOR = {
-    "Ideal":                  "#2f7d52",
-    "Strong":                 "#2f7d52",
-    "Relevant Experience":    "#64748b",
-    "Worth a conversation":   ACCENT,
+  const GP = "'Poppins', system-ui, sans-serif";
+  const PILL = {
+    "Ideal":                  { background: "var(--g-navy)",     color: "#fff",             border: "none" },
+    "Strong":                 { background: "rgba(30,58,95,.10)", color: "var(--g-navy)",    border: "1px solid rgba(30,58,95,.22)" },
+    "Relevant Experience":    { background: "rgba(107,116,128,.10)", color: "var(--g-slate)", border: "none" },
+    "Worth a conversation":   { background: "var(--g-marigold)", color: "#fff",             border: "none" },
   };
 
   const EXAMPLES = ["Head of FP&A", "VP Strategy, pension fund", "Director, Analytics"];
@@ -4428,21 +4427,19 @@ function GuestFitView({ stories, experience, guestSessionId }) {
     setLoading(false);
   }
 
-  const inp = { width: "100%", padding: "10px 12px", fontSize: 14, borderRadius: 7, border: "0.5px solid var(--color-border-tertiary)", fontFamily: "var(--font-sans)", resize: "vertical", minHeight: 80, boxSizing: "border-box" };
-
   return (
-    <div style={{ paddingTop: "2rem", maxWidth: 580 }}>
-      <div style={{ fontSize: 17, fontWeight: 700, color: "var(--color-text-primary)", marginBottom: 4 }}>How I fit your role</div>
-      <div style={{ fontSize: 13, color: "var(--color-text-secondary)", marginBottom: "1rem" }}>Paste a job description, or just type a role and company.</div>
+    <div style={{ paddingTop: "2rem", maxWidth: 620, fontFamily: GP }}>
+      <div style={{ fontSize: 22, fontWeight: 500, color: "var(--g-ink)", marginBottom: 4 }}>How I fit your role</div>
+      <div style={{ fontSize: 13, fontWeight: 300, color: "var(--g-slate)", marginBottom: "1.25rem" }}>Paste a job description, or just type a role and company.</div>
 
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: "0.75rem" }}>
         {EXAMPLES.map(ex => (
-          <button key={ex} onClick={() => setInput(ex)} disabled={loading} style={{ padding: "4px 10px", fontSize: 12, fontWeight: 500, color: ACCENT, background: "#fdf2f2", border: "0.5px solid #f3c4c4", borderRadius: 20, cursor: "pointer", fontFamily: "var(--font-sans)" }}>{ex}</button>
+          <button key={ex} onClick={() => setInput(ex)} disabled={loading} style={{ padding: "3px 10px", fontSize: 12, fontWeight: 400, color: "var(--g-slate)", background: "var(--g-paper)", border: "1px solid var(--g-hair)", borderRadius: 20, cursor: "pointer", fontFamily: GP }}>{ex}</button>
         ))}
       </div>
 
       <textarea
-        style={inp}
+        style={{ width: "100%", padding: "10px 12px", fontSize: 14, fontWeight: 300, borderRadius: 4, border: "1px solid var(--g-hair)", fontFamily: GP, resize: "vertical", minHeight: 80, boxSizing: "border-box", background: "var(--g-paper)", color: "var(--g-ink)" }}
         placeholder="Paste a full job description, or just type a role and company. Example: 'VP Data Strategy at a Canadian bank'."
         value={input}
         onChange={e => setInput(e.target.value)}
@@ -4451,48 +4448,57 @@ function GuestFitView({ stories, experience, guestSessionId }) {
       <button
         onClick={run}
         disabled={loading || !input.trim()}
-        style={{ marginTop: 10, padding: "10px 20px", fontSize: 14, fontWeight: 600, color: "#fff", background: loading || !input.trim() ? "#9ca3af" : ACCENT, border: "none", borderRadius: 8, cursor: loading || !input.trim() ? "default" : "pointer" }}
+        style={{ marginTop: 10, padding: "10px 20px", fontSize: 14, fontWeight: 500, color: "#fff", background: loading || !input.trim() ? "#9ca3af" : "var(--g-vermilion)", border: "none", borderRadius: 4, cursor: loading || !input.trim() ? "default" : "pointer" }}
       >{loading ? "Assessing…" : "Show fit →"}</button>
 
       {loading && (
-        <div style={{ marginTop: "1.25rem", display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ width: 6, height: 6, borderRadius: "50%", background: ACCENT, flexShrink: 0 }} />
-          <div style={{ fontSize: 13, color: ACCENT, fontWeight: 500 }}>{FACTS[factIdx]}</div>
+        <div style={{ marginTop: "1.5rem", display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: "0.75rem 0" }}>
+          <div style={{ width: 24, height: 2, background: "var(--g-marigold)", borderRadius: 1 }} />
+          <div style={{ fontSize: 13, fontWeight: 300, color: "var(--g-slate)", textAlign: "center" }}>{FACTS[factIdx]}</div>
         </div>
       )}
 
       {err && (
-        <div style={{ marginTop: "1rem", fontSize: 13, color: ACCENT, padding: "10px 14px", background: "#FCEBEB", borderRadius: 7 }}>⚠ {err}</div>
+        <div style={{ marginTop: "1rem", fontSize: 13, color: "var(--g-vermilion)", padding: "10px 14px", background: "#fff4f0", borderRadius: 4, border: "1px solid rgba(232,84,30,.2)" }}>⚠ {err}</div>
       )}
 
       {result && (
-        <div style={{ marginTop: "1.75rem" }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: "var(--color-text-tertiary)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>Role understood</div>
-          <div style={{ fontSize: 15, fontWeight: 600, color: "var(--color-text-primary)", marginBottom: "1.25rem" }}>{result.role_understood}</div>
+        <div style={{ marginTop: "1.75rem", background: "var(--g-paper)", border: "1px solid var(--g-hair)", borderRadius: 5, boxShadow: "0 12px 30px rgba(20,41,63,.06)", overflow: "hidden" }}>
 
-          <div style={{ fontSize: 13, color: "var(--color-text-primary)", lineHeight: 1.65, marginBottom: "1.75rem", padding: "14px 16px", background: "var(--color-background-secondary)", borderRadius: 8 }}>{result.summary}</div>
+          <div style={{ borderTop: "3px solid var(--g-marigold)", borderBottom: "1px solid var(--g-hair)", padding: "20px 24px" }}>
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: "var(--g-navy)" }}>Adam Waldman, CFA</div>
+              <div style={{ fontSize: 9.5, fontWeight: 400, color: "var(--g-mist)", textTransform: "uppercase", letterSpacing: ".15em", marginTop: 2 }}>Candidate fit assessment</div>
+            </div>
+            <div style={{ fontSize: 9.5, fontWeight: 600, color: "var(--g-marigold)", textTransform: "uppercase", letterSpacing: ".12em", marginBottom: 6 }}>Role assessed</div>
+            <div style={{ fontSize: 18, fontWeight: 400, color: "var(--g-ink)", lineHeight: 1.4 }}>{result.role_understood}</div>
+          </div>
 
-          <div style={{ fontSize: 13, fontWeight: 600, color: "var(--color-text-tertiary)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>Fit by competency</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <div style={{ borderBottom: "1px solid var(--g-hair)", padding: "18px 24px" }}>
+            <div style={{ fontSize: 9.5, fontWeight: 400, color: "var(--g-mist)", textTransform: "uppercase", letterSpacing: ".12em", marginBottom: 10 }}>Summary</div>
+            <div style={{ fontSize: 14, fontWeight: 400, color: "var(--g-body)", lineHeight: 1.66 }}>{result.summary}</div>
+          </div>
+
+          <div>
             {result.bands.map((b, i) => (
-              <div key={i} style={{ padding: "12px 14px", borderRadius: 8, border: "0.5px solid var(--color-border-tertiary)", background: "#fff" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: b.note ? 5 : 0 }}>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: "var(--color-text-primary)" }}>{b.competency}</div>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: BAND_COLOR[b.band] || "var(--color-text-secondary)", marginLeft: 12, flexShrink: 0 }}>{b.band}</div>
+              <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "13px 24px", borderBottom: i < result.bands.length - 1 ? "1px solid var(--g-hair)" : "none" }}>
+                <div style={{ flex: 1, paddingRight: 16 }}>
+                  <div style={{ fontSize: 13.5, fontWeight: 500, color: "var(--g-ink)", marginBottom: b.note ? 3 : 0 }}>{b.competency}</div>
+                  {b.note && <div style={{ fontSize: 12.5, fontWeight: 300, color: "var(--g-slate)", lineHeight: 1.5 }}>{b.note}</div>}
                 </div>
-                {b.note && <div style={{ fontSize: 13, color: "var(--color-text-secondary)", lineHeight: 1.55 }}>{b.note}</div>}
+                <div style={{ flexShrink: 0, ...(PILL[b.band] || PILL["Relevant Experience"]), fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: ".06em", borderRadius: 3, padding: "3px 11px", whiteSpace: "nowrap" }}>{b.band}</div>
               </div>
             ))}
           </div>
 
-          <div style={{ marginTop: "2rem", paddingTop: "1.5rem", borderTop: "0.5px solid var(--color-border-tertiary)" }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: "var(--color-text-primary)", marginBottom: 6 }}>Ask Adam a question directly.</div>
+          <div style={{ background: "#FAFBFC", borderTop: "1px solid var(--g-hair)", padding: "18px 24px" }}>
+            <div style={{ fontSize: 13, fontWeight: 500, color: "var(--g-ink)", marginBottom: 8 }}>Ask Adam a question</div>
             {askSent ? (
-              <div style={{ fontSize: 13, color: "#2f7d52", padding: "10px 14px", background: "#f0faf4", borderRadius: 7 }}>Sent. Adam will see this.</div>
+              <div style={{ fontSize: 13, fontWeight: 300, color: "#2f7d52", padding: "10px 14px", background: "#f0faf4", borderRadius: 4, border: "1px solid #c6e8d4" }}>Sent. Adam will see this.</div>
             ) : (
               <>
                 <textarea
-                  style={{ width: "100%", padding: "9px 11px", fontSize: 13, borderRadius: 7, border: "0.5px solid var(--color-border-tertiary)", fontFamily: "var(--font-sans)", resize: "vertical", minHeight: 64, boxSizing: "border-box", marginBottom: 8 }}
+                  style={{ width: "100%", padding: "9px 11px", fontSize: 13, fontWeight: 300, borderRadius: 4, border: "1px solid var(--g-hair)", fontFamily: GP, resize: "vertical", minHeight: 64, boxSizing: "border-box", marginBottom: 8, background: "var(--g-paper)", color: "var(--g-ink)" }}
                   placeholder="Anything you'd like to ask Adam before you reach out…"
                   value={askQ}
                   onChange={e => setAskQ(e.target.value)}
@@ -4500,7 +4506,7 @@ function GuestFitView({ stories, experience, guestSessionId }) {
                 <button
                   onClick={() => { setAskSent(true); logGuestQuestion(guestSessionId, askQ.trim()); setAskQ(""); }}
                   disabled={!askQ.trim()}
-                  style={{ padding: "8px 18px", fontSize: 13, fontWeight: 600, color: "#fff", background: askQ.trim() ? ACCENT : "#9ca3af", border: "none", borderRadius: 7, cursor: askQ.trim() ? "pointer" : "default" }}
+                  style={{ padding: "8px 18px", fontSize: 13, fontWeight: 500, color: "#fff", background: askQ.trim() ? "var(--g-vermilion)" : "#9ca3af", border: "none", borderRadius: 4, cursor: askQ.trim() ? "pointer" : "default" }}
                 >Send</button>
               </>
             )}
@@ -4512,24 +4518,24 @@ function GuestFitView({ stories, experience, guestSessionId }) {
 }
 
 function GuestShell({ guest, stories, experience, awards, education, guestSessionId, onExit }) {
-  const ACCENT = "#A32D2D";
+  const GP = "'Poppins', system-ui, sans-serif";
   const [gpage, setGpage] = useState("home");
   const item = (id, lbl) => (
-    <button onClick={() => setGpage(id)} style={{ textAlign: "left", padding: "8px 10px", borderRadius: 6, border: "none", cursor: "pointer", fontSize: 13, fontWeight: gpage === id ? 600 : 400, background: gpage === id ? "var(--color-background-secondary)" : "none", color: "var(--color-text-primary)" }}>{lbl}</button>
+    <button onClick={() => setGpage(id)} style={{ textAlign: "left", padding: "8px 12px", borderRadius: 4, border: "none", borderLeft: gpage === id ? "3px solid var(--g-navy)" : "3px solid transparent", cursor: "pointer", fontSize: 13, fontWeight: gpage === id ? 500 : 400, background: gpage === id ? "rgba(30,58,95,.06)" : "none", color: "var(--g-ink)", fontFamily: GP }}>{lbl}</button>
   );
   return (
-    <div style={{ display: "flex", fontFamily: "var(--font-sans)", minHeight: 600 }}>
-      <div style={{ width: 196, flexShrink: 0, borderRight: "0.5px solid var(--color-border-tertiary)", paddingRight: "1rem", paddingTop: "1.25rem", display: "flex", flexDirection: "column", gap: 1 }}>
-        <div style={{ width: 24, height: 3, background: ACCENT, borderRadius: 2, marginBottom: 12, marginLeft: 10 }} />
-        <div style={{ fontSize: 14, fontWeight: 700, color: "var(--color-text-primary)", padding: "0 10px" }}>Adam Waldman</div>
-        <div style={{ fontSize: 11, color: "var(--color-text-tertiary)", marginBottom: "1.5rem", padding: "0 10px" }}>Hi {guest.name.split(" ")[0]} 👋</div>
+    <div style={{ display: "flex", fontFamily: GP, minHeight: "100vh", background: "var(--g-stone)" }}>
+      <div style={{ width: 200, flexShrink: 0, background: "var(--g-paper)", borderRight: "1px solid var(--g-hair)", paddingTop: "1.25rem", display: "flex", flexDirection: "column", gap: 1 }}>
+        <div style={{ width: 24, height: 3, background: "var(--g-marigold)", borderRadius: 1, marginBottom: 14, marginLeft: 12 }} />
+        <div style={{ fontSize: 13, fontWeight: 600, color: "var(--g-ink)", padding: "0 12px", marginBottom: 2 }}>Adam Waldman</div>
+        <div style={{ fontSize: 11, fontWeight: 300, color: "var(--g-mist)", marginBottom: "1.5rem", padding: "0 12px" }}>Hi {guest.name.split(" ")[0]} 👋</div>
         {item("home", "Dashboard")}
         {item("interview", "Interview Adam ✦")}
         {item("fit", "How I fit your role ✦")}
         <div style={{ flex: 1 }} />
-        <button onClick={onExit} style={{ textAlign: "left", padding: "8px 10px", borderRadius: 6, border: "none", cursor: "pointer", fontSize: 12, background: "none", color: "var(--color-text-tertiary)" }}>← Exit</button>
+        <button onClick={onExit} style={{ textAlign: "left", padding: "8px 12px", border: "none", cursor: "pointer", fontSize: 12, fontWeight: 300, background: "none", color: "var(--g-mist)", fontFamily: GP }}>← Exit</button>
       </div>
-      <div style={{ flex: 1, paddingLeft: "1.5rem", minWidth: 0, overflowY: "auto" }}>
+      <div style={{ flex: 1, padding: "0 2rem", minWidth: 0, overflowY: "auto" }}>
         {gpage === "home" && <HomeView stories={stories} experience={experience} awards={awards} education={education} onStoryClick={() => {}} />}
         {gpage === "interview" && <InterviewView stories={stories} guestSessionId={guestSessionId} />}
         {gpage === "fit" && <GuestFitView stories={stories} experience={experience} guestSessionId={guestSessionId} />}

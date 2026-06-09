@@ -14,6 +14,18 @@
 
   --color-border-secondary: #d1d5db;
   --color-border-tertiary:  #e5e7eb;
+
+  --g-navy:          #1E3A5F;
+  --g-marigold:      #EA6A1A;
+  --g-vermilion:     #E8541E;
+  --g-vermilion-deep:#CF4715;
+  --g-ink:           #19222E;
+  --g-body:          #2B3540;
+  --g-slate:         #6B7480;
+  --g-mist:          #9AA2AD;
+  --g-stone:         #EEF0F3;
+  --g-paper:         #FFFFFF;
+  --g-hair:          #E6E9ED;
 }
 
 html, body {
