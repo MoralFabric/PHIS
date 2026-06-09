@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useMemo } from "react";
-import { seedAndGetStories, upsertStory, upsertStories, deleteStory as dbDeleteStory, getExperience, saveExperience, getProfile, saveProfile, getAwards, insertAward, getEducation, insertEducation, getProfileContext, saveProfileContext, createGuestSession, logFitRun } from '@/lib/data';
+import { seedAndGetStories, upsertStory, upsertStories, deleteStory as dbDeleteStory, getExperience, saveExperience, getProfile, saveProfile, getAwards, insertAward, getEducation, insertEducation, getProfileContext, saveProfileContext, createGuestSession, logFitRun, logGuestQuestion, logInterviewQuestion } from '@/lib/data';
 
 // ─── CONFIG ───────────────────────────────────────────────
 const MODEL   = "claude-sonnet-4-6";
@@ -2421,7 +2421,7 @@ function AskView({stories}) {
 }
 
 // ─── INTERVIEW VIEW ───────────────────────────────────────
-function InterviewView({stories}) {
+function InterviewView({stories, guestSessionId}) {
   const [q,setQ]=useState("");
   const [busy,setBusy]=useState(false);
   const [answer,setAnswer]=useState(null);
@@ -2441,6 +2441,7 @@ function InterviewView({stories}) {
         1000, 0.4
       );
       setAnswer(ans.trim());
+      if (guestSessionId) logInterviewQuestion(guestSessionId, prompt);
     }catch(e){setErr("Something went wrong — please try again.");}
     setBusy(false);
   }
@@ -4319,6 +4320,8 @@ function GuestFitView({ stories, experience, guestSessionId }) {
   const [result, setResult] = useState(null);
   const [err, setErr] = useState(null);
   const [factIdx, setFactIdx] = useState(0);
+  const [askQ, setAskQ] = useState("");
+  const [askSent, setAskSent] = useState(false);
 
   useEffect(() => {
     if (!loading) return;
@@ -4402,6 +4405,27 @@ function GuestFitView({ stories, experience, guestSessionId }) {
               </div>
             ))}
           </div>
+
+          <div style={{ marginTop: "2rem", paddingTop: "1.5rem", borderTop: "0.5px solid var(--color-border-tertiary)" }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: "var(--color-text-primary)", marginBottom: 6 }}>Ask Adam a question directly.</div>
+            {askSent ? (
+              <div style={{ fontSize: 13, color: "#2f7d52", padding: "10px 14px", background: "#f0faf4", borderRadius: 7 }}>Sent. Adam will see this.</div>
+            ) : (
+              <>
+                <textarea
+                  style={{ width: "100%", padding: "9px 11px", fontSize: 13, borderRadius: 7, border: "0.5px solid var(--color-border-tertiary)", fontFamily: "var(--font-sans)", resize: "vertical", minHeight: 64, boxSizing: "border-box", marginBottom: 8 }}
+                  placeholder="Anything you'd like to ask Adam before you reach out…"
+                  value={askQ}
+                  onChange={e => setAskQ(e.target.value)}
+                />
+                <button
+                  onClick={() => { setAskSent(true); logGuestQuestion(guestSessionId, askQ.trim()); setAskQ(""); }}
+                  disabled={!askQ.trim()}
+                  style={{ padding: "8px 18px", fontSize: 13, fontWeight: 600, color: "#fff", background: askQ.trim() ? ACCENT : "#9ca3af", border: "none", borderRadius: 7, cursor: askQ.trim() ? "pointer" : "default" }}
+                >Send</button>
+              </>
+            )}
+          </div>
         </div>
       )}
     </div>
@@ -4428,7 +4452,7 @@ function GuestShell({ guest, stories, experience, awards, education, guestSessio
       </div>
       <div style={{ flex: 1, paddingLeft: "1.5rem", minWidth: 0, overflowY: "auto" }}>
         {gpage === "home" && <HomeView stories={stories} experience={experience} awards={awards} education={education} onStoryClick={() => {}} />}
-        {gpage === "interview" && <InterviewView stories={stories} />}
+        {gpage === "interview" && <InterviewView stories={stories} guestSessionId={guestSessionId} />}
         {gpage === "fit" && <GuestFitView stories={stories} experience={experience} guestSessionId={guestSessionId} />}
       </div>
     </div>
