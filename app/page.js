@@ -4311,10 +4311,20 @@ function GuestFitView({ stories, experience }) {
     "Worth a conversation":   ACCENT,
   };
 
+  const EXAMPLES = ["Head of FP&A", "VP Strategy, pension fund", "Director, Analytics"];
+  const FACTS = ["CFA charterholder", "20 years in financial services", "Led teams of up to 150", "Published contributor, Innovation at the Back of the Bus", "Built enterprise insight functions from inception", "Manulife, OMERS, State Street"];
+
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [err, setErr] = useState(null);
+  const [factIdx, setFactIdx] = useState(0);
+
+  useEffect(() => {
+    if (!loading) return;
+    const t = setInterval(() => setFactIdx(i => (i + 1) % FACTS.length), 2000);
+    return () => clearInterval(t);
+  }, [loading]);
 
   async function run() {
     if (!input.trim()) return;
@@ -4340,11 +4350,17 @@ function GuestFitView({ stories, experience }) {
   return (
     <div style={{ paddingTop: "2rem", maxWidth: 580 }}>
       <div style={{ fontSize: 17, fontWeight: 700, color: "var(--color-text-primary)", marginBottom: 4 }}>How I fit your role</div>
-      <div style={{ fontSize: 13, color: "var(--color-text-secondary)", marginBottom: "1.25rem" }}>Paste a job description, or just type a role and company.</div>
+      <div style={{ fontSize: 13, color: "var(--color-text-secondary)", marginBottom: "1rem" }}>Paste a job description, or just type a role and company.</div>
+
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: "0.75rem" }}>
+        {EXAMPLES.map(ex => (
+          <button key={ex} onClick={() => setInput(ex)} disabled={loading} style={{ padding: "4px 10px", fontSize: 12, fontWeight: 500, color: ACCENT, background: "#fdf2f2", border: "0.5px solid #f3c4c4", borderRadius: 20, cursor: "pointer", fontFamily: "var(--font-sans)" }}>{ex}</button>
+        ))}
+      </div>
 
       <textarea
         style={inp}
-        placeholder="e.g. VP Strategy at a pension fund, or paste a full JD…"
+        placeholder="Paste a full job description, or just type a role and company. Example: 'VP Data Strategy at a Canadian bank'."
         value={input}
         onChange={e => setInput(e.target.value)}
         disabled={loading}
@@ -4354,6 +4370,13 @@ function GuestFitView({ stories, experience }) {
         disabled={loading || !input.trim()}
         style={{ marginTop: 10, padding: "10px 20px", fontSize: 14, fontWeight: 600, color: "#fff", background: loading || !input.trim() ? "#9ca3af" : ACCENT, border: "none", borderRadius: 8, cursor: loading || !input.trim() ? "default" : "pointer" }}
       >{loading ? "Assessing…" : "Show fit →"}</button>
+
+      {loading && (
+        <div style={{ marginTop: "1.25rem", display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ width: 6, height: 6, borderRadius: "50%", background: ACCENT, flexShrink: 0 }} />
+          <div style={{ fontSize: 13, color: ACCENT, fontWeight: 500 }}>{FACTS[factIdx]}</div>
+        </div>
+      )}
 
       {err && (
         <div style={{ marginTop: "1rem", fontSize: 13, color: ACCENT, padding: "10px 14px", background: "#FCEBEB", borderRadius: 7 }}>⚠ {err}</div>
