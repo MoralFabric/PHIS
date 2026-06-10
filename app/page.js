@@ -2457,8 +2457,6 @@ function InterviewView({ stories, guestSessionId, guttered = true }) {
     setMessages(m => [...m, { role: "guest", text }]);
     setTyping(true);
 
-    if (guestSessionId) logInterviewQuestion(guestSessionId, text);
-
     try {
       const ctx = stories.map(s =>
         `STORY: ${s.title} (${s.employer})\n${s.fullStory || [s.situation, s.obstacle, s.action, s.result].filter(Boolean).join(" ")}`
@@ -2476,7 +2474,9 @@ function InterviewView({ stories, guestSessionId, guttered = true }) {
         userMsg,
         1000, 0.4
       );
-      setMessages(m => [...m, { role: "adam", text: ans.trim() }]);
+      const adamText = ans.trim();
+      setMessages(m => [...m, { role: "adam", text: adamText }]);
+      if (guestSessionId) logInterviewQuestion(guestSessionId, text, adamText);
     } catch (e) {
       setErr("Something went wrong - please try again.");
     }
@@ -4517,11 +4517,22 @@ function GuestVisitorsView() {
 
             {s.interview_questions && s.interview_questions.length > 0 && (
               <div style={{ marginTop: 10 }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: "var(--color-text-tertiary)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>Interview questions asked</div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-                  {s.interview_questions.map((q, i) => (
-                    <div key={i} style={{ fontSize: 13, color: "var(--color-text-primary)", paddingLeft: 8, borderLeft: "2px solid #f3c4c4" }}>{q.question}</div>
-                  ))}
+                <div style={{ fontSize: 11, fontWeight: 600, color: "var(--color-text-tertiary)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>Interview exchanges</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  {s.interview_questions.map((item, i) => {
+                    const q = typeof item === "string" ? item : (item.question || "");
+                    const a = typeof item === "string" ? null : (item.answer || null);
+                    return (
+                      <div key={i} style={{ paddingLeft: 8, borderLeft: "2px solid #f3c4c4" }}>
+                        <div style={{ fontSize: 13, fontWeight: 500, color: "var(--color-text-primary)", marginBottom: 5 }}>{q}</div>
+                        {a ? (
+                          <div style={{ fontSize: 12, color: "var(--color-text-secondary)", background: "var(--color-background-secondary)", borderRadius: 5, padding: "8px 10px", lineHeight: 1.65 }}>{a}</div>
+                        ) : (
+                          <div style={{ fontSize: 12, color: "var(--color-text-tertiary)", fontStyle: "italic" }}>not recorded</div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -4645,9 +4656,10 @@ function EntryGate({ onAdam, onGuest }) {
   return (
     <div style={wrap}>
       <div style={box}>
-        <div style={{ marginBottom: 36 }}>
+        <div style={{ marginBottom: 12 }}>
           <PhisWordmark reversed height={36} />
         </div>
+        <div style={{ fontSize: 10, fontWeight: 400, textTransform: "uppercase", letterSpacing: "0.18em", color: "#7E93A8", textAlign: "center", marginBottom: 24 }}>Professional History Intelligence Studio</div>
 
         {step === "choose" && (
           <>
