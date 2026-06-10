@@ -2421,58 +2421,131 @@ function AskView({stories}) {
 }
 
 // ─── INTERVIEW VIEW ───────────────────────────────────────
-function InterviewView({stories, guestSessionId}) {
-  const [q,setQ]=useState("");
-  const [busy,setBusy]=useState(false);
-  const [answer,setAnswer]=useState(null);
-  const [copied,setCopied]=useState(false);
-  const [err,setErr]=useState("");
-  const examples=["Tell me about a time you led through significant resistance.","Describe a situation where you had to influence without authority.","Give me an example of how you've used data to change an organization's direction.","Tell me about a time you had to deliver difficult news to senior leadership.","How have you handled a politically toxic work environment?","Walk me through how you built something meaningful from scratch.","Tell me about your most significant career failure and what you learned.","Describe a time you had to navigate a major organizational change."];
+function InterviewView({ stories, guestSessionId }) {
+  const GP = "'Poppins', system-ui, sans-serif";
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState("");
+  const [typing, setTyping] = useState(false);
+  const [err, setErr] = useState("");
+  const threadRef = useRef(null);
 
-  async function ask(question) {
-    const prompt=question||q;
-    if(!prompt.trim()||busy)return;
-    setBusy(true);setErr("");setAnswer(null);setCopied(false);
-    try{
-      const ctx=stories.map(s=>`STORY: ${s.title} (${s.employer})\n${s.fullStory||[s.situation,s.obstacle,s.action,s.result].filter(Boolean).join(" ")}`).join("\n\n---\n\n");
-      const ans=await callClaude(
-        `You are Adam Waldman, a senior finance and analytics executive with 15+ years of experience building insight-driven organizations. You are in a job interview. Draw from the specific stories in your library to compose your answer. Write in first person, naturally and confidently, as you would speak in a real interview room. Be specific — name the initiative, the obstacle, what you did, what happened. 3 to 4 paragraphs. No bullets. No headers. No hedging. Sound like a human being who has done real things. When answering questions about whether Adam has done something, interpret the question generously. Contributing a chapter to a book counts as writing for that book. Co-authoring counts. Speaking on a topic counts as expertise. Don't refuse credit for things the stories clearly demonstrate. If a story partially matches the question, surface it and explain the nature of his involvement rather than answering "no."`,
-        `INTERVIEW QUESTION: "${prompt}"\n\nYOUR STORIES TO DRAW FROM:\n${ctx}`,
+  const EXAMPLES = [
+    "Tell me about a time you led through significant resistance.",
+    "Describe a situation where you had to influence without authority.",
+    "Give me an example of how you've used data to change an organization's direction.",
+    "Tell me about a time you had to deliver difficult news to senior leadership.",
+    "How have you handled a politically toxic work environment?",
+    "Walk me through how you built something meaningful from scratch.",
+    "Tell me about your most significant career failure and what you learned.",
+    "Describe a time you had to navigate a major organizational change.",
+  ];
+
+  useEffect(() => {
+    if (threadRef.current) {
+      threadRef.current.scrollTop = threadRef.current.scrollHeight;
+    }
+  }, [messages, typing]);
+
+  async function send(question) {
+    const text = (question !== undefined ? question : input).trim();
+    if (!text || typing) return;
+    setInput("");
+    setErr("");
+
+    const prev = messages;
+    setMessages(m => [...m, { role: "guest", text }]);
+    setTyping(true);
+
+    if (guestSessionId) logInterviewQuestion(guestSessionId, text);
+
+    try {
+      const ctx = stories.map(s =>
+        `STORY: ${s.title} (${s.employer})\n${s.fullStory || [s.situation, s.obstacle, s.action, s.result].filter(Boolean).join(" ")}`
+      ).join("\n\n---\n\n");
+
+      const history = prev.map(m =>
+        m.role === "guest" ? `INTERVIEWER: "${m.text}"` : `ADAM: ${m.text}`
+      ).join("\n\n");
+
+      const userMsg = (history ? history + "\n\n" : "") +
+        `INTERVIEW QUESTION: "${text}"\n\nYOUR STORIES TO DRAW FROM:\n${ctx}`;
+
+      const ans = await callClaude(
+        `You are Adam Waldman, a senior finance and analytics executive with 15+ years of experience building insight-driven organizations. You are in a job interview. Draw from the specific stories in your library to compose your answer. Write in first person, naturally and confidently, as you would speak in a real interview room. Be specific - name the initiative, the obstacle, what you did, what happened. 3 to 4 paragraphs. No bullets. No headers. No hedging. Sound like a human being who has done real things. When answering questions about whether Adam has done something, interpret the question generously. Contributing a chapter to a book counts as writing for that book. Co-authoring counts. Speaking on a topic counts as expertise. Don't refuse credit for things the stories clearly demonstrate. If a story partially matches the question, surface it and explain the nature of his involvement rather than answering "no."`,
+        userMsg,
         1000, 0.4
       );
-      setAnswer(ans.trim());
-      if (guestSessionId) logInterviewQuestion(guestSessionId, prompt);
-    }catch(e){setErr("Something went wrong — please try again.");}
-    setBusy(false);
+      setMessages(m => [...m, { role: "adam", text: ans.trim() }]);
+    } catch (e) {
+      setErr("Something went wrong - please try again.");
+    }
+    setTyping(false);
   }
 
-  function copy(){if(answer){navigator.clipboard?.writeText(answer);setCopied(true);setTimeout(()=>setCopied(false),2000);}}
   return (
-    <div style={{padding:"1.5rem 0",maxWidth:680}}>
-      <div style={{marginBottom:"1.5rem"}}>
-        <div style={{fontSize:20,fontWeight:500,color:"var(--color-text-primary)",marginBottom:4}}>Interview Adam</div>
-        <div style={{fontSize:13,color:"var(--color-text-secondary)"}}>Ask any interview question and get one composed answer in Adam's voice, drawn from his SOAR library.</div>
-      </div>
-      <div style={{display:"flex",gap:8,marginBottom:14}}>
-        <textarea value={q} onChange={e=>setQ(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();ask();}}} placeholder="e.g. Tell me about a time you led through resistance…" style={{flex:1,fontSize:13,padding:"9px 12px",border:"0.5px solid var(--color-border-tertiary)",borderRadius:8,background:"var(--color-background-secondary)",color:"var(--color-text-primary)",fontFamily:"var(--font-sans)",resize:"none",lineHeight:1.6,minHeight:66}}/>
-        <button onClick={()=>ask()} disabled={busy||!q.trim()} style={{padding:"9px 16px",borderRadius:8,cursor:q.trim()&&!busy?"pointer":"default",background:q.trim()&&!busy?"var(--color-text-primary)":"var(--color-background-secondary)",color:q.trim()&&!busy?"var(--color-background-primary)":"var(--color-text-tertiary)",border:"none",fontSize:13,fontWeight:500,alignSelf:"flex-end",whiteSpace:"nowrap"}}>
-          {busy?"Thinking…":"Ask →"}
-        </button>
-      </div>
-      {!answer&&!busy&&<div><div style={{fontSize:12,color:"var(--color-text-tertiary)",marginBottom:8}}>Try asking:</div><div style={{display:"flex",flexDirection:"column",gap:5}}>{examples.map((ex,i)=><button key={i} onClick={()=>{setQ(ex);ask(ex);}} style={{fontSize:12,padding:"8px 12px",border:"0.5px solid var(--color-border-secondary)",borderRadius:8,background:"none",color:"var(--color-text-secondary)",cursor:"pointer",textAlign:"left",lineHeight:1.5}}>{ex}</button>)}</div></div>}
-      {busy&&<div style={{textAlign:"center",padding:"2.5rem",color:"var(--color-text-secondary)",fontSize:13}}><div style={{fontSize:20,marginBottom:10}}>🎤</div>Composing Adam's answer…</div>}
-      {err&&<div style={{fontSize:13,color:"#b91c1c",padding:"10px 14px",background:"#fee2e2",borderRadius:8}}>{err}</div>}
-      {answer&&(
-        <div>
-          <div style={{background:"var(--color-background-secondary)",borderRadius:10,padding:"1.5rem",marginBottom:"1rem",borderLeft:"3px solid #1d4ed8"}}>
-            <div style={{fontSize:14,color:"var(--color-text-primary)",lineHeight:1.9,whiteSpace:"pre-wrap"}}>{answer}</div>
+    <div style={{ display: "flex", flexDirection: "column", fontFamily: GP }}>
+      <div
+        ref={threadRef}
+        style={{ overflowY: "auto", padding: "1.5rem 1rem", minHeight: 300, maxHeight: "calc(100vh - 180px)" }}
+      >
+        {messages.length === 0 && (
+          <div>
+            <div style={{ fontSize: 20, fontWeight: 500, color: "var(--phis-navy)", marginBottom: 4 }}>Interview Adam</div>
+            <div style={{ fontSize: 13, color: "var(--phis-slate)", marginBottom: "1.5rem" }}>Ask any interview question and get Adam's answer in his own voice, drawn from his story library. Follow-up questions keep the thread going.</div>
+            <div style={{ fontSize: 12, color: "var(--phis-mist)", marginBottom: 8 }}>Try asking:</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+              {EXAMPLES.map((ex, i) => (
+                <button key={i} onClick={() => send(ex)} style={{ fontSize: 12, padding: "8px 12px", border: "1px solid var(--phis-hair)", borderRadius: 8, background: "none", color: "var(--phis-slate)", cursor: "pointer", textAlign: "left", lineHeight: 1.5 }}>{ex}</button>
+              ))}
+            </div>
           </div>
-          <div style={{display:"flex",gap:8}}>
-            <button onClick={()=>ask()} style={{...css.ghost}}>↺ Regenerate</button>
-            <button onClick={copy} style={{...css.ghost,color:copied?"#065f46":"var(--color-text-secondary)",borderColor:copied?"#10b981":"var(--color-border-secondary)"}}>{copied?"✓ Copied":"Copy answer"}</button>
+        )}
+        {messages.map((msg, i) => {
+          const isGuest = msg.role === "guest";
+          return (
+            <div key={i} style={{ display: "flex", justifyContent: isGuest ? "flex-end" : "flex-start", marginBottom: 12 }}>
+              <div style={{
+                maxWidth: "72%",
+                padding: "10px 14px",
+                borderRadius: isGuest ? "16px 4px 16px 16px" : "4px 16px 16px 16px",
+                background: isGuest ? "var(--phis-paper)" : "var(--phis-navy)",
+                border: isGuest ? "1px solid var(--phis-hair)" : "none",
+                color: isGuest ? "var(--phis-ink)" : "#fff",
+                fontSize: 13,
+                lineHeight: 1.7,
+                whiteSpace: "pre-wrap",
+              }}>{msg.text}</div>
+            </div>
+          );
+        })}
+        {typing && (
+          <div style={{ display: "flex", justifyContent: "flex-start", marginBottom: 12 }}>
+            <div style={{ padding: "12px 16px", borderRadius: "4px 16px 16px 16px", background: "var(--phis-navy)", display: "flex", gap: 5, alignItems: "center" }}>
+              {[0, 1, 2].map(d => (
+                <span key={d} style={{ width: 6, height: 6, borderRadius: "50%", background: "rgba(255,255,255,0.65)", display: "inline-block", animation: `phisTyping 1.2s ${d * 0.2}s infinite` }} />
+              ))}
+            </div>
           </div>
+        )}
+        {err && <div style={{ fontSize: 13, color: "#b91c1c", padding: "10px 14px", background: "#fee2e2", borderRadius: 8, marginBottom: 8 }}>{err}</div>}
+      </div>
+
+      <div style={{ borderTop: "1px solid var(--phis-hair)", padding: "12px 1rem", background: "var(--phis-stone)", position: "sticky", bottom: 0 }}>
+        <div style={{ display: "flex", gap: 8 }}>
+          <input
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); send(); } }}
+            placeholder="Ask an interview question..."
+            style={{ flex: 1, fontSize: 13, padding: "9px 12px", border: "1px solid var(--phis-hair)", borderRadius: 8, background: "var(--phis-paper)", color: "var(--phis-ink)", fontFamily: GP, outline: "none" }}
+          />
+          <button
+            onClick={() => send()}
+            disabled={typing || !input.trim()}
+            style={{ padding: "9px 18px", borderRadius: 8, cursor: input.trim() && !typing ? "pointer" : "default", background: input.trim() && !typing ? "var(--phis-vermilion)" : "var(--phis-hair)", color: input.trim() && !typing ? "#fff" : "var(--phis-mist)", border: "none", fontSize: 13, fontWeight: 500, whiteSpace: "nowrap", fontFamily: GP }}
+          >Send</button>
         </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -4208,11 +4281,14 @@ function ProfileView({profile,setProfile,awards,education,profileContext}) {
 
 // ─── PHIS WORDMARK ────────────────────────────────────────
 function PhisWordmark({ reversed = false, height = 28 }) {
-  const c = reversed ? "#fff" : "var(--phis-navy)";
   return (
-    <span style={{ fontFamily: "'Poppins', system-ui, sans-serif", fontWeight: 600, fontSize: height, lineHeight: 1, color: c, letterSpacing: "-0.04em", display: "inline-flex", alignItems: "center" }}>
-      ph<span style={{ color: "var(--phis-marigold)" }}>i</span>s
-    </span>
+    <svg viewBox="-36 0 220 76" height={height} xmlns="http://www.w3.org/2000/svg">
+      <text x="10" y="58" fontFamily="Poppins" fontWeight="600" fontSize="46"
+            letterSpacing="-1.5" fill={reversed ? "#FFFFFF" : "#1E3A5F"}>ph&#305;s</text>
+      <path d="M-24 50 Q40 -6 162 30" stroke={reversed ? "#FFFFFF" : "#1E3A5F"}
+            strokeWidth="2.4" fill="none" strokeLinecap="round"/>
+      <circle cx="60" cy="16" r="5" fill="#EA6A1A"/>
+    </svg>
   );
 }
 
@@ -4254,11 +4330,14 @@ function GuestTopBar({ gpage, setGpage, guestName }) {
 function GuestDashboard({ experience, awards, education, profileContext, fitRole }) {
   const GP = "'Poppins', system-ui, sans-serif";
   const [metrics, setMetrics] = useState([]);
+  const [metricsLoaded, setMetricsLoaded] = useState(false);
   const [aiIds, setAiIds] = useState(null);
   const [lastAiRole, setLastAiRole] = useState(null);
   const [expanded, setExpanded] = useState(null);
 
-  useEffect(() => { getMetrics().then(rows => setMetrics(rows)); }, []);
+  useEffect(() => {
+    getMetrics().then(rows => { setMetrics(rows); setMetricsLoaded(true); });
+  }, []);
 
   useEffect(() => {
     if (!fitRole || !metrics.length || fitRole === lastAiRole) return;
@@ -4314,9 +4393,11 @@ function GuestDashboard({ experience, awards, education, profileContext, fitRole
               <div style={{ fontSize: 10, fontWeight: 500, color: "var(--phis-slate)", textTransform: "uppercase", letterSpacing: ".08em", lineHeight: 1.3 }}>{m.label}</div>
             </div>
           ))}
-          {metrics.length === 0 && [0,1,2,3].map(i => (
-            <div key={i} style={{ background: "var(--phis-paper)", border: "1px solid var(--phis-hair)", borderRadius: 5, minHeight: 76, opacity: 0.25 }} />
-          ))}
+          {metricsLoaded && metrics.length === 0 && (
+            <div style={{ gridColumn: "1 / -1", fontSize: 12, color: "var(--phis-mist)", padding: "14px 0" }}>
+              Metrics unavailable - profile_metrics table may need to be created. Check the browser console for details.
+            </div>
+          )}
         </div>
       </div>
 
