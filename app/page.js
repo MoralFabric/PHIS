@@ -2429,6 +2429,7 @@ function InterviewView({ stories, guestSessionId, guttered = true }) {
   const [typing, setTyping] = useState(false);
   const [err, setErr] = useState("");
   const threadRef = useRef(null);
+  const bottomRef = useRef(null);
 
   const EXAMPLES = [
     "Tell me about a time you led through significant resistance.",
@@ -2442,10 +2443,8 @@ function InterviewView({ stories, guestSessionId, guttered = true }) {
   ];
 
   useEffect(() => {
-    if (threadRef.current) {
-      threadRef.current.scrollTop = threadRef.current.scrollHeight;
-    }
-  }, [messages, typing]);
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
   async function send(question) {
     const text = (question !== undefined ? question : input).trim();
@@ -2529,6 +2528,7 @@ function InterviewView({ stories, guestSessionId, guttered = true }) {
           </div>
         )}
         {err && <div style={{ fontSize: 13, color: "#b91c1c", padding: "10px 14px", background: "#fee2e2", borderRadius: 8, marginBottom: 8 }}>{err}</div>}
+        <div ref={bottomRef} />
       </div>
 
       <div style={{ borderTop: "1px solid var(--phis-hair)", padding: `12px ${hPad}`, background: "var(--phis-stone)", position: "sticky", bottom: 0 }}>
