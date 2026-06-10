@@ -2421,8 +2421,9 @@ function AskView({stories}) {
 }
 
 // ─── INTERVIEW VIEW ───────────────────────────────────────
-function InterviewView({ stories, guestSessionId }) {
+function InterviewView({ stories, guestSessionId, guttered = true }) {
   const GP = "'Poppins', system-ui, sans-serif";
+  const hPad = guttered ? "1rem" : "0";
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
@@ -2486,7 +2487,7 @@ function InterviewView({ stories, guestSessionId }) {
     <div style={{ display: "flex", flexDirection: "column", fontFamily: GP }}>
       <div
         ref={threadRef}
-        style={{ overflowY: "auto", padding: "1.5rem 1rem", minHeight: 300, maxHeight: "calc(100vh - 180px)" }}
+        style={{ overflowY: "auto", padding: `1.5rem ${hPad}`, minHeight: 300, maxHeight: "calc(100vh - 180px)" }}
       >
         {messages.length === 0 && (
           <div>
@@ -2530,7 +2531,7 @@ function InterviewView({ stories, guestSessionId }) {
         {err && <div style={{ fontSize: 13, color: "#b91c1c", padding: "10px 14px", background: "#fee2e2", borderRadius: 8, marginBottom: 8 }}>{err}</div>}
       </div>
 
-      <div style={{ borderTop: "1px solid var(--phis-hair)", padding: "12px 1rem", background: "var(--phis-stone)", position: "sticky", bottom: 0 }}>
+      <div style={{ borderTop: "1px solid var(--phis-hair)", padding: `12px ${hPad}`, background: "var(--phis-stone)", position: "sticky", bottom: 0 }}>
         <div style={{ display: "flex", gap: 8 }}>
           <input
             value={input}
@@ -4302,11 +4303,11 @@ function GuestTopBar({ gpage, setGpage, guestName }) {
   ];
   return (
     <div style={{ background: "var(--phis-paper)", borderTop: "3px solid var(--phis-marigold)", borderBottom: "1px solid var(--phis-hair)", position: "sticky", top: 0, zIndex: 10, fontFamily: GP }}>
-      <div style={{ display: "flex", alignItems: "center", padding: "0 2rem", maxWidth: 820, margin: "0 auto", height: 48 }}>
-        <div style={{ flexShrink: 0, paddingRight: 20, borderRight: "1px solid var(--phis-hair)", height: "100%", display: "flex", alignItems: "center" }}>
+      <div className="phis-topbar-inner">
+        <div className="phis-topbar-logo">
           <PhisWordmark height={22} />
         </div>
-        <div className="phis-topbar-nav" style={{ flex: 1, paddingLeft: 8, height: "100%", alignItems: "center" }}>
+        <div className="phis-topbar-nav">
           {NAV.map(item => (
             <button key={item.id} onClick={() => setGpage(item.id)} style={{
               height: "100%", padding: "0 12px", border: "none",
@@ -4314,12 +4315,12 @@ function GuestTopBar({ gpage, setGpage, guestName }) {
               background: "none", cursor: "pointer", fontSize: 13,
               fontWeight: gpage === item.id ? 500 : 400,
               color: gpage === item.id ? "var(--phis-navy)" : "var(--phis-slate)",
-              fontFamily: GP, whiteSpace: "nowrap",
+              fontFamily: GP, whiteSpace: "nowrap", flexShrink: 0,
             }}>{item.label}</button>
           ))}
         </div>
         {guestName && (
-          <div style={{ fontSize: 12, fontWeight: 300, color: "var(--phis-mist)", fontFamily: GP, flexShrink: 0, paddingLeft: 16, whiteSpace: "nowrap" }}>{guestName}</div>
+          <div className="phis-topbar-name" style={{ fontSize: 12, fontWeight: 300, color: "var(--phis-mist)", fontFamily: GP, whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{guestName}</div>
         )}
       </div>
     </div>
@@ -4869,9 +4870,9 @@ function GuestShell({ guest, stories, experience, awards, education, profileCont
   return (
     <div style={{ display: "flex", flexDirection: "column", fontFamily: GP, minHeight: "100vh", background: "var(--phis-stone)" }}>
       <GuestTopBar gpage={gpage} setGpage={setGpage} guestName={guest.name} />
-      <div style={{ flex: 1, maxWidth: 820, margin: "0 auto", width: "100%" }}>
+      <div className="phis-guest-content" style={{ flex: 1, maxWidth: 820, margin: "0 auto", width: "100%" }}>
         {gpage === "home" && <GuestDashboard experience={experience} awards={awards} education={education} profileContext={profileContext} fitRole={fitRole} />}
-        {gpage === "interview" && <InterviewView stories={stories} guestSessionId={guestSessionId} />}
+        {gpage === "interview" && <InterviewView stories={stories} guestSessionId={guestSessionId} guttered={false} />}
         {gpage === "fit" && <GuestFitView stories={stories} experience={experience} guestSessionId={guestSessionId} onFitComplete={role => setFitRole(role)} />}
       </div>
     </div>

@@ -52,6 +52,8 @@ html, body {
 a { color: inherit; }
 
 /* -- Guest responsive -- */
+
+/* Metrics strip: 2-up mobile, 4-up desktop */
 .phis-metrics-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -60,14 +62,81 @@ a { color: inherit; }
 @media (min-width: 640px) {
   .phis-metrics-grid { grid-template-columns: repeat(4, 1fr); }
 }
-.phis-dashboard { padding: 0 1rem; }
+
+/* Dashboard: horizontal padding from .phis-guest-content; keep bottom spacing */
+.phis-dashboard { padding: 0; }
+
+/* Guest content container: symmetric gutters on all guest views */
+.phis-guest-content { padding: 0 1rem; }
 @media (min-width: 640px) {
-  .phis-dashboard { padding: 0 2rem; }
+  .phis-guest-content { padding: 0 2rem; }
 }
-.phis-topbar-nav {
+
+/* ─── Guest top bar ─── */
+/* Mobile: grid, two rows (logo+name / nav) */
+.phis-topbar-inner {
+  display: grid;
+  grid-template-areas: "logo name" "nav nav";
+  grid-template-columns: auto 1fr;
+  padding: 0 1rem;
+  max-width: 820px;
+  margin: 0 auto;
+  width: 100%;
+}
+.phis-topbar-logo {
+  grid-area: logo;
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
+  height: 40px;
+}
+.phis-topbar-nav {
+  grid-area: nav;
+  display: flex;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  height: 36px;
+  align-items: center;
+  border-top: 1px solid var(--phis-hair);
+}
+.phis-topbar-nav::-webkit-scrollbar { display: none; }
+.phis-topbar-name {
+  grid-area: name;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  height: 40px;
+  padding-left: 8px;
+  overflow: hidden;
+}
+
+/* Desktop: single flex row (logo | nav | name) */
+@media (min-width: 640px) {
+  .phis-topbar-inner {
+    display: flex;
+    align-items: center;
+    height: 48px;
+    padding: 0 2rem;
+  }
+  .phis-topbar-logo {
+    height: 100%;
+    border-right: 1px solid var(--phis-hair);
+    padding-right: 20px;
+    flex-shrink: 0;
+  }
+  .phis-topbar-nav {
+    flex: 1;
+    overflow-x: visible;
+    height: 100%;
+    border-top: none;
+    padding-left: 8px;
+    scrollbar-width: auto;
+  }
+  .phis-topbar-name {
+    height: auto;
+    flex-shrink: 0;
+    padding-left: 16px;
+  }
 }
 
 textarea, input, select, button {
