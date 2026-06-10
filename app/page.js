@@ -4378,6 +4378,42 @@ function GuestDashboard({ experience, awards, education, profileContext, fitRole
     : (profileContext?.positioningSummary || "Data, analytics and insight leadership for organizations that want to think before they react.");
 
   const exp = experience || [];
+  const mainExp  = exp.filter(e => (e.sortOrder || 0) < 90);
+  const earlyExp = exp.filter(e => (e.sortOrder || 0) >= 90);
+
+  function ExpList({ items }) {
+    return items.map((e, i) => {
+      const key = e.id || e.role || i;
+      const isOpen = expanded === key;
+      return (
+        <div key={key}>
+          <div onClick={() => setExpanded(isOpen ? null : key)} style={{ cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "flex-start", paddingBottom: "1rem" }}>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 500, color: "var(--phis-ink)", marginBottom: 2 }}>{e.role}</div>
+              <div style={{ fontSize: 12, color: "var(--phis-navy)" }}>{e.org}</div>
+              <div style={{ fontSize: 11, color: "var(--phis-mist)", marginTop: 2 }}>{e.dates}</div>
+            </div>
+            <span style={{ fontSize: 9, color: "var(--phis-mist)", marginTop: 4, flexShrink: 0 }}>{isOpen ? "v" : ">"}</span>
+          </div>
+          {isOpen && (e.bullets || []).length > 0 && (
+            <div style={{ paddingBottom: "1rem", paddingLeft: 2 }}>
+              {(e.bullets || []).map((b, bi) => {
+                const text = typeof b === "string" ? b : (b.text || b.description || "");
+                if (!text) return null;
+                return (
+                  <div key={bi} style={{ display: "flex", gap: 8, marginBottom: 7, alignItems: "flex-start" }}>
+                    <span style={{ color: "var(--phis-marigold)", fontWeight: 700, flexShrink: 0, fontSize: 10, marginTop: 1 }}>+</span>
+                    <span style={{ fontSize: 12, fontWeight: 300, color: "var(--phis-slate)", lineHeight: 1.6 }}>{text}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          {i < items.length - 1 && <div style={{ height: 1, background: "var(--phis-hair)", marginBottom: "1rem" }} />}
+        </div>
+      );
+    });
+  }
 
   return (
     <div className="phis-dashboard" style={{ fontFamily: GP, maxWidth: 760, paddingBottom: "3rem" }}>
@@ -4404,38 +4440,15 @@ function GuestDashboard({ experience, awards, education, profileContext, fitRole
 
       <div style={{ borderTop: "1px solid var(--phis-hair)", paddingTop: "1.5rem" }}>
         <div style={{ fontSize: 9, fontWeight: 600, color: "var(--phis-mist)", textTransform: "uppercase", letterSpacing: ".1em", marginBottom: "1rem" }}>Career</div>
-        {exp.map((e, i) => {
-          const key = e.id || e.role || i;
-          const isOpen = expanded === key;
-          return (
-            <div key={key}>
-              <div onClick={() => setExpanded(isOpen ? null : key)} style={{ cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "flex-start", paddingBottom: "1rem" }}>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 500, color: "var(--phis-ink)", marginBottom: 2 }}>{e.role}</div>
-                  <div style={{ fontSize: 12, color: "var(--phis-navy)" }}>{e.org}</div>
-                  <div style={{ fontSize: 11, color: "var(--phis-mist)", marginTop: 2 }}>{e.dates}</div>
-                </div>
-                <span style={{ fontSize: 9, color: "var(--phis-mist)", marginTop: 4, flexShrink: 0 }}>{isOpen ? "v" : ">"}</span>
-              </div>
-              {isOpen && (
-                <div style={{ paddingBottom: "1rem", paddingLeft: 2 }}>
-                  {(e.bullets || []).slice(0, 4).map((b, bi) => {
-                    const text = typeof b === "string" ? b : (b.text || b.description || "");
-                    if (!text) return null;
-                    return (
-                      <div key={bi} style={{ display: "flex", gap: 8, marginBottom: 7, alignItems: "flex-start" }}>
-                        <span style={{ color: "var(--phis-marigold)", fontWeight: 700, flexShrink: 0, fontSize: 10, marginTop: 1 }}>+</span>
-                        <span style={{ fontSize: 12, fontWeight: 300, color: "var(--phis-slate)", lineHeight: 1.6 }}>{text}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-              {i < exp.length - 1 && <div style={{ height: 1, background: "var(--phis-hair)", marginBottom: "1rem" }} />}
-            </div>
-          );
-        })}
+        <ExpList items={mainExp} />
       </div>
+
+      {earlyExp.length > 0 && (
+        <div style={{ borderTop: "1px solid var(--phis-hair)", paddingTop: "1.5rem", marginTop: "1.5rem" }}>
+          <div style={{ fontSize: 9, fontWeight: 600, color: "var(--phis-mist)", textTransform: "uppercase", letterSpacing: ".1em", marginBottom: "1rem" }}>Additional and Early Experience</div>
+          <ExpList items={earlyExp} />
+        </div>
+      )}
 
       {education && education.length > 0 && (
         <div style={{ borderTop: "1px solid var(--phis-hair)", paddingTop: "1.25rem" }}>
