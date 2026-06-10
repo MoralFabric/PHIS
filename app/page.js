@@ -4281,14 +4281,18 @@ function ProfileView({profile,setProfile,awards,education,profileContext}) {
 }
 
 // ─── PHIS WORDMARK ────────────────────────────────────────
-function PhisWordmark({ reversed = false, height = 28 }) {
+function PhisWordmark({ height = 28, reversed = false }) {
+  const c = reversed ? "#FFFFFF" : "#1E3A5F";
   return (
-    <svg viewBox="-36 0 220 76" height={height} xmlns="http://www.w3.org/2000/svg">
-      <text x="10" y="58" fontFamily="Poppins" fontWeight="600" fontSize="46"
-            letterSpacing="-1.5" fill={reversed ? "#FFFFFF" : "#1E3A5F"}>ph&#305;s</text>
-      <path d="M-24 50 Q40 -6 162 30" stroke={reversed ? "#FFFFFF" : "#1E3A5F"}
-            strokeWidth="2.4" fill="none" strokeLinecap="round"/>
-      <circle cx="60" cy="16" r="5" fill="#EA6A1A"/>
+    <svg viewBox="-30.0 0 159.5 76" height={height} xmlns="http://www.w3.org/2000/svg" role="img" aria-label="phis">
+      <g fill={c}>
+        <path transform="translate(10.00 58.00) scale(0.04600 -0.04600)" d="M392 563Q463 563 520.5 528.0Q578 493 611.5 428.5Q645 364 645 279Q645 194 611.5 128.5Q578 63 520.5 27.0Q463 -9 392 -9Q331 -9 284.5 16.0Q238 41 209 79V-264H69V554H209V474Q236 512 283.5 537.5Q331 563 392 563ZM355 440Q317 440 283.5 420.5Q250 401 229.5 364.0Q209 327 209 277Q209 227 229.5 190.0Q250 153 283.5 133.5Q317 114 355 114Q394 114 427.5 134.0Q461 154 481.5 191.0Q502 228 502 279Q502 329 481.5 365.5Q461 402 427.5 421.0Q394 440 355 440Z"/>
+        <path transform="translate(39.69 58.00) scale(0.04600 -0.04600)" d="M597 325V0H457V306Q457 372 424.0 407.5Q391 443 334 443Q276 443 242.5 407.5Q209 372 209 306V0H69V740H209V485Q236 521 281.0 541.5Q326 562 381 562Q444 562 493.0 534.5Q542 507 569.5 453.5Q597 400 597 325Z"/>
+        <path transform="translate(68.59 58.00) scale(0.04600 -0.04600)" d="M215 554V0H75V554Z"/>
+        <path transform="translate(80.43 58.00) scale(0.04600 -0.04600)" d="M39 175H180Q184 143 211.5 122.0Q239 101 280 101Q320 101 342.5 117.0Q365 133 365 158Q365 185 337.5 198.5Q310 212 250 228Q188 243 148.5 259.0Q109 275 80.5 308.0Q52 341 52 397Q52 443 78.5 481.0Q105 519 154.5 541.0Q204 563 271 563Q370 563 429.0 513.5Q488 464 494 380H360Q357 413 332.5 432.5Q308 452 267 452Q229 452 208.5 438.0Q188 424 188 399Q188 371 216.0 356.5Q244 342 303 327Q363 312 402.0 296.0Q441 280 469.5 246.5Q498 213 499 158Q499 110 472.5 72.0Q446 34 396.5 12.5Q347 -9 281 -9Q213 -9 159.0 15.5Q105 40 73.5 82.0Q42 124 39 175Z"/>
+      </g>
+      <path d="M-24.00 50.00 Q75.26 -6.00 123.50 30.00" stroke={c} strokeWidth="2.4" fill="none" strokeLinecap="round"/>
+      <circle cx="75.26" cy="15.95" r="5" fill="#EA6A1A"/>
     </svg>
   );
 }
