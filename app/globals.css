@@ -26,6 +26,16 @@
   --g-stone:         #EEF0F3;
   --g-paper:         #FFFFFF;
   --g-hair:          #E6E9ED;
+
+  --phis-navy:      #1E3A5F;
+  --phis-marigold:  #EA6A1A;
+  --phis-vermilion: #E8541E;
+  --phis-ink:       #19222E;
+  --phis-slate:     #6B7480;
+  --phis-mist:      #9AA2AD;
+  --phis-stone:     #EEF0F3;
+  --phis-paper:     #FFFFFF;
+  --phis-hair:      #E6E9ED;
 }
 
 html, body {
@@ -40,6 +50,25 @@ html, body {
 }
 
 a { color: inherit; }
+
+/* -- Guest responsive -- */
+.phis-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+@media (min-width: 640px) {
+  .phis-metrics-grid { grid-template-columns: repeat(4, 1fr); }
+}
+.phis-dashboard { padding: 0 1rem; }
+@media (min-width: 640px) {
+  .phis-dashboard { padding: 0 2rem; }
+}
+.phis-topbar-nav {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+}
 
 textarea, input, select, button {
   font-family: var(--font-sans);

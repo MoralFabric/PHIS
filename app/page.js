@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useMemo } from "react";
-import { seedAndGetStories, upsertStory, upsertStories, deleteStory as dbDeleteStory, getExperience, saveExperience, getProfile, saveProfile, getAwards, insertAward, getEducation, insertEducation, getProfileContext, saveProfileContext, createGuestSession, logFitRun, logGuestQuestion, logInterviewQuestion, getGuestSessions } from '@/lib/data';
+import { seedAndGetStories, upsertStory, upsertStories, deleteStory as dbDeleteStory, getExperience, saveExperience, getProfile, saveProfile, getAwards, insertAward, getEducation, insertEducation, getProfileContext, saveProfileContext, createGuestSession, logFitRun, logGuestQuestion, logInterviewQuestion, getGuestSessions, getMetrics, createMetric, updateMetric, deleteMetric } from '@/lib/data';
 
 // ─── CONFIG ───────────────────────────────────────────────
 const MODEL   = "claude-sonnet-4-6";
@@ -4206,6 +4206,171 @@ function ProfileView({profile,setProfile,awards,education,profileContext}) {
   );
 }
 
+// ─── PHIS WORDMARK ────────────────────────────────────────
+function PhisWordmark({ reversed = false, height = 28 }) {
+  const c = reversed ? "#fff" : "var(--phis-navy)";
+  return (
+    <span style={{ fontFamily: "'Poppins', system-ui, sans-serif", fontWeight: 600, fontSize: height, lineHeight: 1, color: c, letterSpacing: "-0.04em", display: "inline-flex", alignItems: "center" }}>
+      ph<span style={{ color: "var(--phis-marigold)" }}>i</span>s
+    </span>
+  );
+}
+
+// ─── GUEST TOP BAR ────────────────────────────────────────
+function GuestTopBar({ gpage, setGpage, guestName }) {
+  const GP = "'Poppins', system-ui, sans-serif";
+  const NAV = [
+    { id: "home", label: "Profile" },
+    { id: "fit", label: "How I fit your role" },
+    { id: "interview", label: "Interview Adam" },
+  ];
+  return (
+    <div style={{ background: "var(--phis-paper)", borderTop: "3px solid var(--phis-marigold)", borderBottom: "1px solid var(--phis-hair)", position: "sticky", top: 0, zIndex: 10, fontFamily: GP }}>
+      <div style={{ display: "flex", alignItems: "center", padding: "0 2rem", maxWidth: 820, margin: "0 auto", height: 48 }}>
+        <div style={{ flexShrink: 0, paddingRight: 20, borderRight: "1px solid var(--phis-hair)", height: "100%", display: "flex", alignItems: "center" }}>
+          <PhisWordmark height={22} />
+        </div>
+        <div className="phis-topbar-nav" style={{ flex: 1, paddingLeft: 8, height: "100%", alignItems: "center" }}>
+          {NAV.map(item => (
+            <button key={item.id} onClick={() => setGpage(item.id)} style={{
+              height: "100%", padding: "0 12px", border: "none",
+              borderBottom: gpage === item.id ? "2px solid var(--phis-marigold)" : "2px solid transparent",
+              background: "none", cursor: "pointer", fontSize: 13,
+              fontWeight: gpage === item.id ? 500 : 400,
+              color: gpage === item.id ? "var(--phis-navy)" : "var(--phis-slate)",
+              fontFamily: GP, whiteSpace: "nowrap",
+            }}>{item.label}</button>
+          ))}
+        </div>
+        {guestName && (
+          <div style={{ fontSize: 12, fontWeight: 300, color: "var(--phis-mist)", fontFamily: GP, flexShrink: 0, paddingLeft: 16, whiteSpace: "nowrap" }}>{guestName}</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── GUEST DASHBOARD ──────────────────────────────────────
+function GuestDashboard({ experience, awards, education, profileContext, fitRole }) {
+  const GP = "'Poppins', system-ui, sans-serif";
+  const [metrics, setMetrics] = useState([]);
+  const [aiIds, setAiIds] = useState(null);
+  const [lastAiRole, setLastAiRole] = useState(null);
+  const [expanded, setExpanded] = useState(null);
+
+  useEffect(() => { getMetrics().then(rows => setMetrics(rows)); }, []);
+
+  useEffect(() => {
+    if (!fitRole || !metrics.length || fitRole === lastAiRole) return;
+    setLastAiRole(fitRole);
+    (async () => {
+      try {
+        const pool = metrics.map(m => ({ id: m.id, value: m.value, label: m.label, tags: m.tags || [], pinned: m.pinned }));
+        const raw = await callClaude(
+          'Select which metrics best demonstrate fit for the role. Return ONLY JSON: {"ids":[...]} with exactly 4 ids. Always include all pinned ids first (by sort_order), then the most role-relevant non-pinned ids. Use only ids from the provided list.',
+          `Role: ${fitRole}\nMetrics: ${JSON.stringify(pool)}`,
+          200, 0
+        );
+        const parsed = parseJSON(raw);
+        if (parsed?.ids?.length) setAiIds(parsed.ids.slice(0, 4));
+      } catch (e) { /* fall back to Phase 1 silently */ }
+    })();
+  }, [fitRole, metrics]);
+
+  const displayMetrics = useMemo(() => {
+    if (!metrics.length) return [];
+    if (aiIds) {
+      const byId = Object.fromEntries(metrics.map(m => [m.id, m]));
+      return aiIds.map(id => byId[id]).filter(Boolean).slice(0, 4);
+    }
+    return [...metrics]
+      .sort((a, b) => {
+        if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+        return (a.sort_order || 0) - (b.sort_order || 0);
+      })
+      .slice(0, 4);
+  }, [metrics, aiIds]);
+
+  const isAISelected = m => aiIds && aiIds.includes(m.id) && !m.pinned;
+
+  const subhead = fitRole
+    ? `Showing relevance for: ${fitRole}`
+    : (profileContext?.positioningSummary || "Data, analytics and insight leadership for organizations that want to think before they react.");
+
+  const exp = experience || [];
+
+  return (
+    <div className="phis-dashboard" style={{ fontFamily: GP, maxWidth: 760, paddingBottom: "3rem" }}>
+      <div style={{ paddingTop: "2rem", paddingBottom: "1.25rem" }}>
+        <div style={{ fontSize: 28, fontWeight: 600, color: "var(--phis-navy)", letterSpacing: "-0.02em", marginBottom: 6 }}>Adam Waldman</div>
+        <div style={{ fontSize: 13, fontWeight: fitRole ? 400 : 300, color: fitRole ? "var(--phis-marigold)" : "var(--phis-slate)", marginBottom: "1.5rem", lineHeight: 1.5 }}>{subhead}</div>
+        <div className="phis-metrics-grid">
+          {displayMetrics.map(m => (
+            <div key={m.id} style={{ background: "var(--phis-paper)", border: "1px solid var(--phis-hair)", borderRadius: 5, padding: "14px 16px", position: "relative" }}>
+              {isAISelected(m) && (
+                <span style={{ position: "absolute", top: 7, right: 8, fontSize: 8, fontWeight: 600, color: "var(--phis-marigold)", background: "rgba(234,106,26,.08)", border: "1px solid rgba(234,106,26,.3)", borderRadius: 3, padding: "1px 5px", textTransform: "uppercase", letterSpacing: ".06em" }}>AI</span>
+              )}
+              <div style={{ fontSize: 24, fontWeight: 600, color: "var(--phis-navy)", lineHeight: 1.1, marginBottom: 5 }}>{m.value}</div>
+              <div style={{ fontSize: 10, fontWeight: 500, color: "var(--phis-slate)", textTransform: "uppercase", letterSpacing: ".08em", lineHeight: 1.3 }}>{m.label}</div>
+            </div>
+          ))}
+          {metrics.length === 0 && [0,1,2,3].map(i => (
+            <div key={i} style={{ background: "var(--phis-paper)", border: "1px solid var(--phis-hair)", borderRadius: 5, minHeight: 76, opacity: 0.25 }} />
+          ))}
+        </div>
+      </div>
+
+      <div style={{ borderTop: "1px solid var(--phis-hair)", paddingTop: "1.5rem" }}>
+        <div style={{ fontSize: 9, fontWeight: 600, color: "var(--phis-mist)", textTransform: "uppercase", letterSpacing: ".1em", marginBottom: "1rem" }}>Career</div>
+        {exp.map((e, i) => {
+          const key = e.id || e.role || i;
+          const isOpen = expanded === key;
+          return (
+            <div key={key}>
+              <div onClick={() => setExpanded(isOpen ? null : key)} style={{ cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "flex-start", paddingBottom: "1rem" }}>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: "var(--phis-ink)", marginBottom: 2 }}>{e.role}</div>
+                  <div style={{ fontSize: 12, color: "var(--phis-navy)" }}>{e.org}</div>
+                  <div style={{ fontSize: 11, color: "var(--phis-mist)", marginTop: 2 }}>{e.dates}</div>
+                </div>
+                <span style={{ fontSize: 9, color: "var(--phis-mist)", marginTop: 4, flexShrink: 0 }}>{isOpen ? "v" : ">"}</span>
+              </div>
+              {isOpen && (
+                <div style={{ paddingBottom: "1rem", paddingLeft: 2 }}>
+                  {(e.bullets || []).slice(0, 4).map((b, bi) => {
+                    const text = typeof b === "string" ? b : (b.text || b.description || "");
+                    if (!text) return null;
+                    return (
+                      <div key={bi} style={{ display: "flex", gap: 8, marginBottom: 7, alignItems: "flex-start" }}>
+                        <span style={{ color: "var(--phis-marigold)", fontWeight: 700, flexShrink: 0, fontSize: 10, marginTop: 1 }}>+</span>
+                        <span style={{ fontSize: 12, fontWeight: 300, color: "var(--phis-slate)", lineHeight: 1.6 }}>{text}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              {i < exp.length - 1 && <div style={{ height: 1, background: "var(--phis-hair)", marginBottom: "1rem" }} />}
+            </div>
+          );
+        })}
+      </div>
+
+      {education && education.length > 0 && (
+        <div style={{ borderTop: "1px solid var(--phis-hair)", paddingTop: "1.25rem" }}>
+          <div style={{ fontSize: 9, fontWeight: 600, color: "var(--phis-mist)", textTransform: "uppercase", letterSpacing: ".1em", marginBottom: "1rem" }}>Education</div>
+          {education.map((e, i) => (
+            <div key={i} style={{ marginBottom: "0.875rem" }}>
+              <div style={{ fontSize: 13, fontWeight: 500, color: "var(--phis-ink)" }}>{e.cred}</div>
+              <div style={{ fontSize: 12, color: "var(--phis-navy)" }}>{e.org}{e.year ? ` - ${e.year}` : ""}</div>
+              {e.note && <div style={{ fontSize: 12, fontWeight: 300, color: "var(--phis-slate)", marginTop: 2, lineHeight: 1.5 }}>{e.note}</div>}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── GUEST VISITORS VIEW (Adam only) ─────────────────────
 function GuestVisitorsView() {
   const ACCENT = "#A32D2D";
@@ -4285,6 +4450,98 @@ function GuestVisitorsView() {
   );
 }
 
+// ─── METRICS MANAGER (Adam only) ─────────────────────────
+function MetricsManager() {
+  const [metrics, setMetrics] = useState(null);
+  const [adding, setAdding] = useState(false);
+  const [newRow, setNewRow] = useState({ value: "", label: "", pinned: false });
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => { getMetrics().then(setMetrics); }, []);
+
+  function handleLocalChange(id, field, val) {
+    setMetrics(m => m.map(x => x.id === id ? { ...x, [field]: val } : x));
+  }
+  async function handleFieldBlur(id, field, val) { await updateMetric(id, { [field]: val }); }
+  async function handlePinToggle(id, val) {
+    handleLocalChange(id, "pinned", val);
+    await updateMetric(id, { pinned: val });
+  }
+  async function handleDelete(id) {
+    setMetrics(m => m.filter(x => x.id !== id));
+    await deleteMetric(id);
+  }
+  async function handleMove(id, dir) {
+    const sorted = [...metrics].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+    const idx = sorted.findIndex(m => m.id === id);
+    const swapIdx = dir === "up" ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= sorted.length) return;
+    const a = sorted[idx], b = sorted[swapIdx];
+    setMetrics(m => m.map(x => x.id === a.id ? { ...x, sort_order: b.sort_order } : x.id === b.id ? { ...x, sort_order: a.sort_order } : x));
+    await updateMetric(a.id, { sort_order: b.sort_order });
+    await updateMetric(b.id, { sort_order: a.sort_order });
+  }
+  async function handleAdd() {
+    if (!newRow.value.trim() || !newRow.label.trim()) return;
+    setSaving(true);
+    const maxOrder = metrics.length ? Math.max(...metrics.map(m => m.sort_order || 0)) : 0;
+    const row = await createMetric({ ...newRow, sort_order: maxOrder + 1, tags: [] });
+    if (row) setMetrics(m => [...m, row]);
+    setAdding(false);
+    setNewRow({ value: "", label: "", pinned: false });
+    setSaving(false);
+  }
+
+  if (!metrics) return <div style={{ padding: "2rem", fontSize: 13, color: "var(--color-text-secondary)" }}>Loading metrics...</div>;
+
+  const pinnedCount = metrics.filter(m => m.pinned).length;
+  const sorted = [...metrics].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+  const row0 = { display: "flex", gap: 8, alignItems: "center", padding: "8px 10px", border: "0.5px solid var(--color-border-tertiary)", borderRadius: 6, background: "#fff" };
+  const fld = { padding: "4px 8px", fontSize: 13, border: "0.5px solid var(--color-border-tertiary)", borderRadius: 4, outline: "none", fontFamily: "inherit" };
+
+  return (
+    <div style={{ paddingTop: "1.75rem", maxWidth: 560 }}>
+      <div style={{ fontSize: 17, fontWeight: 700, color: "var(--color-text-primary)", marginBottom: 4 }}>Metrics</div>
+      <div style={{ fontSize: 12, color: "var(--color-text-tertiary)", marginBottom: "1.25rem", lineHeight: 1.5 }}>
+        Appear on the guest dashboard. Pinned metrics show first; top 4 by sort order are displayed.
+        {pinnedCount > 4 && <span style={{ color: "#A32D2D", marginLeft: 4 }}>You have {pinnedCount} pinned - only the first 4 by sort order will show.</span>}
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+        {sorted.map((m, i) => (
+          <div key={m.id} style={row0}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 1, flexShrink: 0 }}>
+              <button onClick={() => handleMove(m.id, "up")} disabled={i === 0} style={{ border: "none", background: "none", cursor: i === 0 ? "default" : "pointer", fontSize: 9, color: i === 0 ? "#ddd" : "var(--color-text-tertiary)", padding: "0 3px", lineHeight: 1.2 }}>^</button>
+              <button onClick={() => handleMove(m.id, "down")} disabled={i === sorted.length - 1} style={{ border: "none", background: "none", cursor: i === sorted.length - 1 ? "default" : "pointer", fontSize: 9, color: i === sorted.length - 1 ? "#ddd" : "var(--color-text-tertiary)", padding: "0 3px", lineHeight: 1.2 }}>v</button>
+            </div>
+            <input value={m.value} onChange={e => handleLocalChange(m.id, "value", e.target.value)} onBlur={e => handleFieldBlur(m.id, "value", e.target.value)} style={{ ...fld, width: 72, fontWeight: 600 }} />
+            <input value={m.label} onChange={e => handleLocalChange(m.id, "label", e.target.value)} onBlur={e => handleFieldBlur(m.id, "label", e.target.value)} style={{ ...fld, flex: 1 }} />
+            <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, color: "var(--color-text-secondary)", cursor: "pointer", flexShrink: 0 }}>
+              <input type="checkbox" checked={m.pinned} onChange={e => handlePinToggle(m.id, e.target.checked)} />
+              Pin
+            </label>
+            <button onClick={() => handleDelete(m.id)} style={{ border: "none", background: "none", cursor: "pointer", fontSize: 13, color: "#A32D2D", padding: "3px 5px", flexShrink: 0 }}>x</button>
+          </div>
+        ))}
+      </div>
+      {adding ? (
+        <div style={{ ...row0, marginTop: 5 }}>
+          <div style={{ width: 22, flexShrink: 0 }} />
+          <input value={newRow.value} onChange={e => setNewRow(r => ({ ...r, value: e.target.value }))} placeholder="Value" autoFocus style={{ ...fld, width: 72, fontWeight: 600 }} />
+          <input value={newRow.label} onChange={e => setNewRow(r => ({ ...r, label: e.target.value }))} placeholder="Label" style={{ ...fld, flex: 1 }} onKeyDown={e => { if (e.key === "Enter") handleAdd(); }} />
+          <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, color: "var(--color-text-secondary)", cursor: "pointer", flexShrink: 0 }}>
+            <input type="checkbox" checked={newRow.pinned} onChange={e => setNewRow(r => ({ ...r, pinned: e.target.checked }))} />
+            Pin
+          </label>
+          <button onClick={handleAdd} disabled={saving || !newRow.value.trim() || !newRow.label.trim()} style={{ border: "none", background: "#1E3A5F", color: "#fff", fontSize: 12, fontWeight: 500, borderRadius: 4, padding: "4px 10px", cursor: "pointer", flexShrink: 0 }}>Save</button>
+          <button onClick={() => { setAdding(false); setNewRow({ value: "", label: "", pinned: false }); }} style={{ border: "0.5px solid var(--color-border-tertiary)", background: "none", fontSize: 12, borderRadius: 4, padding: "4px 8px", cursor: "pointer", flexShrink: 0 }}>Cancel</button>
+        </div>
+      ) : (
+        <button onClick={() => setAdding(true)} style={{ marginTop: 8, padding: "7px 14px", fontSize: 13, fontWeight: 400, background: "none", border: "0.5px solid var(--color-border-tertiary)", borderRadius: 5, cursor: "pointer", color: "var(--color-text-secondary)" }}>+ Add metric</button>
+      )}
+    </div>
+  );
+}
+
 // ─── ENTRY GATE ───────────────────────────────────────────
 function EntryGate({ onAdam, onGuest }) {
   const ADAM_CODE = "phisphis";
@@ -4295,52 +4552,57 @@ function EntryGate({ onAdam, onGuest }) {
   const [g, setG] = useState({ name: "", email: "", company: "", role: "" });
   const [gErr, setGErr] = useState("");
 
-  const wrap = { minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: GP, padding: "2rem", background: "var(--g-stone)" };
-  const card = { width: "100%", maxWidth: 460, background: "var(--g-paper)", border: "1px solid var(--g-hair)", borderTop: "3px solid var(--g-marigold)", borderRadius: "5px", padding: "2.75rem", boxShadow: "0 4px 20px rgba(20,41,63,.07)" };
-  const inp = { width: "100%", padding: "9px 11px", fontSize: 14, borderRadius: 4, border: "1px solid var(--g-hair)", fontFamily: GP, marginBottom: 10, boxSizing: "border-box", background: "var(--g-paper)", color: "var(--g-ink)" };
-  const primaryBtn = { width: "100%", padding: "12px", fontSize: 14, fontWeight: 500, color: "#fff", background: "var(--g-vermilion)", border: "none", borderRadius: 4, cursor: "pointer", marginTop: 4 };
-  const ghostBtn = { width: "100%", padding: "12px", fontSize: 14, fontWeight: 400, color: "var(--g-ink)", background: "var(--g-paper)", border: "1px solid var(--g-hair)", borderRadius: 4, cursor: "pointer", marginTop: 10 };
-
   const validEmail = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+
+  const wrap = { minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: GP, background: "var(--phis-navy)" };
+  const box = { width: "100%", maxWidth: 400, display: "flex", flexDirection: "column", alignItems: "center", padding: "0 1.5rem" };
+  const inp = { width: "100%", padding: "10px 12px", fontSize: 14, borderRadius: 4, border: "1px solid rgba(255,255,255,.18)", fontFamily: GP, marginBottom: 10, boxSizing: "border-box", background: "rgba(255,255,255,.07)", color: "#fff", outline: "none" };
+  const primaryBtn = { width: "100%", padding: "13px", fontSize: 14, fontWeight: 500, color: "#fff", background: "var(--phis-vermilion)", border: "none", borderRadius: 4, cursor: "pointer", marginTop: 4 };
+  const outlineBtn = { width: "100%", padding: "13px", fontSize: 14, fontWeight: 400, color: "#fff", background: "none", border: "1px solid rgba(255,255,255,.3)", borderRadius: 4, cursor: "pointer", marginTop: 10 };
 
   return (
     <div style={wrap}>
-      <div style={card}>
-        <div style={{ fontSize: 22, fontWeight: 500, color: "var(--g-ink)", marginBottom: 6 }}>Adam Waldman</div>
-        <div style={{ fontSize: 13, fontWeight: 300, color: "var(--g-slate)", marginTop: 2, marginBottom: 28 }}>Insight, strategy, and decision systems. A live look at how I think and where I fit.</div>
+      <div style={box}>
+        <div style={{ marginBottom: 36 }}>
+          <PhisWordmark reversed height={36} />
+        </div>
 
         {step === "choose" && (
           <>
-            <button style={primaryBtn} onClick={() => setStep("guest")}>Explore Adam&rsquo;s profile</button>
-            <button style={ghostBtn} onClick={() => setStep("adam")}>I&rsquo;m Adam</button>
+            <div style={{ fontSize: 24, fontWeight: 500, color: "#fff", textAlign: "center", lineHeight: 1.35, marginBottom: 10 }}>The intelligence behind better decisions.</div>
+            <div style={{ fontSize: 13, fontWeight: 300, color: "var(--phis-mist)", textAlign: "center", marginBottom: 40 }}>Adam Waldman, career profile</div>
+            <button style={primaryBtn} onClick={() => setStep("guest")}>Explore the profile</button>
+            <button style={outlineBtn} onClick={() => setStep("adam")}>I&rsquo;m Adam</button>
           </>
         )}
 
         {step === "adam" && (
           <>
+            <div style={{ fontSize: 14, fontWeight: 400, color: "rgba(255,255,255,.7)", marginBottom: 14, alignSelf: "flex-start" }}>Enter your passcode</div>
             <input style={inp} type="password" placeholder="Passcode" value={pin}
               onChange={(e) => { setPin(e.target.value); setPinErr(false); }}
               onKeyDown={(e) => { if (e.key === "Enter") { pin === ADAM_CODE ? onAdam() : setPinErr(true); } }} autoFocus />
-            {pinErr && <div style={{ fontSize: 12, color: "var(--g-vermilion)", marginBottom: 8 }}>Incorrect passcode.</div>}
+            {pinErr && <div style={{ fontSize: 12, color: "var(--phis-marigold)", marginBottom: 8, alignSelf: "flex-start" }}>Incorrect passcode.</div>}
             <button style={primaryBtn} onClick={() => { pin === ADAM_CODE ? onAdam() : setPinErr(true); }}>Enter</button>
-            <button style={ghostBtn} onClick={() => { setStep("choose"); setPin(""); setPinErr(false); }}>Back</button>
+            <button style={outlineBtn} onClick={() => { setStep("choose"); setPin(""); setPinErr(false); }}>Back</button>
           </>
         )}
 
         {step === "guest" && (
           <>
-            <div style={{ fontSize: 12, color: "var(--color-text-secondary)", marginBottom: 14 }}>A quick intro so Adam knows who stopped by.</div>
+            <div style={{ fontSize: 14, fontWeight: 500, color: "#fff", marginBottom: 4, alignSelf: "flex-start" }}>Quick intro</div>
+            <div style={{ fontSize: 12, fontWeight: 300, color: "var(--phis-mist)", marginBottom: 16, alignSelf: "flex-start" }}>So Adam knows who stopped by.</div>
             <input style={inp} placeholder="Your name *" value={g.name} onChange={(e) => setG({ ...g, name: e.target.value })} autoFocus />
             <input style={inp} placeholder="Email *" value={g.email} onChange={(e) => setG({ ...g, email: e.target.value })} />
             <input style={inp} placeholder="Company (optional)" value={g.company} onChange={(e) => setG({ ...g, company: e.target.value })} />
             <input style={inp} placeholder="Role you're hiring for (optional)" value={g.role} onChange={(e) => setG({ ...g, role: e.target.value })} />
-            {gErr && <div style={{ fontSize: 12, color: "var(--g-vermilion)", marginBottom: 8 }}>{gErr}</div>}
+            {gErr && <div style={{ fontSize: 12, color: "var(--phis-marigold)", marginBottom: 8, alignSelf: "flex-start" }}>{gErr}</div>}
             <button style={primaryBtn} onClick={() => {
               if (!g.name.trim()) return setGErr("Please add your name.");
               if (!validEmail(g.email)) return setGErr("Please add a valid email.");
               onGuest({ name: g.name.trim(), email: g.email.trim(), company: g.company.trim(), role: g.role.trim() });
             }}>Continue</button>
-            <button style={ghostBtn} onClick={() => { setStep("choose"); setGErr(""); }}>Back</button>
+            <button style={outlineBtn} onClick={() => { setStep("choose"); setGErr(""); }}>Back</button>
           </>
         )}
       </div>
@@ -4381,7 +4643,7 @@ CRITICAL RULES:
 - No em-dashes, no en-dashes. Use plain hyphens or rewrite.
 - Tone: a sharp, well-briefed colleague advocating for a strong candidate. Not a brochure. Not a critic.`;
 
-function GuestFitView({ stories, experience, guestSessionId }) {
+function GuestFitView({ stories, experience, guestSessionId, onFitComplete }) {
   const GP = "'Poppins', system-ui, sans-serif";
   const PILL = {
     "Ideal":                  { background: "var(--g-navy)",     color: "#fff",             border: "none" },
@@ -4423,6 +4685,7 @@ function GuestFitView({ stories, experience, guestSessionId }) {
       if (!parsed?.bands?.length) throw new Error("Could not parse fit assessment. Please try again.");
       setResult(parsed);
       logFitRun(guestSessionId, input.trim(), parsed.role_understood);
+      if (onFitComplete) onFitComplete(parsed.role_understood);
     } catch (e) { setErr(e.message); }
     setLoading(false);
   }
@@ -4517,28 +4780,18 @@ function GuestFitView({ stories, experience, guestSessionId }) {
   );
 }
 
-function GuestShell({ guest, stories, experience, awards, education, guestSessionId, onExit }) {
+function GuestShell({ guest, stories, experience, awards, education, profileContext, guestSessionId, onExit }) {
   const GP = "'Poppins', system-ui, sans-serif";
   const [gpage, setGpage] = useState("home");
-  const item = (id, lbl) => (
-    <button onClick={() => setGpage(id)} style={{ textAlign: "left", padding: "8px 12px", borderRadius: 4, border: "none", borderLeft: gpage === id ? "3px solid var(--g-navy)" : "3px solid transparent", cursor: "pointer", fontSize: 13, fontWeight: gpage === id ? 500 : 400, background: gpage === id ? "rgba(30,58,95,.06)" : "none", color: "var(--g-ink)", fontFamily: GP }}>{lbl}</button>
-  );
+  const [fitRole, setFitRole] = useState(null);
+
   return (
-    <div style={{ display: "flex", fontFamily: GP, minHeight: "100vh", background: "var(--g-stone)" }}>
-      <div style={{ width: 200, flexShrink: 0, background: "var(--g-paper)", borderRight: "1px solid var(--g-hair)", paddingTop: "1.25rem", display: "flex", flexDirection: "column", gap: 1 }}>
-        <div style={{ width: 24, height: 3, background: "var(--g-marigold)", borderRadius: 1, marginBottom: 14, marginLeft: 12 }} />
-        <div style={{ fontSize: 13, fontWeight: 600, color: "var(--g-ink)", padding: "0 12px", marginBottom: 2 }}>Adam Waldman</div>
-        <div style={{ fontSize: 11, fontWeight: 300, color: "var(--g-mist)", marginBottom: "1.5rem", padding: "0 12px" }}>Hi {guest.name.split(" ")[0]} 👋</div>
-        {item("home", "Dashboard")}
-        {item("interview", "Interview Adam ✦")}
-        {item("fit", "How I fit your role ✦")}
-        <div style={{ flex: 1 }} />
-        <button onClick={onExit} style={{ textAlign: "left", padding: "8px 12px", border: "none", cursor: "pointer", fontSize: 12, fontWeight: 300, background: "none", color: "var(--g-mist)", fontFamily: GP }}>← Exit</button>
-      </div>
-      <div style={{ flex: 1, padding: "0 2rem", minWidth: 0, overflowY: "auto" }}>
-        {gpage === "home" && <HomeView stories={stories} experience={experience} awards={awards} education={education} onStoryClick={() => {}} />}
+    <div style={{ display: "flex", flexDirection: "column", fontFamily: GP, minHeight: "100vh", background: "var(--phis-stone)" }}>
+      <GuestTopBar gpage={gpage} setGpage={setGpage} guestName={guest.name} />
+      <div style={{ flex: 1, maxWidth: 820, margin: "0 auto", width: "100%" }}>
+        {gpage === "home" && <GuestDashboard experience={experience} awards={awards} education={education} profileContext={profileContext} fitRole={fitRole} />}
         {gpage === "interview" && <InterviewView stories={stories} guestSessionId={guestSessionId} />}
-        {gpage === "fit" && <GuestFitView stories={stories} experience={experience} guestSessionId={guestSessionId} />}
+        {gpage === "fit" && <GuestFitView stories={stories} experience={experience} guestSessionId={guestSessionId} onFitComplete={role => setFitRole(role)} />}
       </div>
     </div>
   );
@@ -4624,7 +4877,7 @@ export default function App() {
 
   if(loading)return <div style={{padding:"2rem",color:"var(--color-text-secondary)",fontSize:14}}>Loading PHIS…</div>;
   if (!mode) return <EntryGate onAdam={() => setMode("adam")} onGuest={(info) => { setGuest(info); setMode("guest"); createGuestSession(info).then(row => { if (row?.id) setGuestSessionId(row.id); }); }} />;
-  if (mode === "guest") return <GuestShell guest={guest} stories={stories} experience={experience} awards={awards} education={education} guestSessionId={guestSessionId} onExit={() => { setMode(null); setGuest(null); setGuestSessionId(null); }} />;
+  if (mode === "guest") return <GuestShell guest={guest} stories={stories} experience={experience} awards={awards} education={education} profileContext={profileContext} guestSessionId={guestSessionId} onExit={() => { setMode(null); setGuest(null); setGuestSessionId(null); }} />;
 
   return(
     <div style={{display:"flex",fontFamily:"var(--font-sans)",minHeight:600}}>
@@ -4682,6 +4935,7 @@ export default function App() {
         <div style={{fontSize:10,fontWeight:600,color:"var(--color-text-tertiary)",textTransform:"uppercase",letterSpacing:"0.07em",marginBottom:4,padding:"0 10px"}}>Settings</div>
         <div style={{display:"flex",flexDirection:"column",gap:1}}>
           {navBtn("profile","Profile & Settings",page==="profile")}
+          {navBtn("metrics","Metrics",page==="metrics")}
         </div>
       </div>
 
@@ -4726,6 +4980,7 @@ export default function App() {
         {page==="apply"&&<ApplyView stories={stories} setStories={updateStories} experience={experience} awards={awards} education={education} profileContext={profileContext} profile={profile} rescoreRequest={rescoreRequest} onRescoreDone={()=>setRescoreRequest(null)}/>}
         {page==="visitors"&&<GuestVisitorsView/>}
         {page==="profile"&&<ProfileView profile={profile} setProfile={p=>{const next=typeof p==='function'?p(profile):p;setProfile(next);persistProfile(next);}} awards={awards} education={education} profileContext={profileContext}/>}
+        {page==="metrics"&&<MetricsManager/>}
       </div>
 
       {showFullCV&&<FullCVExporter stories={stories} experience={experience} awards={awards} education={education} profileContext={profileContext} onClose={()=>setShowFullCV(false)}/>}
