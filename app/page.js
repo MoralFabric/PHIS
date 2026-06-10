@@ -178,7 +178,7 @@ const EXPERIENCE_DEFAULT = [
 
 // ─── TYPES / THEMES / USE_FOR ─────────────────────────────
 const TYPES = [
-  { id:"career",     label:"Career story",  color:"#185FA5", bg:"#dbeafe", dot:"#3b82f6" },
+  { id:"career",     label:"Career story",  color:"var(--phis-navy)", bg:"#E8EFF7", dot:"var(--phis-navy)" },
   { id:"insight",    label:"Insight work",  color:"#065f46", bg:"#d1fae5", dot:"#10b981" },
   { id:"research",   label:"Research",      color:"#4c1d95", bg:"#ede9fe", dot:"#8b5cf6" },
   { id:"leadership", label:"Leadership",    color:"#92400e", bg:"#fef3c7", dot:"#f59e0b" },
@@ -1507,9 +1507,9 @@ function buildStoryContext(stories) {
 }
 
 function tierStyle(score) {
-  if (score >= 75) return { bg:"#EAF3DE", color:"#3B6D11", label:"Strong", bar:"#639922" };
-  if (score >= 60) return { bg:"#FAEEDA", color:"#854F0B", label:"Partial", bar:"#EF9F27" };
-  return { bg:"#FCEBEB", color:"#A32D2D", label:"Gap", bar:"#E24B4A" };
+  if (score >= 75) return { bg:"#E8EFF7", color:"var(--phis-navy)", label:"Strong", bar:"var(--phis-navy)" };
+  if (score >= 60) return { bg:"#FEF3E6", color:"#9A5010", label:"Partial", bar:"var(--phis-marigold)" };
+  return { bg:"#EEF0F3", color:"var(--phis-slate)", label:"Gap", bar:"var(--phis-slate)" };
 }
 
 function typeOf(id) { return TYPES.find(t=>t.id===id)||TYPES[0]; }
@@ -1545,19 +1545,19 @@ function downloadBlob(content, filename, mime) {
 
 // ─── STYLES ───────────────────────────────────────────────
 const css = {
-  card:  { background:"var(--color-background-primary)", border:"0.5px solid var(--color-border-tertiary)", borderRadius:12, padding:"1rem 1.25rem", cursor:"pointer" },
-  inp:   { width:"100%", fontSize:13, padding:"7px 10px", border:"0.5px solid var(--color-border-tertiary)", borderRadius:6, background:"var(--color-background-secondary)", color:"var(--color-text-primary)", fontFamily:"var(--font-sans)", boxSizing:"border-box" },
-  lbl:   { fontSize:12, fontWeight:500, color:"var(--color-text-secondary)", marginBottom:4, display:"block" },
-  ghost: { fontSize:12, padding:"5px 12px", border:"0.5px solid var(--color-border-secondary)", borderRadius:6, background:"none", color:"var(--color-text-secondary)", cursor:"pointer" },
+  card:  { background:"var(--phis-paper)", border:"1px solid var(--phis-hair)", borderRadius:9, padding:"1rem 1.25rem", cursor:"pointer" },
+  inp:   { width:"100%", fontSize:13, padding:"7px 10px", border:"1px solid var(--phis-hair)", borderRadius:6, background:"var(--phis-paper)", color:"var(--phis-ink)", fontFamily:"inherit", boxSizing:"border-box" },
+  lbl:   { fontSize:12, fontWeight:500, color:"var(--phis-slate)", marginBottom:4, display:"block" },
+  ghost: { fontSize:12, padding:"5px 12px", border:"1px solid var(--phis-hair)", borderRadius:6, background:"none", color:"var(--phis-slate)", cursor:"pointer" },
 };
 const S = {
-  card:     { background:"var(--color-background-primary)", border:"0.5px solid var(--color-border-tertiary)", borderRadius:12, padding:"1.25rem" },
-  btn:      { padding:"8px 14px", borderRadius:8, border:"0.5px solid var(--color-border-secondary)", background:"transparent", cursor:"pointer", fontSize:13, color:"var(--color-text-primary)", fontWeight:400, fontFamily:"inherit" },
-  primary:  { padding:"10px 20px", borderRadius:8, border:"none", background:"#185FA5", cursor:"pointer", fontSize:14, color:"#fff", fontWeight:500, fontFamily:"inherit" },
-  inp:      { width:"100%", padding:"9px 12px", borderRadius:8, border:"0.5px solid var(--color-border-secondary)", background:"var(--color-background-primary)", color:"var(--color-text-primary)", fontSize:13, fontFamily:"inherit", boxSizing:"border-box" },
-  textarea: { width:"100%", padding:"9px 12px", borderRadius:8, border:"0.5px solid var(--color-border-secondary)", background:"var(--color-background-primary)", color:"var(--color-text-primary)", fontSize:13, fontFamily:"inherit", boxSizing:"border-box", resize:"vertical" },
-  label:    { display:"block", fontSize:10, fontWeight:500, letterSpacing:"0.07em", textTransform:"uppercase", color:"var(--color-text-tertiary)", marginBottom:5 },
-  tag:      { fontSize:10, padding:"2px 8px", borderRadius:20, background:"var(--color-background-info)", color:"var(--color-text-info)" },
+  card:     { background:"var(--phis-paper)", border:"1px solid var(--phis-hair)", borderRadius:9, padding:"1.25rem" },
+  btn:      { padding:"8px 14px", borderRadius:7, border:"1px solid var(--phis-navy)", background:"transparent", cursor:"pointer", fontSize:13, color:"var(--phis-navy)", fontWeight:400, fontFamily:"inherit" },
+  primary:  { padding:"10px 20px", borderRadius:7, border:"none", background:"var(--phis-vermilion)", cursor:"pointer", fontSize:14, color:"#fff", fontWeight:500, fontFamily:"inherit" },
+  inp:      { width:"100%", padding:"9px 12px", borderRadius:8, border:"1px solid var(--phis-hair)", background:"var(--phis-paper)", color:"var(--phis-ink)", fontSize:13, fontFamily:"inherit", boxSizing:"border-box" },
+  textarea: { width:"100%", padding:"9px 12px", borderRadius:8, border:"1px solid var(--phis-hair)", background:"var(--phis-paper)", color:"var(--phis-ink)", fontSize:13, fontFamily:"inherit", boxSizing:"border-box", resize:"vertical" },
+  label:    { display:"block", fontSize:10, fontWeight:500, letterSpacing:"0.07em", textTransform:"uppercase", color:"var(--phis-marigold)", marginBottom:5 },
+  tag:      { fontSize:10, padding:"2px 8px", borderRadius:20, background:"#E8EFF7", color:"var(--phis-navy)" },
 };
 
 // ─── STORY COMPONENTS ─────────────────────────────────────
@@ -1614,7 +1614,7 @@ function DetailView({story,onBack,onEdit,onDelete}) {
       <div style={{marginBottom:10}}>
         <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}><Pill typeId={story.type} sm={false}/></div>
         <div style={{fontSize:22,fontWeight:500,color:"var(--color-text-primary)",lineHeight:1.3,marginBottom:4}}>{story.title}</div>
-        <div style={{fontSize:14,color:"#1d4ed8",marginBottom:"1.5rem"}}>{story.employer}</div>
+        <div style={{fontSize:14,color:"var(--phis-navy)",marginBottom:"1.5rem"}}>{story.employer}</div>
       </div>
       {[["Situation",story.situation],["Obstacle",story.obstacle],["Action",story.action],["Result",story.result],["Impact",story.impact]].map(([l,v])=>v&&(
         <div key={l} style={{marginBottom:"1.25rem"}}>
@@ -1930,7 +1930,7 @@ function FreeAddView({stories,experience,awards,education,profileContext,onSave,
   // ── Type / status config ───────────────────────────────────
   const TC={
     soar:              {bg:'#d1fae5',color:'#065f46',label:'SOAR Story'},
-    experience_bullet: {bg:'#dbeafe',color:'#1e40af',label:'Experience Bullet'},
+    experience_bullet: {bg:'#E8EFF7',color:'var(--phis-navy)',label:'Experience Bullet'},
     facet:             {bg:'#e0e7ff',color:'#3730a3',label:'Facet Enrichment'},
     award:             {bg:'#fef3c7',color:'#92400e',label:'Award'},
     education:         {bg:'#ede9fe',color:'#4c1d95',label:'Education'},
@@ -1939,7 +1939,7 @@ function FreeAddView({stories,experience,awards,education,profileContext,onSave,
   const STAT={
     new:          {label:'NEW',bg:'#f0fdf4',color:'#15803d'},
     similar:      {label:'SIMILAR TO EXISTING',bg:'#fff7ed',color:'#c2410c'},
-    enrichment:   {label:'ENRICHMENT',bg:'#eff6ff',color:'#1d4ed8'},
+    enrichment:   {label:'ENRICHMENT',bg:'#E8EFF7',color:'var(--phis-navy)'},
     modification: {label:'MODIFICATION',bg:'#faf5ff',color:'#7e22ce'},
   };
 
@@ -2020,7 +2020,7 @@ function FreeAddView({stories,experience,awards,education,profileContext,onSave,
 
       {proposals&&(
         <div>
-          <div style={{background:'var(--color-background-secondary)',borderRadius:8,padding:'10px 14px',marginBottom:'1.25rem',fontSize:13,color:'var(--color-text-primary)',lineHeight:1.6,borderLeft:'3px solid #3b82f6'}}>
+          <div style={{background:'var(--phis-stone)',borderRadius:8,padding:'10px 14px',marginBottom:'1.25rem',fontSize:13,color:'var(--phis-ink)',lineHeight:1.6,borderLeft:'3px solid var(--phis-navy)'}}>
             PHIS extracted {proposals.items.length} item{proposals.items.length!==1?'s':''} — {proposals.analysis}
           </div>
 
@@ -2060,7 +2060,7 @@ function FreeAddView({stories,experience,awards,education,profileContext,onSave,
                     </div>
                   )}
                   {sim.status==='enrichment'&&sim.match&&(
-                    <div style={{fontSize:11,color:'#1d4ed8',background:'#eff6ff',padding:'6px 10px',borderRadius:6,marginBottom:8}}>
+                    <div style={{fontSize:11,color:'var(--phis-navy)',background:'#E8EFF7',padding:'6px 10px',borderRadius:6,marginBottom:8}}>
                       Matching facet: <strong>{sim.match.name}</strong> — narrative will be appended and themes merged
                     </div>
                   )}
@@ -2167,7 +2167,7 @@ function FreeAddView({stories,experience,awards,education,profileContext,onSave,
                     <div style={{display:'flex',flexWrap:'wrap',gap:6,alignItems:'center'}}>
                       {sim.status==='enrichment'&&(
                         <>
-                          <button onClick={function(){setIS(i,{action:'enrich'});}} style={{fontSize:11,padding:'3px 10px',borderRadius:6,border:'1px solid',cursor:'pointer',background:state.action==='enrich'?'#1d4ed8':'none',color:state.action==='enrich'?'#fff':'#1d4ed8',borderColor:'#93c5fd'}}>Enrich existing</button>
+                          <button onClick={function(){setIS(i,{action:'enrich'});}} style={{fontSize:11,padding:'3px 10px',borderRadius:6,border:'1px solid',cursor:'pointer',background:state.action==='enrich'?'var(--phis-navy)':'none',color:state.action==='enrich'?'#fff':'var(--phis-navy)',borderColor:'var(--phis-hair)'}}>Enrich existing</button>
                           <button onClick={function(){setIS(i,{action:'replace'});}} style={{fontSize:11,padding:'3px 10px',borderRadius:6,border:'1px solid var(--color-border-secondary)',cursor:'pointer',background:state.action==='replace'?'#374151':'none',color:state.action==='replace'?'#fff':'var(--color-text-secondary)'}}>Replace</button>
                           <button onClick={function(){setIS(i,{action:'save_new'});}} style={{fontSize:11,padding:'3px 10px',borderRadius:6,border:'1px solid var(--color-border-secondary)',cursor:'pointer',background:state.action==='save_new'?'#374151':'none',color:state.action==='save_new'?'#fff':'var(--color-text-secondary)'}}>Save as new</button>
                         </>
@@ -2235,7 +2235,7 @@ function HomeView({stories,experience,awards,education,onStoryClick}) {
     <div style={{paddingTop:"1.5rem",maxWidth:760}}>
       <div style={{marginBottom:"2rem",paddingBottom:"1.5rem",borderBottom:"0.5px solid var(--color-border-tertiary)"}}>
         <div style={{fontSize:22,fontWeight:600,color:"var(--color-text-primary)",letterSpacing:"-0.02em",marginBottom:3}}>{ADAM.name}</div>
-        <div style={{fontSize:14,color:"#1d4ed8",fontWeight:500,marginBottom:8}}>{ADAM.headline}</div>
+        <div style={{fontSize:14,color:"var(--phis-navy)",fontWeight:500,marginBottom:8}}>{ADAM.headline}</div>
         <div style={{fontSize:13,color:"var(--color-text-secondary)",lineHeight:1.75,marginBottom:12}}>{ADAM.narrative}</div>
         <div style={{display:"flex",flexWrap:"wrap",gap:5}}>{ADAM.topCompetencies.map(c=><Tag key={c} label={c}/>)}</div>
       </div>
@@ -2250,7 +2250,7 @@ function HomeView({stories,experience,awards,education,onStoryClick}) {
             return (
               <div key={exp.role+exp.dates} style={{display:"flex",gap:0}}>
                 <div style={{width:28,flexShrink:0,display:"flex",flexDirection:"column",alignItems:"center"}}>
-                  <div style={{width:9,height:9,borderRadius:"50%",background:"#1d4ed8",border:"2px solid var(--color-background-primary)",boxShadow:"0 0 0 1.5px #1d4ed8",marginTop:19,flexShrink:0}}/>
+                  <div style={{width:9,height:9,borderRadius:"50%",background:"var(--phis-navy)",border:"2px solid var(--phis-paper)",boxShadow:"0 0 0 1.5px var(--phis-navy)",marginTop:19,flexShrink:0}}/>
                   {i<exp.length&&<div style={{width:1,flex:1,minHeight:8,background:"var(--color-border-tertiary)",marginTop:3}}/>}
                 </div>
                 <div style={{flex:1,paddingLeft:14,paddingBottom:"1.5rem"}}>
@@ -2258,7 +2258,7 @@ function HomeView({stories,experience,awards,education,onStoryClick}) {
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
                       <div>
                         <div style={{fontSize:14,fontWeight:600,color:"var(--color-text-primary)",lineHeight:1.4,marginBottom:2}}>{exp.role}</div>
-                        <div style={{fontSize:13,color:"#1d4ed8",marginBottom:2}}>{exp.org}</div>
+                        <div style={{fontSize:13,color:"var(--phis-navy)",marginBottom:2}}>{exp.org}</div>
                         <div style={{fontSize:11,color:"var(--color-text-tertiary)"}}>{exp.dates}</div>
                       </div>
                       <span style={{fontSize:10,color:"var(--color-text-tertiary)",flexShrink:0,marginTop:3}}>{isOpen?"▲":"▼"}</span>
@@ -2312,7 +2312,7 @@ function HomeView({stories,experience,awards,education,onStoryClick}) {
         {(education||[]).map((e,i)=>(
           <div key={i} style={{marginBottom:"0.875rem"}}>
             <div style={{fontSize:14,fontWeight:500,color:"var(--color-text-primary)",marginBottom:2}}>{e.cred}</div>
-            <div style={{fontSize:12,color:"#1d4ed8",marginBottom:2}}>{e.org}{e.year?` · ${e.year}`:""}</div>
+            <div style={{fontSize:12,color:"var(--phis-navy)",marginBottom:2}}>{e.org}{e.year?` · ${e.year}`:""}</div>
             <div style={{fontSize:12,color:"var(--color-text-secondary)",lineHeight:1.65}}>{e.note}</div>
           </div>
         ))}
@@ -2383,7 +2383,7 @@ function AskView({stories}) {
           <div style={{fontSize:11,color:"var(--color-text-tertiary)",marginBottom:8,display:"flex",alignItems:"center",gap:6}}>
             <span style={{background:"#ede9fe",color:"#4c1d95",fontSize:10,fontWeight:600,padding:"2px 7px",borderRadius:10}}>Interview answer</span>
           </div>
-          <div style={{background:"var(--color-background-secondary)",borderRadius:10,padding:"1.25rem 1.5rem",marginBottom:"1rem",borderLeft:"3px solid #1d4ed8"}}>
+          <div style={{background:"var(--phis-stone)",borderRadius:10,padding:"1.25rem 1.5rem",marginBottom:"1rem",borderLeft:"3px solid var(--phis-navy)"}}>
             <div style={{fontSize:14,color:"var(--color-text-primary)",lineHeight:1.85,whiteSpace:"pre-wrap"}}>{result.prose}</div>
           </div>
           <div style={{display:"flex",gap:8}}>
@@ -2394,7 +2394,7 @@ function AskView({stories}) {
       )}
       {result&&mode==="library"&&(
         <div>
-          <div style={{background:"var(--color-background-secondary)",borderRadius:8,padding:"12px 16px",marginBottom:"1.25rem",fontSize:14,color:"var(--color-text-primary)",lineHeight:1.6,borderLeft:"3px solid #3b82f6"}}>{result.headline}</div>
+          <div style={{background:"var(--phis-stone)",borderRadius:8,padding:"12px 16px",marginBottom:"1.25rem",fontSize:14,color:"var(--phis-ink)",lineHeight:1.6,borderLeft:"3px solid var(--phis-navy)"}}>{result.headline}</div>
           <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:"1.25rem"}}>
             {result.stories?.map((rs,idx)=>{
               const s=stories.find(x=>x.id===rs.id);if(!s)return null;
@@ -2626,7 +2626,7 @@ function ExperienceView({experience,setExperience}) {
       </div>
       <div style={{fontSize:11,fontWeight:600,color:"var(--color-text-tertiary)",textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:4}}>{entry.dates}</div>
       <div style={{fontSize:20,fontWeight:500,color:"var(--color-text-primary)",lineHeight:1.3,marginBottom:4}}>{entry.role}</div>
-      <div style={{fontSize:14,color:"#1d4ed8",marginBottom:"1.5rem"}}>{entry.org}</div>
+      <div style={{fontSize:14,color:"var(--phis-navy)",marginBottom:"1.5rem"}}>{entry.org}</div>
       {entry.scope&&<div style={{marginBottom:"1.25rem"}}><div style={{fontSize:11,fontWeight:600,color:"var(--color-text-tertiary)",textTransform:"uppercase",letterSpacing:"0.05em",marginBottom:4}}>Scope</div><div style={{fontSize:13,color:"var(--color-text-secondary)",lineHeight:1.7}}>{entry.scope}</div></div>}
       {entry.mandate&&<div style={{marginBottom:"1.25rem"}}><div style={{fontSize:11,fontWeight:600,color:"var(--color-text-tertiary)",textTransform:"uppercase",letterSpacing:"0.05em",marginBottom:4}}>Mandate</div><div style={{fontSize:13,color:"var(--color-text-secondary)",lineHeight:1.7}}>{entry.mandate}</div></div>}
       <div style={{marginBottom:"1.25rem"}}>
@@ -2635,9 +2635,9 @@ function ExperienceView({experience,setExperience}) {
       </div>
       {entry.responsibilities?.length>0&&<div style={{marginBottom:"1.25rem"}}>
         <div style={{fontSize:11,fontWeight:600,color:"var(--color-text-tertiary)",textTransform:"uppercase",letterSpacing:"0.05em",marginBottom:8}}>Key Responsibilities</div>
-        {entry.responsibilities.map((r,i)=><div key={i} style={{display:"flex",gap:10,marginBottom:6,alignItems:"flex-start"}}><span style={{color:"#3b82f6",flexShrink:0,fontSize:11,marginTop:2}}>›</span><span style={{fontSize:13,color:"var(--color-text-secondary)",lineHeight:1.6}}>{r}</span></div>)}
+        {entry.responsibilities.map((r,i)=><div key={i} style={{display:"flex",gap:10,marginBottom:6,alignItems:"flex-start"}}><span style={{color:"var(--phis-marigold)",flexShrink:0,fontSize:11,marginTop:2}}>›</span><span style={{fontSize:13,color:"var(--color-text-secondary)",lineHeight:1.6}}>{r}</span></div>)}
       </div>}
-      {entry.fullNarrative&&<div style={{marginBottom:"1rem",padding:"1rem",background:"var(--color-background-secondary)",borderRadius:8,borderLeft:"3px solid #1d4ed8"}}><div style={{fontSize:11,fontWeight:600,color:"var(--color-text-tertiary)",textTransform:"uppercase",letterSpacing:"0.05em",marginBottom:6}}>Full Narrative</div><div style={{fontSize:13,color:"var(--color-text-secondary)",lineHeight:1.8}}>{entry.fullNarrative}</div></div>}
+      {entry.fullNarrative&&<div style={{marginBottom:"1rem",padding:"1rem",background:"var(--phis-stone)",borderRadius:8,borderLeft:"3px solid var(--phis-navy)"}}><div style={{fontSize:11,fontWeight:600,color:"var(--color-text-tertiary)",textTransform:"uppercase",letterSpacing:"0.05em",marginBottom:6}}>Full Narrative</div><div style={{fontSize:13,color:"var(--color-text-secondary)",lineHeight:1.8}}>{entry.fullNarrative}</div></div>}
     </div>
   );
 
@@ -2652,7 +2652,7 @@ function ExperienceView({experience,setExperience}) {
       </div>
       <div style={{display:"flex",flexDirection:"column",gap:10}}>
         {expData.map(e=>(
-          <div key={e.id||e.role} onClick={()=>setSel(e.id||e.role)} style={{...css.card,borderLeft:"3px solid #1d4ed8",cursor:"pointer"}}>
+          <div key={e.id||e.role} onClick={()=>setSel(e.id||e.role)} style={{...css.card,borderLeft:"3px solid var(--phis-navy)",cursor:"pointer"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:4}}>
               <div style={{fontSize:14,fontWeight:500,color:"var(--color-text-primary)",flex:1,lineHeight:1.4}}>{e.role}</div>
               <div style={{display:"flex",gap:8,alignItems:"center",flexShrink:0,marginLeft:8}}>
@@ -2660,7 +2660,7 @@ function ExperienceView({experience,setExperience}) {
                 <button onClick={ev=>{ev.stopPropagation();setEditing(e);}} style={{...css.ghost,padding:"3px 8px",fontSize:11}}>Edit</button>
               </div>
             </div>
-            <div style={{fontSize:13,color:"#1d4ed8",marginBottom:4}}>{e.org}</div>
+            <div style={{fontSize:13,color:"var(--phis-navy)",marginBottom:4}}>{e.org}</div>
             {e.mandate&&<div style={{fontSize:12,color:"var(--color-text-secondary)",lineHeight:1.5}}>{e.mandate}</div>}
           </div>
         ))}
@@ -2850,7 +2850,7 @@ function buildFullCVRTF(exp, education, awards, subtitle) {
   const expData = exp || EXPERIENCE_DEFAULT;
   const eduData = education || [];
   const awardsData = awards || [];
-  const p='#1e3a5f',a='#2563eb';
+  const p='#1E3A5F',a='#EA6A1A';
   function h2c(hex){const h=(hex||'#000').replace('#','');return[parseInt(h.slice(0,2),16)||0,parseInt(h.slice(2,4),16)||0,parseInt(h.slice(4,6),16)||0];}
   const [pr,pg,pb]=h2c(p);const [ar,ag,ab]=h2c(a);
   const fontTbl='{\\fonttbl{\\f0\\fswiss\\fcharset0 Calibri;}}';
@@ -2902,20 +2902,20 @@ function FullCVExporter({stories,experience,awards,education,profileContext,onCl
           <div style={{fontSize:16,fontWeight:600,color:"#111"}}>Full CV — Recruiter Edition</div>
           <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",fontSize:18,color:"#888"}}>✕</button>
         </div>
-        <div style={{padding:"12px 14px",background:"#f0fdf4",borderRadius:8,border:"1px solid #86efac",marginBottom:"1.25rem"}}>
-          <div style={{fontSize:12,fontWeight:600,color:"#065f46",marginBottom:4}}>What's included</div>
-          <div style={{fontSize:12,color:"#374151",lineHeight:1.7}}>
+        <div style={{padding:"12px 14px",background:"var(--phis-stone)",borderRadius:8,border:"1px solid var(--phis-hair)",marginBottom:"1.25rem"}}>
+          <div style={{fontSize:12,fontWeight:600,color:"var(--phis-navy)",marginBottom:4}}>What's included</div>
+          <div style={{fontSize:12,color:"var(--phis-ink)",lineHeight:1.7}}>
             ✓ All 6 roles with full achievement bullets<br/>
             ✓ Education & Credentials ({(education||[]).length} entries)<br/>
             ✓ All {(awards||[]).length} awards and recognitions<br/>
-            ✓ Professional layout — navy/blue executive styling
+            ✓ Professional layout — navy executive styling
           </div>
         </div>
-        <div style={{padding:"10px 14px",background:"#eff6ff",borderRadius:6,borderLeft:"3px solid #3b82f6",marginBottom:"1.25rem"}}>
-          <div style={{fontSize:11,fontWeight:600,color:"#1e40af",marginBottom:3}}>How to get your .docx</div>
-          <div style={{fontSize:12,color:"#1e3a8a",lineHeight:1.6}}>Download the .rtf → Open in Microsoft Word → File → Save As → .docx</div>
+        <div style={{padding:"10px 14px",background:"var(--phis-stone)",borderRadius:6,borderLeft:"3px solid var(--phis-navy)",marginBottom:"1.25rem"}}>
+          <div style={{fontSize:11,fontWeight:600,color:"var(--phis-navy)",marginBottom:3}}>How to get your .docx</div>
+          <div style={{fontSize:12,color:"var(--phis-ink)",lineHeight:1.6}}>Download the .rtf → Open in Microsoft Word → File → Save As → .docx</div>
         </div>
-        <button onClick={download} style={{width:"100%",padding:"10px",borderRadius:8,cursor:"pointer",background:"#1e3a5f",color:"#fff",border:"none",fontSize:13,fontWeight:600}}>
+        <button onClick={download} style={{width:"100%",padding:"10px",borderRadius:8,cursor:"pointer",background:"var(--phis-navy)",color:"#fff",border:"none",fontSize:13,fontWeight:600}}>
           ↓ Download Full CV (.rtf)
         </button>
       </div>
@@ -3031,7 +3031,7 @@ function JDAnalysisStep({active,jobTitle,company,jdText,profile,result,onComplet
           <div style={{fontSize:11,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.05em",color:"var(--color-text-tertiary)",marginBottom:6}}>Key responsibilities</div>
           {data.responsibilities.slice(0,5).map((r,i)=>(
             <div key={i} style={{fontSize:12,color:"var(--color-text-secondary)",marginBottom:4,display:"flex",gap:8}}>
-              <span style={{color:"#3b82f6",flexShrink:0}}>›</span><span>{r.description||r}</span>
+              <span style={{color:"var(--phis-marigold)",flexShrink:0}}>›</span><span>{r.description||r}</span>
             </div>
           ))}
         </div>
@@ -3041,7 +3041,7 @@ function JDAnalysisStep({active,jobTitle,company,jdText,profile,result,onComplet
         <div style={{marginBottom:"1rem"}}>
           <div style={{fontSize:11,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.05em",color:"var(--color-text-tertiary)",marginBottom:6}}>Distinctive vocabulary</div>
           <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
-            {data.distinctive_vocabulary.map((v,i)=><span key={i} style={{...S.tag,background:"#EFF6FF",color:"#1e40af",border:"1px solid #bfdbfe"}}>{v.phrase||v}</span>)}
+            {data.distinctive_vocabulary.map((v,i)=><span key={i} style={{...S.tag,background:"#E8EFF7",color:"var(--phis-navy)",border:"1px solid var(--phis-hair)"}}>{v.phrase||v}</span>)}
           </div>
         </div>
       )}
@@ -4067,9 +4067,9 @@ function ApplyView({stories,setStories,experience,awards,education,profileContex
     <div>
       {rescoreToast&&(
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',padding:'10px 14px',borderRadius:8,marginBottom:'1rem',
-          background:rescoreToast.type==='success'?'#d1fae5':rescoreToast.type==='error'?'#fee2e2':'#dbeafe',
-          borderLeft:'3px solid '+(rescoreToast.type==='success'?'#10b981':rescoreToast.type==='error'?'#ef4444':'#3b82f6')}}>
-          <span style={{fontSize:13,color:rescoreToast.type==='success'?'#065f46':rescoreToast.type==='error'?'#b91c1c':'#1e40af',lineHeight:1.5}}>{rescoreToast.msg}</span>
+          background:rescoreToast.type==='success'?'#d1fae5':rescoreToast.type==='error'?'#fee2e2':'#E8EFF7',
+          borderLeft:'3px solid '+(rescoreToast.type==='success'?'#10b981':rescoreToast.type==='error'?'#ef4444':'var(--phis-navy)')}}>
+          <span style={{fontSize:13,color:rescoreToast.type==='success'?'#065f46':rescoreToast.type==='error'?'#b91c1c':'var(--phis-navy)',lineHeight:1.5}}>{rescoreToast.msg}</span>
           <button onClick={function(){setRescoreToast(null);}} style={{marginLeft:12,background:'none',border:'none',cursor:'pointer',fontSize:14,lineHeight:1,color:'var(--color-text-tertiary)',flexShrink:0}}>x</button>
         </div>
       )}
@@ -4966,67 +4966,67 @@ export default function App() {
   const isLib=["browse","detail","add","ask","interview","capture"].includes(page);
 
   const navBtn=(id,lbl,active,color)=>(
-    <button onClick={()=>{setPage(id);if(!["detail"].includes(id)){setSelected(null);}}} style={{textAlign:"left",padding:"7px 10px",borderRadius:6,border:"none",cursor:"pointer",fontSize:13,fontWeight:400,background:active?"var(--color-background-secondary)":"none",color:color||"var(--color-text-primary)"}}>{lbl}</button>
+    <button onClick={()=>{setPage(id);if(!["detail"].includes(id)){setSelected(null);}}} style={{textAlign:"left",padding:"7px 10px",borderRadius:6,border:"none",borderLeft:active?"2px solid var(--phis-marigold)":"2px solid transparent",cursor:"pointer",fontSize:13,fontWeight:active?500:400,background:"none",color:active?"var(--phis-navy)":(color||"var(--phis-slate)")}}>{lbl}</button>
   );
 
-  if(loading)return <div style={{padding:"2rem",color:"var(--color-text-secondary)",fontSize:14}}>Loading PHIS…</div>;
+  if(loading)return <div style={{padding:"2rem",color:"var(--phis-slate)",fontSize:14}}>Loading PHIS…</div>;
   if (!mode) return <EntryGate onAdam={() => setMode("adam")} onGuest={(info) => { setGuest(info); setMode("guest"); createGuestSession(info).then(row => { if (row?.id) setGuestSessionId(row.id); }); }} />;
   if (mode === "guest") return <GuestShell guest={guest} stories={stories} experience={experience} awards={awards} education={education} profileContext={profileContext} guestSessionId={guestSessionId} onExit={() => { setMode(null); setGuest(null); setGuestSessionId(null); }} />;
 
   return(
-    <div style={{display:"flex",fontFamily:"var(--font-sans)",minHeight:600}}>
+    <div style={{display:"flex",fontFamily:"inherit",minHeight:600,borderTop:"3px solid var(--phis-marigold)"}}>
       {/* Sidebar */}
-      <div style={{width:196,flexShrink:0,borderRight:"0.5px solid var(--color-border-tertiary)",paddingRight:"1rem",paddingTop:"1.25rem",display:"flex",flexDirection:"column",gap:0}}>
-        <div style={{fontSize:14,fontWeight:700,color:"var(--color-text-primary)",letterSpacing:"-0.01em",marginBottom:1}}>PHIS <span style={{fontSize:10,fontWeight:400,color:"var(--color-text-tertiary)"}}>v5</span></div>
-        <div style={{fontSize:11,color:"var(--color-text-tertiary)",marginBottom:"1.25rem"}}>Adam Waldman · {stories.length} stories</div>
+      <div style={{width:196,flexShrink:0,borderRight:"1px solid var(--phis-hair)",paddingRight:"1rem",paddingTop:"1.25rem",display:"flex",flexDirection:"column",gap:0,background:"var(--phis-paper)"}}>
+        <div style={{paddingLeft:"10px",marginBottom:6}}><PhisWordmark height={22}/></div>
+        <div style={{fontSize:11,color:"var(--phis-slate)",marginBottom:"1.25rem",paddingLeft:"10px"}}>Adam Waldman · {stories.length} stories</div>
 
         <div style={{marginBottom:"1.25rem"}}>
           {navBtn("home","Meet Adam",page==="home")}
         </div>
 
-        <div style={{fontSize:10,fontWeight:600,color:"var(--color-text-tertiary)",textTransform:"uppercase",letterSpacing:"0.07em",marginBottom:4,padding:"0 10px"}}>SOAR Library</div>
+        <div style={{fontSize:10,fontWeight:600,color:"var(--phis-marigold)",textTransform:"uppercase",letterSpacing:"0.07em",marginBottom:4,padding:"0 10px"}}>SOAR Library</div>
         <div style={{display:"flex",flexDirection:"column",gap:1,marginBottom:"1.25rem"}}>
           {navBtn("browse","Browse stories",page==="browse"||page==="detail")}
-          {navBtn("ask","Ask AI ✦",page==="ask","#1d4ed8")}
-          {navBtn("interview","Interview Adam ✦",page==="interview","#1d4ed8")}
-          {navBtn("capture","✦ Capture something",page==="capture","#1d4ed8")}
+          {navBtn("ask","Ask AI ✦",page==="ask","var(--phis-navy)")}
+          {navBtn("interview","Interview Adam ✦",page==="interview","var(--phis-navy)")}
+          {navBtn("capture","✦ Capture something",page==="capture","var(--phis-navy)")}
         </div>
 
         {isLib&&(
           <>
-            <div style={{fontSize:10,fontWeight:600,color:"var(--color-text-tertiary)",textTransform:"uppercase",letterSpacing:"0.07em",marginBottom:5}}>Type</div>
+            <div style={{fontSize:10,fontWeight:600,color:"var(--phis-marigold)",textTransform:"uppercase",letterSpacing:"0.07em",marginBottom:5}}>Type</div>
             <div style={{display:"flex",flexDirection:"column",gap:1,marginBottom:"1rem"}}>
               {TYPES.map(t=>(
-                <button key={t.id} onClick={()=>{sf("type",t.id);setPage("browse");setSelected(null);}} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 8px",borderRadius:6,border:"none",cursor:"pointer",background:filters.type===t.id?t.bg:"none",color:filters.type===t.id?t.color:"var(--color-text-secondary)",fontSize:12}}>
+                <button key={t.id} onClick={()=>{sf("type",t.id);setPage("browse");setSelected(null);}} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 8px",borderRadius:6,border:"none",cursor:"pointer",background:filters.type===t.id?t.bg:"none",color:filters.type===t.id?t.color:"var(--phis-slate)",fontSize:12}}>
                   <span style={{display:"flex",alignItems:"center",gap:5}}><span style={{width:6,height:6,borderRadius:"50%",background:t.dot,flexShrink:0}}/>{t.label}</span>
                   <span style={{opacity:.6}}>{counts[t.id]||0}</span>
                 </button>
               ))}
             </div>
-            <div style={{fontSize:10,fontWeight:600,color:"var(--color-text-tertiary)",textTransform:"uppercase",letterSpacing:"0.07em",marginBottom:5}}>Employer</div>
+            <div style={{fontSize:10,fontWeight:600,color:"var(--phis-marigold)",textTransform:"uppercase",letterSpacing:"0.07em",marginBottom:5}}>Employer</div>
             <div style={{display:"flex",flexDirection:"column",gap:1,marginBottom:"1rem"}}>
               {employers.map(e=>(
-                <button key={e} onClick={()=>{sf("employer",e);setPage("browse");setSelected(null);}} style={{textAlign:"left",padding:"4px 8px",borderRadius:4,border:"none",cursor:"pointer",background:filters.employer===e?"var(--color-background-secondary)":"none",color:filters.employer===e?"var(--color-text-primary)":"var(--color-text-secondary)",fontSize:11}}>{e}</button>
+                <button key={e} onClick={()=>{sf("employer",e);setPage("browse");setSelected(null);}} style={{textAlign:"left",padding:"4px 8px",borderRadius:4,border:"none",cursor:"pointer",background:filters.employer===e?"var(--phis-stone)":"none",color:filters.employer===e?"var(--phis-navy)":"var(--phis-slate)",fontSize:11}}>{e}</button>
               ))}
             </div>
-            {(filters.type||filters.employer)&&<button onClick={()=>setFilters(f=>({...f,type:"",employer:""}))} style={{fontSize:11,color:"var(--color-text-tertiary)",background:"none",border:"none",cursor:"pointer",padding:"4px 8px",textDecoration:"underline",textAlign:"left"}}>Clear filters</button>}
+            {(filters.type||filters.employer)&&<button onClick={()=>setFilters(f=>({...f,type:"",employer:""}))} style={{fontSize:11,color:"var(--phis-slate)",background:"none",border:"none",cursor:"pointer",padding:"4px 8px",textDecoration:"underline",textAlign:"left"}}>Clear filters</button>}
           </>
         )}
 
-        <div style={{fontSize:10,fontWeight:600,color:"var(--color-text-tertiary)",textTransform:"uppercase",letterSpacing:"0.07em",marginBottom:4,padding:"0 10px",marginTop:isLib?0:"1rem"}}>Career Profile</div>
+        <div style={{fontSize:10,fontWeight:600,color:"var(--phis-marigold)",textTransform:"uppercase",letterSpacing:"0.07em",marginBottom:4,padding:"0 10px",marginTop:isLib?0:"1rem"}}>Career Profile</div>
         <div style={{display:"flex",flexDirection:"column",gap:1,marginBottom:"1.25rem"}}>
           {navBtn("experience","Experience",page==="experience")}
           {navBtn("awards","Awards ★",page==="awards")}
-          <button onClick={()=>setShowFullCV(true)} style={{textAlign:"left",padding:"7px 10px",borderRadius:6,border:"none",cursor:"pointer",fontSize:13,fontWeight:400,background:"none",color:"#1e3a5f"}}>↓ Full CV</button>
+          <button onClick={()=>setShowFullCV(true)} style={{textAlign:"left",padding:"7px 10px",borderRadius:6,border:"none",cursor:"pointer",fontSize:13,fontWeight:400,background:"none",color:"var(--phis-navy)"}}>↓ Full CV</button>
         </div>
 
-        <div style={{fontSize:10,fontWeight:600,color:"var(--color-text-tertiary)",textTransform:"uppercase",letterSpacing:"0.07em",marginBottom:4,padding:"0 10px"}}>Job Search</div>
+        <div style={{fontSize:10,fontWeight:600,color:"var(--phis-marigold)",textTransform:"uppercase",letterSpacing:"0.07em",marginBottom:4,padding:"0 10px"}}>Job Search</div>
         <div style={{display:"flex",flexDirection:"column",gap:1,marginBottom:"1.25rem"}}>
-          {navBtn("apply","Application Engine ✦",page==="apply","#1d4ed8")}
+          {navBtn("apply","Application Engine ✦",page==="apply","var(--phis-navy)")}
           {navBtn("visitors","Visitors",page==="visitors")}
         </div>
 
-        <div style={{fontSize:10,fontWeight:600,color:"var(--color-text-tertiary)",textTransform:"uppercase",letterSpacing:"0.07em",marginBottom:4,padding:"0 10px"}}>Settings</div>
+        <div style={{fontSize:10,fontWeight:600,color:"var(--phis-marigold)",textTransform:"uppercase",letterSpacing:"0.07em",marginBottom:4,padding:"0 10px"}}>Settings</div>
         <div style={{display:"flex",flexDirection:"column",gap:1}}>
           {navBtn("profile","Profile & Settings",page==="profile")}
           {navBtn("metrics","Metrics",page==="metrics")}
@@ -5034,7 +5034,7 @@ export default function App() {
       </div>
 
       {/* Main */}
-      <div style={{flex:1,paddingLeft:"1.5rem",minWidth:0,overflowY:"auto"}}>
+      <div style={{flex:1,paddingLeft:"1.5rem",minWidth:0,overflowY:"auto",background:"var(--phis-stone)"}}>
         {page==="home"&&<HomeView stories={stories} experience={experience} awards={awards} education={education} onStoryClick={s=>{setSelected(s);setPage("detail");}}/>}
 
         {page==="browse"&&!selected&&(
