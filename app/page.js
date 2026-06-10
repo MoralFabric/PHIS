@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { seedAndGetStories, upsertStory, upsertStories, deleteStory as dbDeleteStory, getExperience, saveExperience, getProfile, saveProfile, getAwards, insertAward, getEducation, insertEducation, getProfileContext, saveProfileContext, createGuestSession, logFitRun, logGuestQuestion, logInterviewQuestion, getGuestSessions, getMetrics, createMetric, updateMetric, deleteMetric } from '@/lib/data';
 
 // ─── CONFIG ───────────────────────────────────────────────
