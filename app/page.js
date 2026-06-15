@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useMemo, useRef } from "react";
-import { seedAndGetStories, upsertStory, upsertStories, deleteStory as dbDeleteStory, getExperience, saveExperience, getProfile, saveProfile, getAwards, insertAward, getEducation, insertEducation, getProfileContext, saveProfileContext, createGuestSession, logFitRun, logGuestQuestion, logInterviewQuestion, getGuestSessions, getMetrics, createMetric, updateMetric, deleteMetric } from '@/lib/data';
+import { seedAndGetStories, upsertStory, upsertStories, deleteStory as dbDeleteStory, getExperience, saveExperience, getProfile, saveProfile, getAwards, insertAward, getEducation, insertEducation, getProfileContext, saveProfileContext, createGuestSession, logFitRun, logGuestQuestion, logInterviewQuestion, getGuestSessions, getMetrics, createMetric, updateMetric, deleteMetric, getValues } from '@/lib/data';
 
 // ─── CONFIG ───────────────────────────────────────────────
 const MODEL   = "claude-sonnet-4-6";
@@ -2420,6 +2420,30 @@ function AskView({stories}) {
   );
 }
 
+function buildValuesBlock(values) {
+  if (!values || values.length === 0) return '';
+  const confirmed = [], draft = [];
+  for (const v of values) {
+    if (!v.principle) continue;
+    const soarHint = v.soar_refs && v.soar_refs.length > 0
+      ? ` [draw on story ${v.soar_refs.join(', ')} to show this in action]` : '';
+    if (v.status === 'confirmed' && v.in_practice) {
+      confirmed.push(`- ${v.principle}: ${v.in_practice}${soarHint}`);
+    } else {
+      const text = v.in_practice ? ` — ${v.in_practice}` : '';
+      draft.push(`- ${v.principle}${text}${soarHint}`);
+    }
+  }
+  const sections = [];
+  if (confirmed.length > 0) {
+    sections.push(`Confirmed ways Adam operates (may be stated directly):\n${confirmed.join('\n')}`);
+  }
+  if (draft.length > 0) {
+    sections.push(`Steering context (do not assert as quoted fact — use to shape tone and framing):\n${draft.join('\n')}`);
+  }
+  return `ADAM'S VALUES AND PRINCIPLES:\nLet these inform the philosophy and tone of answers. Where a principle is directly relevant, weave it in naturally — do not recite the list.\n\n${sections.join('\n\n')}`;
+}
+
 // ─── INTERVIEW VIEW ───────────────────────────────────────
 function InterviewView({ stories, guestSessionId, guttered = true }) {
   const GP = "'Poppins', system-ui, sans-serif";
@@ -2428,8 +2452,11 @@ function InterviewView({ stories, guestSessionId, guttered = true }) {
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
   const [err, setErr] = useState("");
+  const [values, setValues] = useState([]);
   const threadRef = useRef(null);
   const bottomRef = useRef(null);
+
+  useEffect(() => { getValues().then(setValues).catch(() => {}); }, []);
 
   const EXAMPLES = [
     "Tell me about a time you led through significant resistance.",
@@ -2468,8 +2495,9 @@ function InterviewView({ stories, guestSessionId, guttered = true }) {
       const userMsg = (history ? history + "\n\n" : "") +
         `INTERVIEW QUESTION: "${text}"\n\nYOUR STORIES TO DRAW FROM:\n${ctx}`;
 
+      const valBlock = buildValuesBlock(values);
       const ans = await callClaude(
-        `You are Adam Waldman, a senior finance and analytics executive with 15+ years of experience building insight-driven organizations. You are in a job interview. Draw from the specific stories in your library to compose your answer. Write in first person, naturally and confidently, as you would speak in a real interview room. Be specific - name the initiative, the obstacle, what you did, what happened. 3 to 4 paragraphs. No bullets. No headers. No hedging. Sound like a human being who has done real things. When answering questions about whether Adam has done something, interpret the question generously. Contributing a chapter to a book counts as writing for that book. Co-authoring counts. Speaking on a topic counts as expertise. Don't refuse credit for things the stories clearly demonstrate. If a story partially matches the question, surface it and explain the nature of his involvement rather than answering "no."`,
+        `You are Adam Waldman, a senior finance and analytics executive with 15+ years of experience building insight-driven organizations. You are in a job interview. Draw from the specific stories in your library to compose your answer. Write in first person, naturally and confidently, as you would speak in a real interview room. Be specific - name the initiative, the obstacle, what you did, what happened. 3 to 4 paragraphs. No bullets. No headers. No hedging. Sound like a human being who has done real things. When answering questions about whether Adam has done something, interpret the question generously. Contributing a chapter to a book counts as writing for that book. Co-authoring counts. Speaking on a topic counts as expertise. Don't refuse credit for things the stories clearly demonstrate. If a story partially matches the question, surface it and explain the nature of his involvement rather than answering "no."${valBlock ? '\n\n' + valBlock : ''}`,
         userMsg,
         1000, 0.4
       );
