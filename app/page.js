@@ -1705,7 +1705,7 @@ function StoryEditForm({initial,onSave,onCancel}) {
 }
 
 // ─── FREE-FORM CAPTURE ────────────────────────────────────
-function FreeAddView({stories,experience,awards,education,profileContext,onSave,onUpdateExperience,onUpdateAwards,onUpdateEducation,onUpdateProfileContext,onRescore,onCancel}) {
+function FreeAddView({stories,experience,awards,education,profileContext,onSave,onUpdateStories,onUpdateExperience,onUpdateAwards,onUpdateEducation,onUpdateProfileContext,onRescore,onCancel}) {
   const [input,setInput]=useState("");
   const [busy,setBusy]=useState(false);
   const [saving,setSaving]=useState(false);
@@ -1894,7 +1894,7 @@ function FreeAddView({stories,experience,awards,education,profileContext,onSave,
 
       if(newSoars.length>0){
         await upsertStories(newSoars);
-        setStories(function(prev){return prev.concat(newSoars);});
+        if(onUpdateStories)onUpdateStories(stories.concat(newSoars));
         if(onRescore){
           const skillNames=[...new Set(newSoars.flatMap(function(s){return s.skills||[];}))];
           if(skillNames.length>0)onRescore(skillNames);
@@ -5203,6 +5203,7 @@ export default function App() {
             stories={stories} experience={experience}
             awards={awards} education={education} profileContext={profileContext}
             onSave={saveStory}
+            onUpdateStories={updated=>setStories(updated)}
             onUpdateExperience={exp=>{setExperience(exp);persistExp(exp);}}
             onUpdateAwards={aw=>setAwards(aw)}
             onUpdateEducation={edu=>setEducation(edu)}
