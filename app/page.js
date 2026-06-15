@@ -1705,8 +1705,8 @@ function StoryEditForm({initial,onSave,onCancel}) {
 }
 
 // ─── FREE-FORM CAPTURE ────────────────────────────────────
-function FreeAddView({stories,experience,awards,education,profileContext,onSave,onUpdateStories,onUpdateExperience,onUpdateAwards,onUpdateEducation,onUpdateProfileContext,onRescore,onCancel}) {
-  const [input,setInput]=useState("");
+function FreeAddView({stories,experience,awards,education,profileContext,onSave,onUpdateStories,onUpdateExperience,onUpdateAwards,onUpdateEducation,onUpdateProfileContext,onRescore,onCancel,context,initialText,autoAnalyze}) {
+  const [input,setInput]=useState(initialText||"");
   const [busy,setBusy]=useState(false);
   const [saving,setSaving]=useState(false);
   const [proposals,setProposals]=useState(null);
@@ -1722,6 +1722,10 @@ function FreeAddView({stories,experience,awards,education,profileContext,onSave,
       return Object.assign({},e,{facets:fs});
     });
   },[experience]);
+
+  useEffect(function(){
+    if(autoAnalyze && initialText) analyze(initialText);
+  },[]);
 
   const examples=[
     "I led a migration of our data warehouse to Snowflake — took six months, involved four teams, and cut query times by 80%",
@@ -1806,17 +1810,22 @@ function FreeAddView({stories,experience,awards,education,profileContext,onSave,
   }
 
   // ── Analyze ────────────────────────────────────────────────
-  async function analyze(){
-    if(!input.trim()||busy)return;
+  async function analyze(inputOverride){
+    const inputText=(typeof inputOverride==='string')?inputOverride:input;
+    if(!inputText.trim()||busy)return;
+    if(typeof inputOverride==='string')setInput(inputOverride);
     setBusy(true);setErr("");setProposals(null);setSaved(false);setSaveErr("");setItemStates({});
     try{
       const expSummary=expData.map(e=>e.id+': '+e.role+' at '+e.org+' ('+e.dates+')').join('\n');
-      const text=await callClaude(
-        'You are a career data assistant for Adam Waldman, a senior finance and analytics executive. Given free-form text about something he did, experienced, or wants to update, create structured career data. A single input can produce multiple items — classify everything relevant.\n\nReturn ONLY valid JSON:\n{\n  "analysis": "one sentence describing what was captured",\n  "items": [\n    {\n      "type": "soar",\n      "label": "short label",\n      "exp_id": "exp_001 or null",\n      "data": {"title":"","type":"career","employer":"","situation":"","obstacle":"","action":"","result":"","impact":"","fullStory":"3-4 sentences first person","themes":[],"skills":[],"useFor":["Resume","Interview"]}\n    },\n    {\n      "type": "experience_bullet",\n      "label": "short label",\n      "exp_id": "exp_001 or null if unclear",\n      "data": {"bullets":["bullet starting with strong action verb"]}\n    },\n    {\n      "type": "facet",\n      "label": "short label",\n      "exp_id": "exp_001 or null if unclear",\n      "data": {"name":"facet name","themes":[],"narrative":"facet paragraph describing this dimension of the role"}\n    },\n    {\n      "type": "award",\n      "label": "short label",\n      "data": {"award":"","org":"","year":2024,"narrative":""}\n    },\n    {\n      "type": "education",\n      "label": "short label",\n      "data": {"cred":"","org":"","year":"","note":""}\n    },\n    {\n      "type": "profile_context",\n      "label": "short label",\n      "data": {"headerTagline":null,"positioningSummary":null,"targetSeniority":null,"compFloorBase":null,"compFloorTotal":null,"geographicPreferences":null,"industriesExcluded":null}\n    }\n  ]\n}\n\nClassification rules:\n- Include ONLY item types relevant to the input — omit unused types from the array\n- soar: for a long input describing multiple distinct projects or achievements, create one SOAR per distinct arc. Do not merge separate outcomes into one story. Each SOAR should stand alone with its own situation, obstacle, action, and result.\n- experience_bullet: create when it clearly belongs to a specific role — exp_id null if role is ambiguous\n- facet: create when the input describes a dimension of a role (advisory function, leadership pattern, domain expertise) not captured as a SOAR story\n- award: ONLY if an award, prize, or named recognition is explicitly mentioned\n- education: ONLY if a credential, certification, or course is explicitly mentioned\n- profile_context: ONLY if user wants to update their headline, positioning, salary target, or location preferences. Include only non-null fields that should change.\n- A single input CAN produce multiple items (story + award, story + bullet, etc.)\n- Use Adams voice: confident, direct, outcome-focused. No em-dashes.',
-        'Adams description:\n"'+input+'"\n\nHis roles (for exp_id matching):\n'+expSummary,
+      const ctxExtra=context?'\n\n    {\n      "type": "interview_guidance",\n      "label": "short label",\n      "data": {"guidance":"clear instruction for future answers about this topic","kind":"correction|tone|general","question":'+JSON.stringify(context.question)+',"answer":'+JSON.stringify((context.answer||'').slice(0,300))+'}\n    },\n    {\n      "type": "profile_values",\n      "label": "short label",\n      "data": {"principle":"3-8 word label","in_practice":"first-person 1-2 sentences","kind":"principle|style|situation","topic":null}\n    }':'';
+      const ctxRules=context?'\n- interview_guidance: use when the note corrects a factual error, gives tone/style instruction, or provides guidance about how to answer this type of question in future. Store the question and answer excerpt in the data fields.\n- profile_values: ONLY if the note clearly introduces a NEW personal principle or leadership approach not already represented. Default to interview_guidance for corrections and tone notes.\n- Still route any story, award, credential, or profile update to its correct type even when context is present.':'';
+      const ctxUserNote=context?'\n\nCONTEXT — this note is feedback on a specific interview exchange:\nQUESTION: '+JSON.stringify(context.question)+'\nANSWER (excerpt): '+JSON.stringify((context.answer||'').slice(0,400)):'';
+      const raw=await callClaude(
+        'You are a career data assistant for Adam Waldman, a senior finance and analytics executive. Given free-form text about something he did, experienced, or wants to update, create structured career data. A single input can produce multiple items — classify everything relevant.\n\nReturn ONLY valid JSON:\n{\n  "analysis": "one sentence describing what was captured",\n  "items": [\n    {\n      "type": "soar",\n      "label": "short label",\n      "exp_id": "exp_001 or null",\n      "data": {"title":"","type":"career","employer":"","situation":"","obstacle":"","action":"","result":"","impact":"","fullStory":"3-4 sentences first person","themes":[],"skills":[],"useFor":["Resume","Interview"]}\n    },\n    {\n      "type": "experience_bullet",\n      "label": "short label",\n      "exp_id": "exp_001 or null if unclear",\n      "data": {"bullets":["bullet starting with strong action verb"]}\n    },\n    {\n      "type": "facet",\n      "label": "short label",\n      "exp_id": "exp_001 or null if unclear",\n      "data": {"name":"facet name","themes":[],"narrative":"facet paragraph describing this dimension of the role"}\n    },\n    {\n      "type": "award",\n      "label": "short label",\n      "data": {"award":"","org":"","year":2024,"narrative":""}\n    },\n    {\n      "type": "education",\n      "label": "short label",\n      "data": {"cred":"","org":"","year":"","note":""}\n    },\n    {\n      "type": "profile_context",\n      "label": "short label",\n      "data": {"headerTagline":null,"positioningSummary":null,"targetSeniority":null,"compFloorBase":null,"compFloorTotal":null,"geographicPreferences":null,"industriesExcluded":null}\n    }'+ctxExtra+'\n  ]\n}\n\nClassification rules:\n- Include ONLY item types relevant to the input — omit unused types from the array\n- soar: for a long input describing multiple distinct projects or achievements, create one SOAR per distinct arc. Do not merge separate outcomes into one story. Each SOAR should stand alone with its own situation, obstacle, action, and result.\n- experience_bullet: create when it clearly belongs to a specific role — exp_id null if role is ambiguous\n- facet: create when the input describes a dimension of a role (advisory function, leadership pattern, domain expertise) not captured as a SOAR story\n- award: ONLY if an award, prize, or named recognition is explicitly mentioned\n- education: ONLY if a credential, certification, or course is explicitly mentioned\n- profile_context: ONLY if user wants to update their headline, positioning, salary target, or location preferences. Include only non-null fields that should change.\n- A single input CAN produce multiple items (story + award, story + bullet, etc.)\n- Use Adams voice: confident, direct, outcome-focused. No em-dashes.'+ctxRules,
+        'Adams description:\n"'+inputText+'"'+ctxUserNote+'\n\nHis roles (for exp_id matching):\n'+expSummary,
         4000, 0
       );
-      const parsed=parseJSON(text);
+      const parsed=parseJSON(raw);
       if(!parsed||!parsed.items||!parsed.items.length)throw new Error('No items returned — please try rephrasing.');
       const initStates={};
       parsed.items.forEach(function(item,i){
@@ -1889,6 +1898,29 @@ function FreeAddView({stories,experience,awards,education,profileContext,onSave,
           newEducation.push(itemData);
         } else if(raw.type==='profile_context'){
           profileCtxPatch=Object.assign({},profileCtxPatch||{},itemData);
+        } else if(raw.type==='interview_guidance'){
+          await insertGuidance({
+            question:context?context.question:null,
+            answer:context?context.answer:null,
+            note:input,
+            guidance:itemData.guidance||input,
+            kind:itemData.kind||'general',
+            active:true,
+          });
+        } else if(raw.type==='profile_values'){
+          await insertValue({
+            id:'val_'+uuidv4(),
+            principle:itemData.principle||'',
+            in_practice:itemData.in_practice||'',
+            surface:'interview_only',
+            source:'feedback',
+            status:'draft',
+            kind:itemData.kind||'principle',
+            topic:itemData.topic||null,
+            soar_refs:[],
+            tags:[],
+            sort_order:100,
+          });
         }
       }
 
@@ -1929,12 +1961,14 @@ function FreeAddView({stories,experience,awards,education,profileContext,onSave,
 
   // ── Type / status config ───────────────────────────────────
   const TC={
-    soar:              {bg:'#d1fae5',color:'#065f46',label:'SOAR Story'},
-    experience_bullet: {bg:'#E8EFF7',color:'var(--phis-navy)',label:'Experience Bullet'},
-    facet:             {bg:'#e0e7ff',color:'#3730a3',label:'Facet Enrichment'},
-    award:             {bg:'#fef3c7',color:'#92400e',label:'Award'},
-    education:         {bg:'#ede9fe',color:'#4c1d95',label:'Education'},
-    profile_context:   {bg:'#fce7f3',color:'#831843',label:'Profile Context'},
+    soar:               {bg:'#d1fae5',color:'#065f46',label:'SOAR Story'},
+    experience_bullet:  {bg:'#E8EFF7',color:'var(--phis-navy)',label:'Experience Bullet'},
+    facet:              {bg:'#e0e7ff',color:'#3730a3',label:'Facet Enrichment'},
+    award:              {bg:'#fef3c7',color:'#92400e',label:'Award'},
+    education:          {bg:'#ede9fe',color:'#4c1d95',label:'Education'},
+    profile_context:    {bg:'#fce7f3',color:'#831843',label:'Profile Context'},
+    interview_guidance: {bg:'#fef9c3',color:'#854d0e',label:'Interview Guidance'},
+    profile_values:     {bg:'#f0fdf4',color:'#166534',label:'Values / Principle'},
   };
   const STAT={
     new:          {label:'NEW',bg:'#f0fdf4',color:'#15803d'},
@@ -1966,10 +2000,16 @@ function FreeAddView({stories,experience,awards,education,profileContext,onSave,
   return(
     <div style={{paddingTop:'1.5rem',maxWidth:680}}>
       <div style={{marginBottom:'1.5rem'}}>
-        <div style={{fontSize:20,fontWeight:500,marginBottom:4}}>Capture something</div>
-        <div style={{fontSize:13,color:'var(--color-text-secondary)',lineHeight:1.6}}>
-          Describe anything in plain language — a story, an award, a new credential, a role update, or a headline change. PHIS will classify and structure it.
-        </div>
+        <div style={{fontSize:20,fontWeight:500,marginBottom:4}}>{context?'Review feedback':'Capture something'}</div>
+        {context?(
+          <div style={{fontSize:12,color:'var(--color-text-secondary)',lineHeight:1.6,background:'var(--phis-stone)',borderRadius:6,padding:'8px 12px'}}>
+            <span style={{fontWeight:600}}>Question: </span>{context.question}
+          </div>
+        ):(
+          <div style={{fontSize:13,color:'var(--color-text-secondary)',lineHeight:1.6}}>
+            Describe anything in plain language — a story, an award, a new credential, a role update, or a headline change. PHIS will classify and structure it.
+          </div>
+        )}
       </div>
 
       <div style={{marginBottom:14}}>
@@ -2138,6 +2178,20 @@ function FreeAddView({stories,experience,awards,education,profileContext,onSave,
                             );
                           })}
                         </div>
+                      )}
+                      {item.type==='interview_guidance'&&itemData&&(
+                        <>
+                          {itemData.kind&&<div style={{marginBottom:3}}><strong>Kind:</strong> {itemData.kind}</div>}
+                          {itemData.guidance&&<div style={{marginBottom:3}}><strong>Guidance:</strong> {itemData.guidance}</div>}
+                          {itemData.question&&<div style={{marginBottom:3,fontSize:11,color:'var(--color-text-tertiary)'}}><strong>For question:</strong> {String(itemData.question).slice(0,120)}</div>}
+                        </>
+                      )}
+                      {item.type==='profile_values'&&itemData&&(
+                        <>
+                          {itemData.principle&&<div style={{marginBottom:3}}><strong>Principle:</strong> {itemData.principle}</div>}
+                          {itemData.in_practice&&<div style={{marginBottom:3}}><strong>In practice:</strong> {itemData.in_practice}</div>}
+                          {itemData.kind&&<div style={{marginBottom:3}}><strong>Kind:</strong> {itemData.kind}</div>}
+                        </>
                       )}
                     </div>
                   )}
@@ -4536,7 +4590,7 @@ function GuestDashboard({ experience, awards, education, profileContext, fitRole
 }
 
 // ─── GUEST VISITORS VIEW (Adam only) ─────────────────────
-function GuestVisitorsView() {
+function GuestVisitorsView({onFeedbackCapture}) {
   const ACCENT = "#A32D2D";
   const [sessions, setSessions] = useState(null);
   const [fbText, setFbText] = useState({});
@@ -4687,10 +4741,10 @@ function GuestVisitorsView() {
                             />
                             <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 3 }}>
                               <button
-                                onClick={() => classifyAndSave(key, q, a, fbText[key] || '')}
+                                onClick={() => { if(onFeedbackCapture) { onFeedbackCapture(fbText[key]||'', {question:q,answer:a}); setFbText(s=>({...s,[key]:''})); } else { classifyAndSave(key, q, a, fbText[key] || ''); } }}
                                 disabled={!!(fbSaving[key] || !(fbText[key] || '').trim())}
                                 style={{ fontSize: 11, padding: "3px 10px", borderRadius: 4, border: "1px solid " + ACCENT, background: fbSaving[key] ? "#f3f4f6" : ACCENT, color: fbSaving[key] ? "var(--color-text-secondary)" : "#fff", cursor: fbSaving[key] ? "default" : "pointer" }}
-                              >{fbSaving[key] ? "Saving..." : "Save"}</button>
+                              >{fbSaving[key] ? "Saving..." : "Review"}</button>
                               {fbDone[key] === 'saved' && <span style={{ fontSize: 11, color: "#15803d" }}>Saved</span>}
                               {fbDone[key] === 'error' && <span style={{ fontSize: 11, color: "#b91c1c" }}>Error - try again</span>}
                             </div>
@@ -5069,6 +5123,7 @@ export default function App() {
   const [editing,setEditing]=useState(null);
   const [filters,setFilters]=useState({type:"",employer:"",search:""});
   const [showFullCV,setShowFullCV]=useState(false);
+  const [feedbackCapture,setFeedbackCapture]=useState(null);
   const [profile,setProfile]=useState({tone:"professional",pageLimit:3,seniority:"VP",baseSalaryFrom:185000,baseSalaryTo:220000,totalCompFrom:285000,totalCompTo:350000});
   const [experience,setExperience]=useState(EXPERIENCE_DEFAULT);
   const [awards,setAwards]=useState([]);
@@ -5239,12 +5294,34 @@ export default function App() {
         {page==="experience"&&<ExperienceView experience={experience} setExperience={exp=>{setExperience(exp);persistExp(exp);}}/>}
         {page==="awards"&&<AwardsView awards={awards}/>}
         {page==="apply"&&<ApplyView stories={stories} setStories={updateStories} experience={experience} awards={awards} education={education} profileContext={profileContext} profile={profile} rescoreRequest={rescoreRequest} onRescoreDone={()=>setRescoreRequest(null)}/>}
-        {page==="visitors"&&<GuestVisitorsView/>}
+        {page==="visitors"&&<GuestVisitorsView onFeedbackCapture={function(text,ctx){setFeedbackCapture({text,context:ctx});}}/>}
         {page==="profile"&&<ProfileView profile={profile} setProfile={p=>{const next=typeof p==='function'?p(profile):p;setProfile(next);persistProfile(next);}} awards={awards} education={education} profileContext={profileContext}/>}
         {page==="metrics"&&<MetricsManager/>}
       </div>
 
       {showFullCV&&<FullCVExporter stories={stories} experience={experience} awards={awards} education={education} profileContext={profileContext} onClose={()=>setShowFullCV(false)}/>}
+      {feedbackCapture&&(
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.45)',zIndex:500,overflowY:'auto',display:'flex',alignItems:'flex-start',justifyContent:'center',padding:'2rem'}}>
+          <div style={{background:'var(--color-background-primary)',borderRadius:12,padding:'1.5rem 2rem',maxWidth:740,width:'100%',position:'relative',marginTop:'1rem'}}>
+            <button onClick={function(){setFeedbackCapture(null);}} style={{position:'absolute',top:12,right:14,background:'none',border:'none',fontSize:20,cursor:'pointer',color:'var(--color-text-tertiary)',lineHeight:1}}>×</button>
+            <FreeAddView
+              stories={stories} experience={experience}
+              awards={awards} education={education} profileContext={profileContext}
+              onSave={saveStory}
+              onUpdateStories={function(updated){setStories(updated);}}
+              onUpdateExperience={function(exp){setExperience(exp);persistExp(exp);}}
+              onUpdateAwards={function(aw){setAwards(aw);}}
+              onUpdateEducation={function(edu){setEducation(edu);}}
+              onUpdateProfileContext={function(ctx){setProfileContext(ctx);}}
+              onRescore={function(skillNames){setRescoreRequest(skillNames);}}
+              context={feedbackCapture.context}
+              initialText={feedbackCapture.text}
+              autoAnalyze={true}
+              onCancel={function(){setFeedbackCapture(null);}}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
