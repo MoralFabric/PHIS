@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useMemo, useRef } from "react";
-import { seedAndGetStories, upsertStory, upsertStories, deleteStory as dbDeleteStory, getExperience, saveExperience, getProfile, saveProfile, getAwards, insertAward, getEducation, insertEducation, getProfileContext, saveProfileContext, createGuestSession, logFitRun, logGuestQuestion, logInterviewQuestion, getGuestSessions, getMetrics, createMetric, updateMetric, deleteMetric, getValues } from '@/lib/data';
+import { seedAndGetStories, upsertStory, upsertStories, deleteStory as dbDeleteStory, getExperience, saveExperience, getProfile, saveProfile, getAwards, insertAward, getEducation, insertEducation, getProfileContext, saveProfileContext, createGuestSession, logFitRun, logGuestQuestion, logInterviewQuestion, getGuestSessions, getMetrics, createMetric, updateMetric, deleteMetric, getValues, insertValue, getGuidance, insertGuidance } from '@/lib/data';
 
 // ─── CONFIG ───────────────────────────────────────────────
 const MODEL   = "claude-sonnet-4-6";
@@ -2444,6 +2444,16 @@ function buildValuesBlock(values) {
   return `ADAM'S VALUES AND PRINCIPLES:\nLet these inform the philosophy and tone of answers. Where a principle is directly relevant, weave it in naturally — do not recite the list.\n\n${sections.join('\n\n')}`;
 }
 
+function buildGuidanceBlock(rows) {
+  if (!rows || rows.length === 0) return '';
+  const lines = rows.map(r => {
+    const tag = r.kind === 'correction' ? 'CORRECTION' : r.kind === 'tone' ? 'TONE' : 'GUIDANCE';
+    const ctx = r.question ? ` (re: "${r.question.slice(0, 70)}${r.question.length > 70 ? '...' : ''}")` : '';
+    return `[${tag}${ctx}] ${r.guidance}`;
+  });
+  return `INTERVIEW GUIDANCE (apply to all future answers):\n${lines.join('\n')}`;
+}
+
 // ─── INTERVIEW VIEW ───────────────────────────────────────
 function InterviewView({ stories, guestSessionId, guttered = true }) {
   const GP = "'Poppins', system-ui, sans-serif";
@@ -2453,10 +2463,14 @@ function InterviewView({ stories, guestSessionId, guttered = true }) {
   const [typing, setTyping] = useState(false);
   const [err, setErr] = useState("");
   const [values, setValues] = useState([]);
+  const [guidance, setGuidance] = useState([]);
   const threadRef = useRef(null);
   const bottomRef = useRef(null);
 
-  useEffect(() => { getValues().then(setValues).catch(() => {}); }, []);
+  useEffect(() => {
+    getValues().then(setValues).catch(() => {});
+    getGuidance().then(setGuidance).catch(() => {});
+  }, []);
 
   const EXAMPLES = [
     "Tell me about a time you led through significant resistance.",
@@ -2496,8 +2510,9 @@ function InterviewView({ stories, guestSessionId, guttered = true }) {
         `INTERVIEW QUESTION: "${text}"\n\nYOUR STORIES TO DRAW FROM:\n${ctx}`;
 
       const valBlock = buildValuesBlock(values);
+      const guidBlock = buildGuidanceBlock(guidance);
       const ans = await callClaude(
-        `You are Adam Waldman, a senior finance and analytics executive with 15+ years of experience building insight-driven organizations. You are in a job interview. Draw from the specific stories in your library to compose your answer. Write in first person, naturally and confidently, as you would speak in a real interview room. Be specific - name the initiative, the obstacle, what you did, what happened. 3 to 4 paragraphs. No bullets. No headers. No hedging. Sound like a human being who has done real things. When answering questions about whether Adam has done something, interpret the question generously. Contributing a chapter to a book counts as writing for that book. Co-authoring counts. Speaking on a topic counts as expertise. Don't refuse credit for things the stories clearly demonstrate. If a story partially matches the question, surface it and explain the nature of his involvement rather than answering "no."${valBlock ? '\n\n' + valBlock : ''}`,
+        `You are Adam Waldman, a senior finance and analytics executive with 15+ years of experience building insight-driven organizations. You are in a job interview. Draw from the specific stories in your library to compose your answer. Write in first person, naturally and confidently, as you would speak in a real interview room. Be specific - name the initiative, the obstacle, what you did, what happened. 3 to 4 paragraphs. No bullets. No headers. No hedging. Sound like a human being who has done real things. When answering questions about whether Adam has done something, interpret the question generously. Contributing a chapter to a book counts as writing for that book. Co-authoring counts. Speaking on a topic counts as expertise. Don't refuse credit for things the stories clearly demonstrate. If a story partially matches the question, surface it and explain the nature of his involvement rather than answering "no."${valBlock ? '\n\n' + valBlock : ''}${guidBlock ? '\n\n' + guidBlock : ''}`,
         userMsg,
         1000, 0.4
       );
@@ -4502,10 +4517,73 @@ function GuestDashboard({ experience, awards, education, profileContext, fitRole
 function GuestVisitorsView() {
   const ACCENT = "#A32D2D";
   const [sessions, setSessions] = useState(null);
+  const [fbText, setFbText] = useState({});
+  const [fbSaving, setFbSaving] = useState({});
+  const [fbDone, setFbDone] = useState({});
 
   useEffect(() => {
     getGuestSessions().then(setSessions);
   }, []);
+
+  function makeId() {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+      const r = Math.random() * 16 | 0;
+      return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+    });
+  }
+
+  async function classifyAndSave(key, q, a, note) {
+    if (!note.trim()) return;
+    setFbSaving(s => ({ ...s, [key]: true }));
+    setFbDone(s => ({ ...s, [key]: null }));
+    try {
+      const raw = await callClaude(
+        'You are a classifier for an interview preparation system. Classify feedback notes about AI-generated interview answers. Return JSON only — no markdown fences, no explanation.',
+        `QUESTION: "${q}"\nANSWER: "${a}"\nFEEDBACK NOTE: "${note}"\n\nClassify the note into one or more routes. A single note can fire more than one.\n\nRoutes:\n- "value": The note clearly introduces a NEW personal principle, leadership-style statement, or approach to a specific situation. Use sparingly.\n- "correction": Factual error, overstatement, or wrong attribution in the answer.\n- "tone": Purely about voice, tone, phrasing, or style.\n- "guidance": General instruction for future answers. Default when uncertain.\n\nRule: only use "value" when a clear new principle or approach is stated. Never for corrections or tone notes. Anything marked value goes in as interview_only draft.\n\nReturn JSON only:\n{\n  "routes": ["value","correction","tone","guidance"],\n  "value": {"principle":"Short label 3-8 words","in_practice":"First-person 1-2 sentences","kind":"principle|style|situation","topic":null},\n  "correction": {"guidance":"Instruction for future answers","story_id":null},\n  "tone": {"guidance":"Tone instruction"},\n  "guidance": {"guidance":"General instruction"}\n}\nInclude keys only for routes listed in routes array.`,
+        600, 0
+      );
+      const result = parseJSON(raw);
+      if (!result || !Array.isArray(result.routes)) throw new Error('bad classification response');
+
+      for (const route of result.routes) {
+        if (route === 'value' && result.value) {
+          await insertValue({
+            id: 'val_fb_' + makeId(),
+            principle: result.value.principle || note.slice(0, 60),
+            in_practice: result.value.in_practice || note,
+            surface: 'interview_only',
+            source: 'feedback',
+            status: 'draft',
+            kind: result.value.kind || 'principle',
+            topic: result.value.topic || null,
+            soar_refs: [],
+            tags: [],
+            sort_order: 100,
+          });
+        }
+        if ((route === 'correction' || route === 'tone' || route === 'guidance') && result[route]) {
+          const row = {
+            question: q,
+            answer: a,
+            note: note,
+            guidance: result[route].guidance || note,
+            kind: route === 'correction' ? 'correction' : route === 'tone' ? 'tone' : 'general',
+            active: true,
+          };
+          if (route === 'correction' && result.correction && result.correction.story_id) {
+            row.story_id = result.correction.story_id;
+          }
+          await insertGuidance(row);
+        }
+      }
+      setFbDone(s => ({ ...s, [key]: 'saved' }));
+      setFbText(s => ({ ...s, [key]: '' }));
+    } catch (e) {
+      console.error('classifyAndSave', e);
+      setFbDone(s => ({ ...s, [key]: 'error' }));
+    }
+    setFbSaving(s => ({ ...s, [key]: false }));
+  }
 
   function fmt(iso) {
     if (!iso) return "";
@@ -4567,6 +4645,7 @@ function GuestVisitorsView() {
                   {s.interview_questions.map((item, i) => {
                     const q = typeof item === "string" ? item : (item.question || "");
                     const a = typeof item === "string" ? null : (item.answer || null);
+                    const key = `${s.id}-${i}`;
                     return (
                       <div key={i} style={{ paddingLeft: 8, borderLeft: "2px solid #f3c4c4" }}>
                         <div style={{ fontSize: 13, fontWeight: 500, color: "var(--color-text-primary)", marginBottom: 5 }}>{q}</div>
@@ -4574,6 +4653,26 @@ function GuestVisitorsView() {
                           <div style={{ fontSize: 12, color: "var(--color-text-secondary)", background: "var(--color-background-secondary)", borderRadius: 5, padding: "8px 10px", lineHeight: 1.65 }}>{a}</div>
                         ) : (
                           <div style={{ fontSize: 12, color: "var(--color-text-tertiary)", fontStyle: "italic" }}>not recorded</div>
+                        )}
+                        {a && (
+                          <div style={{ marginTop: 6 }}>
+                            <textarea
+                              value={fbText[key] || ''}
+                              onChange={e => setFbText(s => ({ ...s, [key]: e.target.value }))}
+                              placeholder="Feedback on this answer..."
+                              rows={2}
+                              style={{ width: "100%", fontSize: 11, padding: "5px 7px", borderRadius: 4, border: "1px solid var(--color-border-tertiary)", resize: "vertical", fontFamily: "inherit", color: "var(--color-text-primary)", background: "#fafafa", boxSizing: "border-box" }}
+                            />
+                            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 3 }}>
+                              <button
+                                onClick={() => classifyAndSave(key, q, a, fbText[key] || '')}
+                                disabled={!!(fbSaving[key] || !(fbText[key] || '').trim())}
+                                style={{ fontSize: 11, padding: "3px 10px", borderRadius: 4, border: "1px solid " + ACCENT, background: fbSaving[key] ? "#f3f4f6" : ACCENT, color: fbSaving[key] ? "var(--color-text-secondary)" : "#fff", cursor: fbSaving[key] ? "default" : "pointer" }}
+                              >{fbSaving[key] ? "Saving..." : "Save"}</button>
+                              {fbDone[key] === 'saved' && <span style={{ fontSize: 11, color: "#15803d" }}>Saved</span>}
+                              {fbDone[key] === 'error' && <span style={{ fontSize: 11, color: "#b91c1c" }}>Error - try again</span>}
+                            </div>
+                          </div>
                         )}
                       </div>
                     );
