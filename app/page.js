@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useMemo, useRef } from "react";
-import { seedAndGetStories, upsertStory, upsertStories, deleteStory as dbDeleteStory, getExperience, saveExperience, getProfile, saveProfile, getAwards, insertAward, getEducation, insertEducation, getProfileContext, saveProfileContext, createGuestSession, logFitRun, logGuestQuestion, logInterviewQuestion, getGuestSessions, getMetrics, createMetric, updateMetric, deleteMetric, getValues, insertValue, getGuidance, insertGuidance } from '@/lib/data';
+import { seedAndGetStories, upsertStory, upsertStories, deleteStory as dbDeleteStory, getExperience, saveExperience, getProfile, saveProfile, getAwards, insertAward, getEducation, insertEducation, getProfileContext, saveProfileContext, createGuestSession, logFitRun, logGuestQuestion, logInterviewQuestion, getGuestSessions, getMetrics, createMetric, updateMetric, deleteMetric, getValues, insertValue, updateValue, deleteValue, getGuidance, insertGuidance } from '@/lib/data';
 
 // ─── CONFIG ───────────────────────────────────────────────
 const MODEL   = "claude-sonnet-4-6";
@@ -4763,6 +4763,184 @@ function GuestVisitorsView({onFeedbackCapture}) {
   );
 }
 
+// ─── VALUES REVIEW (Adam only) ────────────────────────────
+function ValuesReviewView() {
+  const [rows, setRows] = useState(null);
+  const [edits, setEdits] = useState({});
+  const [saving, setSaving] = useState({});
+  const [confirmDiscard, setConfirmDiscard] = useState(null);
+
+  useEffect(() => {
+    getValues().then(data => {
+      const sorted = [...data].sort((a, b) => {
+        if (a.status === 'draft' && b.status !== 'draft') return -1;
+        if (a.status !== 'draft' && b.status === 'draft') return 1;
+        return (a.sort_order ?? 999) - (b.sort_order ?? 999);
+      });
+      setRows(sorted);
+    });
+  }, []);
+
+  function patch(id, field, val) {
+    setEdits(prev => ({ ...prev, [id]: { ...(prev[id] || {}), [field]: val } }));
+  }
+
+  function editVal(row, field) {
+    return edits[row.id]?.[field] !== undefined ? edits[row.id][field] : (row[field] ?? '');
+  }
+
+  async function handleSave(row) {
+    const changes = edits[row.id];
+    if (!changes || Object.keys(changes).length === 0) return;
+    setSaving(s => ({ ...s, [row.id]: true }));
+    const updated = await updateValue(row.id, changes);
+    setSaving(s => ({ ...s, [row.id]: false }));
+    if (updated) {
+      setRows(prev => prev.map(r => r.id === row.id ? { ...r, ...changes } : r));
+      setEdits(prev => { const n = { ...prev }; delete n[row.id]; return n; });
+    }
+  }
+
+  async function handleConfirm(row) {
+    setSaving(s => ({ ...s, [row.id]: true }));
+    const updated = await updateValue(row.id, { status: 'confirmed' });
+    setSaving(s => ({ ...s, [row.id]: false }));
+    if (updated) {
+      setRows(prev => prev.map(r => r.id === row.id ? { ...r, status: 'confirmed' } : r));
+    }
+  }
+
+  async function handleDiscard(row) {
+    setSaving(s => ({ ...s, [row.id]: true }));
+    await deleteValue(row.id);
+    setSaving(s => { const n = { ...s }; delete n[row.id]; return n; });
+    setRows(prev => prev.filter(r => r.id !== row.id));
+    setConfirmDiscard(null);
+  }
+
+  const inp = { border: '1px solid var(--phis-border, #d1d5db)', borderRadius: 5, padding: '5px 8px', fontSize: 13, width: '100%', boxSizing: 'border-box', fontFamily: 'inherit' };
+  const sel = { ...inp, width: 'auto' };
+
+  if (rows === null) return <div style={{ padding: '2rem', fontSize: 13, color: 'var(--color-text-secondary)' }}>Loading values...</div>;
+
+  return (
+    <div style={{ padding: '1.5rem', maxWidth: 900 }}>
+      <div style={{ marginBottom: '1.5rem' }}>
+        <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--phis-navy)', marginBottom: 4 }}>Review Values</div>
+        <div style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>{rows.length} value{rows.length !== 1 ? 's' : ''} — drafts first</div>
+      </div>
+
+      {rows.length === 0 && (
+        <div style={{ color: 'var(--color-text-tertiary)', fontSize: 14, padding: '2rem 0' }}>No values in the database yet.</div>
+      )}
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {rows.map(row => {
+          const isDraft = row.status === 'draft';
+          const hasEdits = edits[row.id] && Object.keys(edits[row.id]).length > 0;
+          const isSaving = !!saving[row.id];
+          return (
+            <div key={row.id} style={{
+              background: isDraft ? '#fffbeb' : '#fff',
+              border: isDraft ? '1px solid #fbbf24' : '1px solid #e5e7eb',
+              borderRadius: 8,
+              padding: '1rem 1.25rem',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                <span style={{
+                  fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 4,
+                  background: isDraft ? '#fef3c7' : '#d1fae5',
+                  color: isDraft ? '#92400e' : '#065f46',
+                  textTransform: 'uppercase', letterSpacing: '0.05em',
+                }}>{row.status}</span>
+                <span style={{ fontSize: 11, color: '#6b7280' }}>kind: {row.kind}</span>
+                {row.topic && <span style={{ fontSize: 11, color: '#6b7280' }}>topic: {row.topic}</span>}
+                {row.source && <span style={{ fontSize: 11, color: '#9ca3af' }}>source: {row.source}</span>}
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '10px 16px', marginBottom: 10 }}>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 3 }}>Principle</label>
+                  <input
+                    value={editVal(row, 'principle')}
+                    onChange={e => patch(row.id, 'principle', e.target.value)}
+                    style={inp}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 3 }}>Topic</label>
+                  <input
+                    value={editVal(row, 'topic')}
+                    onChange={e => patch(row.id, 'topic', e.target.value)}
+                    style={inp}
+                  />
+                </div>
+                <div style={{ display: 'flex', gap: 12 }}>
+                  <div>
+                    <label style={{ fontSize: 11, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 3 }}>Kind</label>
+                    <select value={editVal(row, 'kind')} onChange={e => patch(row.id, 'kind', e.target.value)} style={sel}>
+                      <option value="principle">principle</option>
+                      <option value="style">style</option>
+                      <option value="situation">situation</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 11, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 3 }}>Surface</label>
+                    <select value={editVal(row, 'surface')} onChange={e => patch(row.id, 'surface', e.target.value)} style={sel}>
+                      <option value="profile">profile</option>
+                      <option value="interview_only">interview_only</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ marginBottom: 10 }}>
+                <label style={{ fontSize: 11, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 3 }}>In practice</label>
+                <textarea
+                  value={editVal(row, 'in_practice')}
+                  onChange={e => patch(row.id, 'in_practice', e.target.value)}
+                  rows={3}
+                  style={{ ...inp, resize: 'vertical' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <button
+                  onClick={() => handleSave(row)}
+                  disabled={!hasEdits || isSaving}
+                  style={{ padding: '5px 14px', borderRadius: 5, border: 'none', cursor: hasEdits && !isSaving ? 'pointer' : 'not-allowed', fontSize: 13, fontWeight: 500, background: hasEdits ? 'var(--phis-navy)' : '#e5e7eb', color: hasEdits ? '#fff' : '#9ca3af' }}
+                >{isSaving ? 'Saving...' : 'Save'}</button>
+
+                {isDraft && (
+                  <button
+                    onClick={() => handleConfirm(row)}
+                    disabled={isSaving}
+                    style={{ padding: '5px 14px', borderRadius: 5, border: '1px solid #10b981', cursor: 'pointer', fontSize: 13, fontWeight: 500, background: '#fff', color: '#065f46' }}
+                  >Confirm</button>
+                )}
+
+                {isDraft && confirmDiscard !== row.id && (
+                  <button
+                    onClick={() => setConfirmDiscard(row.id)}
+                    style={{ padding: '5px 14px', borderRadius: 5, border: '1px solid #f87171', cursor: 'pointer', fontSize: 13, background: '#fff', color: '#dc2626' }}
+                  >Discard</button>
+                )}
+                {isDraft && confirmDiscard === row.id && (
+                  <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    <span style={{ fontSize: 12, color: '#dc2626' }}>Delete this draft?</span>
+                    <button onClick={() => handleDiscard(row)} style={{ padding: '4px 10px', borderRadius: 5, border: 'none', cursor: 'pointer', fontSize: 12, background: '#dc2626', color: '#fff' }}>Yes, delete</button>
+                    <button onClick={() => setConfirmDiscard(null)} style={{ padding: '4px 10px', borderRadius: 5, border: '1px solid #d1d5db', cursor: 'pointer', fontSize: 12, background: '#fff', color: '#374151' }}>Cancel</button>
+                  </span>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ─── METRICS MANAGER (Adam only) ─────────────────────────
 function MetricsManager() {
   const [metrics, setMetrics] = useState(null);
@@ -5251,6 +5429,7 @@ export default function App() {
         <div style={{display:"flex",flexDirection:"column",gap:1}}>
           {navBtn("profile","Profile & Settings",page==="profile")}
           {navBtn("metrics","Metrics",page==="metrics")}
+          {navBtn("values","Review Values",page==="values")}
         </div>
       </div>
 
@@ -5297,6 +5476,7 @@ export default function App() {
         {page==="visitors"&&<GuestVisitorsView onFeedbackCapture={function(text,ctx){setFeedbackCapture({text,context:ctx});}}/>}
         {page==="profile"&&<ProfileView profile={profile} setProfile={p=>{const next=typeof p==='function'?p(profile):p;setProfile(next);persistProfile(next);}} awards={awards} education={education} profileContext={profileContext}/>}
         {page==="metrics"&&<MetricsManager/>}
+        {page==="values"&&<ValuesReviewView/>}
       </div>
 
       {showFullCV&&<FullCVExporter stories={stories} experience={experience} awards={awards} education={education} profileContext={profileContext} onClose={()=>setShowFullCV(false)}/>}
