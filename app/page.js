@@ -1465,6 +1465,43 @@ const EXTENDED_SOAR = [
     ],
     "notes": "",
     "dateAdded": "2023"
+  },
+  {
+    "id": "soar_059_mpf_returns_flows_ai_research",
+    "type": "insight",
+    "title": "MPF Returns vs Flows - AI-Accelerated Insight Project",
+    "employer": "Manulife Global Wealth & Asset Management",
+    "situation": "A prevailing theory inside the business held that poor returns on the North American Equity fund had cost Manulife over $1B USD in MPF flows in 2025. Leadership wanted the relationship between past fund returns and provider sales and retention tested. There was no appetite for a full multi-month study, only a fast mini insight project to confirm or challenge the assumption.",
+    "obstacle": "This class of research looks like a one-hour analytics exercise and is in reality a 3 to 6 month effort for a team of 3 to 5. Flows, sales, and withdrawals have many drivers and strong seasonal and cyclical components, so defining the right dependent variable is itself hard. The relationship is not a clean monthly correlation; it requires testing trends, lags, and the environment leading into a period (for example, 12-month trailing returns with a 3-month lag), which means heavy trial and error and rehypothesizing. The data was the worst part. Internal flows were available, but competitor return and flow data across all scheme providers was hard to source and arrived in a non-canonical form: laid along columns, gaps between funds, no consolidation of providers, and merged header cells covering some data points but not others. It was not in a state that could be analyzed.",
+    "action": "Framed the question against prior intuition, partnering with a colleague who shared skepticism that returns alone explained a $1B flow swing. Pulled an investment-team analyst to ask how this data is normally organized; the answer was that it is done manually and slowly because there was no alternative. Used Microsoft Copilot to restructure and consolidate the messy third-party data into an analyzable dataset in minutes rather than days of manual, error-prone work. Ran roughly the first 30 rounds of regression and back-testing through Copilot to move quickly through exploratory hypotheses before committing to a clean modeling pass. Treated AI output as advisory, not authoritative; back-tested every finding manually and used that discipline to surface data problems such as incomplete 2025 provider data and misleading historical artifacts like provider mergers from years earlier. Started with deliberately basic prompts to establish obvious baselines (market share drives flows) before pushing into the non-obvious relationships.",
+    "result": "Challenged the $1B theory: reputation and market share explained net sales roughly an order of magnitude more than recent past returns. Surfaced a non-obvious finding that the impact of returns compounds the longer underperformance persists, eventually hardening into reputation. Found that members and their local advisors weight local equity fund returns most heavily, driven by familiarity, more than any other fund's performance. Delivered a faster and better-evidenced answer than a manual approach would have; without AI the project would likely not have finished before the role ended and would have yielded only the shallowest conclusion. Demonstrated a disciplined model of AI-assisted research where speed came from AI and credibility came from human validation.",
+    "impact": "Challenged a $1B flow theory; reputation and market share explained net sales roughly 10x more than recent returns",
+    "fullStory": "The acting theory was that poor returns on our North American Equity fund had cost Manulife over $1B USD in MPF flows in 2025. A colleague and I doubted it. We were not given a full research project, just a fast mini insight project, which is exactly the kind of work that looks trivial and is not. Flows, sales, and withdrawals carry seasonality and many competing drivers, so even choosing the dependent variable is a struggle, and the real relationships live in trends and lags, not in a clean monthly correlation. This reminded me of the 2019 work on market returns and withdrawals and the 2020 work on the economy, jobs data, and withdrawals: most of the effort is gathering and laying out the data and re-hypothesizing, not the regression itself.\n\nThe data nearly sank it. Our own flows were fine, but competitor returns and flows across all scheme providers were hard to get, and what we did get from the investment team's third-party subscription was a mess of staggered columns, gaps, unconsolidated providers, and merged header cells. I asked an analyst who does this routinely how she organizes it. Her answer was that you do it manually, it takes a long time, and you just have to. At our magnitude that would have taken forever and introduced errors. So I put it through Copilot and had a clean, analyzable dataset in two minutes.\n\nWe ran the first thirty-odd rounds of regression and back-testing largely through Copilot, in theory barely opening the dataset. We never trusted the AI blindly; we re-ran everything ourselves, and that discipline is what caught the data problems: incomplete 2025 figures for some providers, and misleading artifacts like provider mergers from years back. We let AI take first passes with basic prompts to clear the obvious findings out of the way, then pushed into the real questions.\n\nThe payoff was both speed and depth. Without AI we would have taken roughly ten times as long, would not have finished before I left, and would likely have landed on only the shallow conclusion that reputation and share drive sales about ten times more than recent returns. With AI we also found that the effect of returns compounds the longer it persists until it becomes reputation, and that members and their local advisors care most about the local equity fund returns they are familiar with. Faster and better, because of how we used AI, not despite it.",
+    "themes": [
+      "Applied AI",
+      "Research Acceleration",
+      "MPF",
+      "Asia",
+      "Asset Management",
+      "Insight Quality"
+    ],
+    "skills": [
+      "applied generative ai",
+      "ai-assisted research",
+      "quantitative research",
+      "data wrangling",
+      "critical evaluation of ai output",
+      "behavioral and commercial insight",
+      "asset management"
+    ],
+    "useFor": [
+      "Interview",
+      "LinkedIn",
+      "Book",
+      "Resume"
+    ],
+    "notes": "Applied AI story - not ML engineering. AI used for data restructuring and rapid exploratory analysis; all findings human back-tested. In interviews: avoid implying ML engineering experience.",
+    "dateAdded": "2025"
   }
 ];
 
