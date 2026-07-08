@@ -13,7 +13,7 @@ Next.js + Supabase migration of PHIS_v5.jsx. Adam Waldman's personal career stor
 
 ```
 app/
-  page.js              # Full app UI — single 'use client' component (~4200 lines)
+  page.js              # Full app UI — single 'use client' component (~5300 lines)
   layout.js            # Root layout, imports globals.css
   globals.css          # CSS variables (colors, font, borders)
   api/
@@ -24,11 +24,19 @@ lib/
   data.js              # All DB helpers: seedAndGetStories, upsertStory/ies, deleteStory,
                        #   getExperience, saveExperience, getProfile, saveProfile,
                        #   getAwards, insertAward, getEducation, insertEducation,
-                       #   getProfileContext, saveProfileContext
+                       #   getProfileContext, saveProfileContext,
+                       #   insertGuidance, getValues, insertValue
 scripts/
   import-extra-soars.js      # One-time import: reads soar_*.json from root, upserts to Supabase
   export-stories.js          # Admin: exports all stories table rows to soar_export_for_review.json
   apply_soar_patch.js        # Admin: applies a JSON patch file to stories rows (targeted field updates)
+  export-all.js              # Data review: exports all tables to review_*.json (stories/experience/awards/education/profile_context)
+  apply-all-reviewed.js      # Data review: upserts all five review_*.json files back to Supabase (idempotent, use after full review cycle)
+  apply-stories-patch.js     # Data review: targeted patch — applies patch_stories.json to stories table
+  apply-experience-patch.js  # Data review: targeted patch — applies patch_experience.json to experience table
+  apply-awards-patch.js      # Data review: targeted patch — applies patch_awards.json to awards table
+  apply-education-patch.js   # Data review: targeted patch — applies patch_education.json to education table
+  apply-profile-context-patch.js  # Data review: targeted patch — applies patch_profile_context.json (singleton)
   migration_001_profile.sql  # Adds salary columns to profile table
   migration_002_schema.sql   # Adds awards, education, profile_context tables; facets column on experience
   step5_resume_v2.js         # ResumeStep source (Phase 3)
@@ -291,6 +299,45 @@ Both `AskView.ask` (interview branch) and `InterviewView.ask` carry the same two
 
 ```bash
 npm run dev          # starts on http://localhost:3000
+```
+
+## Data review workflow (Claude Chat round-trip)
+
+Periodically review all table data to correct AI-generated inaccuracies. Two modes:
+
+### Full review cycle (preferred for broad editorial passes)
+
+**Step 1 — Export** (run locally — Supabase project must be active, not paused):
+```bash
+node scripts/export-all.js
+```
+Writes `review_*.json` to the project root. Load into Claude Chat for review.
+
+**Step 2 — Edit in Claude Chat or Claude Code**: Claude edits the `review_*.json` files in place. Retiring a record means adding `"status":"retired"` and `"retired_reason":"..."` — do NOT delete rows.
+
+Schema notes that `apply-all-reviewed.js` handles automatically:
+- `stories`: `status`/`retired_reason` are not DB columns — they get folded into `notes` and `use_for` cleared for retired records.
+- `experience`: `notes` is not a DB column — it gets stripped before upsert.
+
+**Step 3 — Apply**:
+```bash
+node scripts/apply-all-reviewed.js
+```
+Idempotent full upsert of all five tables. Safe to re-run.
+
+### Targeted patch (for small, surgical fixes)
+
+Create `patch_<table>.json` in the project root:
+```json
+[ { "id": "row-id", "updates": { "field": "corrected value" } } ]
+```
+Then run the matching script:
+```bash
+node scripts/apply-stories-patch.js
+node scripts/apply-experience-patch.js
+node scripts/apply-awards-patch.js
+node scripts/apply-education-patch.js
+node scripts/apply-profile-context-patch.js   # format: { "updates": {...} }
 ```
 
 ## One-time story import
