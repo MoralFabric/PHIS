@@ -1,20 +1,29 @@
 // ─── STEP 3: GAP RESOLUTION ──────────────────────────────
 function GapCard({gap, expanded, onMarkReal, onStartCapture, onSubmit, onAccept, onReject}) {
   const cap = expanded || null;
-  const isDone = gap.status === 'confirmed_gap' || gap.status === 'story_added';
+  const isDone = gap.status === 'confirmed_gap' || gap.status === 'story_added' || gap.status === 'auto_resolved';
   const t = tierStyle(gap.score);
 
   if (isDone) {
     const a = gap.assessment;
     const storyAdded = gap.status === 'story_added';
-    const deltaText = storyAdded && a
-      ? a.closesGap === 'none'
-        ? `Saved — score unchanged (${gap.score})`
-        : `✓ Story added — ${gap.score} → ${a.estimatedNewScore} (${a.closesGap === 'full' ? 'closed' : 'partial'})`
-      : storyAdded ? '✓ Story added' : 'Confirmed gap';
-    const deltaColor = storyAdded && a
-      ? a.closesGap === 'none' ? 'var(--color-text-tertiary)' : '#3B6D11'
-      : storyAdded ? '#3B6D11' : 'var(--color-text-tertiary)';
+    const autoResolved = gap.status === 'auto_resolved';
+    let deltaText, deltaColor;
+    if (autoResolved) {
+      deltaText = 'Resolved by new story (score: '+gap.score+')';
+      deltaColor = '#3B6D11';
+    } else if (gap.alreadyInLibrary) {
+      deltaText = 'Already in library — '+(gap.story&&gap.story.title?gap.story.title:'story found');
+      deltaColor = 'var(--color-text-tertiary)';
+    } else if (storyAdded && a) {
+      deltaText = a.closesGap==='none'
+        ? 'Saved — score unchanged ('+gap.score+')'
+        : 'Story added — '+gap.score+' -> '+a.estimatedNewScore+' ('+(a.closesGap==='full'?'closed':'partial')+')';
+      deltaColor = a.closesGap==='none' ? 'var(--color-text-tertiary)' : '#3B6D11';
+    } else {
+      deltaText = storyAdded ? 'Story added' : 'Confirmed gap';
+      deltaColor = storyAdded ? '#3B6D11' : 'var(--color-text-tertiary)';
+    }
     return (
       <div style={{padding:'0.75rem 1rem',background:'var(--color-background-secondary)',borderRadius:8,display:'flex',alignItems:'center',justifyContent:'space-between'}}>
         <div style={{display:'flex',alignItems:'center',gap:8}}>
@@ -39,7 +48,7 @@ function GapCard({gap, expanded, onMarkReal, onStartCapture, onSubmit, onAccept,
       {!cap && (
         <div style={{display:'flex',gap:8}}>
           <button onClick={onMarkReal} style={{...S.btn,fontSize:12}}>This is a real gap</button>
-          <button onClick={onStartCapture} style={{...S.primary,fontSize:12,padding:'6px 14px'}}>I have experience for this →</button>
+          <button onClick={onStartCapture} style={{...S.primary,fontSize:12,padding:'6px 14px'}}>I have experience for this -&gt;</button>
         </div>
       )}
 
@@ -53,18 +62,18 @@ function GapCard({gap, expanded, onMarkReal, onStartCapture, onSubmit, onAccept,
             placeholder={'Be specific — name the project, metrics, outcome, and your role. The more detail you provide, the better Claude can structure your story and assess how it addresses the "'+gap.skill+'" gap.'}
             disabled={cap.loading}
           />
-          {cap.error && <div style={{fontSize:12,color:'#A32D2D',marginBottom:8,padding:'6px 10px',background:'#FCEBEB',borderRadius:5}}>⚠ {cap.error}</div>}
+          {cap.error && <div style={{fontSize:12,color:'#A32D2D',marginBottom:8,padding:'6px 10px',background:'#FCEBEB',borderRadius:5}}>Warning: {cap.error}</div>}
           <div style={{display:'flex',gap:8}}>
             <button onClick={()=>onSubmit('submit')} disabled={!cap.text.trim()||cap.loading}
               style={{...S.primary,fontSize:12,padding:'6px 14px',opacity:!cap.text.trim()||cap.loading?0.5:1}}>
-              {cap.loading?'Structuring story…':'Submit →'}
+              {cap.loading?'Structuring story...':'Submit ->'}
             </button>
             <button onClick={()=>onSubmit('cancel')} style={{...S.btn,fontSize:12}}>Cancel</button>
           </div>
         </div>
       )}
 
-      {cap?.preview && (
+      {cap&&cap.preview && (
         <div>
           <div style={{fontSize:12,color:'var(--color-text-secondary)',marginBottom:8}}>AI-structured — review before saving:</div>
           <div style={{background:'var(--color-background-secondary)',borderRadius:8,padding:'1rem',marginBottom:'0.75rem',fontSize:12}}>
@@ -73,15 +82,20 @@ function GapCard({gap, expanded, onMarkReal, onStartCapture, onSubmit, onAccept,
             <div style={{marginBottom:4}}><strong>Action:</strong> {cap.preview.action}</div>
             <div style={{marginBottom:8}}><strong>Result:</strong> {cap.preview.result}</div>
             <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
-              {cap.preview.skills?.map(s=><span key={s} style={S.tag}>{s}</span>)}
+              {cap.preview.skills&&cap.preview.skills.map(s=><span key={s} style={S.tag}>{s}</span>)}
             </div>
           </div>
+          {cap.dupWarning && (
+            <div style={{fontSize:12,padding:'8px 12px',background:'#FEF9C3',color:'#92400E',borderRadius:5,marginBottom:'0.75rem',lineHeight:1.5}}>
+              Similar story already in library: &quot;{cap.dupWarning}&quot;. You can still save this as a new story if the details differ.
+            </div>
+          )}
           {cap.assessment && (
             <div style={{fontSize:12,padding:'8px 12px',background:'#EFF6FF',color:'#1e40af',borderRadius:5,marginBottom:'0.75rem',lineHeight:1.5}}>
               {cap.assessment.closesGap==='full'
-                ? `Closes gap — estimated score ${gap.score} → ${cap.assessment.estimatedNewScore}. `
+                ? 'Closes gap — estimated score '+gap.score+' -> '+cap.assessment.estimatedNewScore+'. '
                 : cap.assessment.closesGap==='partial'
-                  ? `Partially closes gap — estimated score ${gap.score} → ${cap.assessment.estimatedNewScore}. `
+                  ? 'Partially closes gap — estimated score '+gap.score+' -> '+cap.assessment.estimatedNewScore+'. '
                   : 'Saved — gap remains open. '}
               {cap.assessment.reasoning}
             </div>
@@ -96,19 +110,21 @@ function GapCard({gap, expanded, onMarkReal, onStartCapture, onSubmit, onAccept,
   );
 }
 
-function GapResolutionStep({active,jdAnalysis,cpsResult,result,stories,setStories,onComplete,onError}) {
+function GapResolutionStep({active,jdAnalysis,cpsResult,result,stories,setStories,experience,onComplete,onError}) {
   const gaps = cpsResult.scores.filter(s=>s.score<70);
   const [resolutions,setResolutions] = useState(
     result || gaps.map(g=>({skill:g.skill,score:g.score,improve:g.improve,status:'pending'}))
   );
   const [expanded,setExpanded] = useState({});
+  const [rechecking,setRechecking] = useState(false);
+  const [recheckError,setRecheckError] = useState(null);
 
   function markReal(skill){
     setResolutions(rs=>rs.map(r=>r.skill===skill?{...r,status:'confirmed_gap'}:r));
   }
 
   function startCapture(skill){
-    setExpanded(e=>({...e,[skill]:{text:'',loading:false,preview:null,error:null}}));
+    setExpanded(e=>({...e,[skill]:{text:'',loading:false,preview:null,error:null,dupWarning:null}}));
   }
 
   function handleCapture(skill,action,val){
@@ -122,41 +138,84 @@ function GapResolutionStep({active,jdAnalysis,cpsResult,result,stories,setStorie
     }
     if(action==='submit'){
       const cap=expanded[skill];
-      if(!cap?.text?.trim())return;
+      if(!cap||!cap.text||!cap.text.trim())return;
       setExpanded(e=>({...e,[skill]:{...e[skill],loading:true,error:null}}));
       const gap=resolutions.find(r=>r.skill===skill);
       const schemaExample=JSON.stringify({story:{title:"",type:"career",employer:"",situation:"",obstacle:"",action:"",result:"",impact:"",fullStory:"",themes:[],skills:[],useFor:["Resume","Interview"],notes:""},assessment:{closesGap:"full|partial|none",estimatedNewScore:0,reasoning:""}});
       callClaude(
-        'You are a career story structurer. Always structure the evidence as a complete SOAR story and assess how well it addresses the skill gap. closesGap must be "full" (evidence clearly demonstrates the skill), "partial" (demonstrates related experience but not the full requirement), or "none" (story is captured but gap remains open). estimatedNewScore is your best estimate of the skill score after this story is added (0-100). Return ONLY valid JSON—no markdown fences: '+schemaExample,
+        'You are a career story structurer. Always structure the evidence as a complete SOAR story and assess how well it addresses the skill gap. closesGap must be "full" (evidence clearly demonstrates the skill), "partial" (demonstrates related experience but not the full requirement), or "none" (story is captured but gap remains open). estimatedNewScore is your best estimate of the skill score after this story is added (0-100). Return ONLY valid JSON — no markdown fences: '+schemaExample,
         'Skill gap: '+skill+' (current score: '+gap.score+'/100) | Gap context: '+gap.improve+' | Evidence: '+cap.text,
         2000, 0
-      ).then(raw=>{
+      ).then(function(raw){
         const parsed=parseJSON(raw);
-        if(!parsed?.story) throw new Error('Could not parse Claude response—please try again.');
-        setExpanded(e=>({...e,[skill]:{...e[skill],loading:false,preview:parsed.story,assessment:parsed.assessment||null}}));
-      }).catch(err=>{
-        setExpanded(e=>({...e,[skill]:{...e[skill],loading:false,error:err.message}}));
+        if(!parsed||!parsed.story) throw new Error('Could not parse Claude response — please try again.');
+        // Check for duplicate story in library
+        const newTitle=(parsed.story.title||'').toLowerCase();
+        const newAction=(parsed.story.action||'').slice(0,200).toLowerCase();
+        let dupWarning=null;
+        stories.forEach(function(s){
+          const sc=tokenOverlap(newTitle+' '+newAction,(s.title||'').toLowerCase()+' '+(s.action||'').slice(0,200).toLowerCase());
+          if(sc>0.5&&!dupWarning) dupWarning=s.title||'existing story';
+        });
+        setExpanded(function(e){return {...e,[skill]:{...e[skill],loading:false,preview:parsed.story,assessment:parsed.assessment||null,dupWarning}};});
+      }).catch(function(err){
+        setExpanded(function(e){return {...e,[skill]:{...e[skill],loading:false,error:err.message}};});
       });
     }
   }
 
   async function acceptStory(skill){
-    const {preview:story,assessment}=expanded[skill]||{};
+    const cap=expanded[skill]||{};
+    const story=cap.preview;
+    const assessment=cap.assessment;
     if(!story)return;
     const newStory=normalizeStory({...story,id:Date.now(),dateAdded:new Date().toISOString().split('T')[0]});
-    const updated=[...stories,newStory];
-    setStories(updated);
+    setStories(function(prev){return [...prev,newStory];});
     try{await upsertStory(newStory);}catch(e){}
-    setResolutions(rs=>rs.map(r=>r.skill===skill?{...r,status:'story_added',story:newStory,assessment}:r));
-    setExpanded(e=>{const n={...e};delete n[skill];return n;});
+    setResolutions(function(rs){return rs.map(function(r){return r.skill===skill?{...r,status:'story_added',story:newStory,assessment}:r;});});
+    setExpanded(function(e){const n={...e};delete n[skill];return n;});
   }
 
   function rejectStory(skill){
-    setExpanded(e=>({...e,[skill]:{...e[skill],preview:null}}));
+    setExpanded(e=>({...e,[skill]:{...e[skill],preview:null,dupWarning:null}}));
   }
 
-  const allResolved=resolutions.every(r=>r.status!=='pending');
-  const addedCount=resolutions.filter(r=>r.status==='story_added').length;
+  async function recheckGaps(){
+    const pending=resolutions.filter(function(r){return r.status==='pending';});
+    if(pending.length===0)return;
+    setRechecking(true);
+    setRecheckError(null);
+    try{
+      const pendingSkillNames=pending.map(function(r){return r.skill;});
+      const filteredSkills=(jdAnalysis.skills||[]).filter(function(s){return pendingSkillNames.indexOf(s.name)!==-1;});
+      const nl='\n';
+      const storyCtx=stories.map(function(s){return ['SOAR: '+s.title+' ('+(s.employer||'')+')',nl+'Skills: '+(s.skills||s.themes||[]).join(', '),nl+'Action: '+(s.action||''),nl+'Result: '+(s.result||'')].join('');}).join(nl+nl);
+      const expCtx=buildExpContext(experience);
+      const raw=await callClaude(
+        'You are a career scoring expert. Score the candidate against each skill 0-100 using the provided stories and experience. Return ONLY valid JSON — no markdown fences. Schema: {"scores":[{"skill":"string","score":0,"evidence":"string","gap":"string","improve":"string"}]}',
+        'Skills:'+nl+JSON.stringify(filteredSkills)+nl+nl+'SOAR stories:'+nl+storyCtx+nl+nl+'Experience:'+nl+expCtx,
+        2000, 0
+      );
+      const parsed=parseJSON(raw);
+      if(!parsed||!parsed.scores) throw new Error('Could not parse re-check response');
+      setResolutions(function(rs){
+        return rs.map(function(r){
+          if(r.status!=='pending')return r;
+          const updated=parsed.scores.find(function(s){return s.skill===r.skill;});
+          if(!updated)return r;
+          if(updated.score>=70) return {...r,score:updated.score,status:'auto_resolved',improve:updated.improve};
+          return {...r,score:updated.score,improve:updated.improve};
+        });
+      });
+    }catch(e){
+      setRecheckError(e.message);
+    }
+    setRechecking(false);
+  }
+
+  const allResolved=resolutions.every(function(r){return r.status!=='pending';});
+  const addedCount=resolutions.filter(function(r){return r.status==='story_added';}).length;
+  const pendingCount=resolutions.filter(function(r){return r.status==='pending';}).length;
 
   return(
     <div style={S.card}>
@@ -167,32 +226,42 @@ function GapResolutionStep({active,jdAnalysis,cpsResult,result,stories,setStorie
             {gaps.length} skill{gaps.length!==1?'s':''} below 70 — confirm gaps or add evidence
           </div>
         </div>
-        {result&&<span style={{fontSize:11,padding:'2px 8px',background:'#EAF3DE',color:'#3B6D11',borderRadius:4,fontWeight:500}}>✓ Complete</span>}
+        {result&&<span style={{fontSize:11,padding:'2px 8px',background:'#EAF3DE',color:'#3B6D11',borderRadius:4,fontWeight:500}}>Complete</span>}
       </div>
 
       <div style={{display:'flex',flexDirection:'column',gap:8,marginBottom:'1rem'}}>
-        {resolutions.map(gap=>(
+        {resolutions.map(function(gap){return(
           <GapCard
             key={gap.skill}
             gap={gap}
             expanded={expanded[gap.skill]||null}
-            onMarkReal={()=>markReal(gap.skill)}
-            onStartCapture={()=>startCapture(gap.skill)}
-            onSubmit={(action,val)=>handleCapture(gap.skill,action,val)}
-            onAccept={()=>acceptStory(gap.skill)}
-            onReject={()=>rejectStory(gap.skill)}
+            onMarkReal={function(){return markReal(gap.skill);}}
+            onStartCapture={function(){return startCapture(gap.skill);}}
+            onSubmit={function(action,val){return handleCapture(gap.skill,action,val);}}
+            onAccept={function(){return acceptStory(gap.skill);}}
+            onReject={function(){return rejectStory(gap.skill);}}
           />
-        ))}
+        );})}
       </div>
+
+      {addedCount>0&&pendingCount>0&&!result&&(
+        <div style={{marginBottom:'0.75rem'}}>
+          <button onClick={recheckGaps} disabled={rechecking}
+            style={{...S.btn,fontSize:12,opacity:rechecking?0.6:1}}>
+            {rechecking?'Re-checking gaps...':'Re-check remaining gaps with new stories ->'}
+          </button>
+          {recheckError&&<div style={{fontSize:12,color:'#A32D2D',marginTop:6}}>Warning: {recheckError}</div>}
+        </div>
+      )}
 
       {allResolved&&!result&&(
         <div>
           {addedCount>0&&(
             <div style={{fontSize:12,color:'#3B6D11',marginBottom:'0.75rem',padding:'8px 12px',background:'#EAF3DE',borderRadius:6}}>
-              ✓ {addedCount} new stor{addedCount!==1?'ies':'y'} added to your library
+              {addedCount} new stor{addedCount!==1?'ies':'y'} added to your library
             </div>
           )}
-          <button onClick={()=>onComplete(resolutions)} style={S.primary}>Re-score with updates →</button>
+          <button onClick={function(){return onComplete(resolutions);}} style={S.primary}>Re-score with updates -&gt;</button>
         </div>
       )}
 
