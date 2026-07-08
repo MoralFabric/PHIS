@@ -5071,74 +5071,6 @@ function MetricsManager() {
 }
 
 // ─── ENTRY GATE ───────────────────────────────────────────
-function EntryGate({ onAdam, onGuest }) {
-  const ADAM_CODE = "phisphis";
-  const GP = "'Poppins', system-ui, sans-serif";
-  const [step, setStep] = useState("choose");
-  const [pin, setPin] = useState("");
-  const [pinErr, setPinErr] = useState(false);
-  const [g, setG] = useState({ name: "", email: "", company: "", role: "" });
-  const [gErr, setGErr] = useState("");
-
-  const validEmail = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
-
-  const wrap = { minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: GP, background: "var(--phis-navy)" };
-  const box = { width: "100%", maxWidth: 400, display: "flex", flexDirection: "column", alignItems: "center", padding: "0 1.5rem" };
-  const inp = { width: "100%", padding: "10px 12px", fontSize: 14, borderRadius: 4, border: "1px solid rgba(255,255,255,.18)", fontFamily: GP, marginBottom: 10, boxSizing: "border-box", background: "rgba(255,255,255,.07)", color: "#fff", outline: "none" };
-  const primaryBtn = { width: "100%", padding: "13px", fontSize: 14, fontWeight: 500, color: "#fff", background: "var(--phis-vermilion)", border: "none", borderRadius: 4, cursor: "pointer", marginTop: 4 };
-  const outlineBtn = { width: "100%", padding: "13px", fontSize: 14, fontWeight: 400, color: "#fff", background: "none", border: "1px solid rgba(255,255,255,.3)", borderRadius: 4, cursor: "pointer", marginTop: 10 };
-
-  return (
-    <div style={wrap}>
-      <div style={box}>
-        <div style={{ marginBottom: 12 }}>
-          <PhisWordmark reversed height={36} />
-        </div>
-        <div style={{ fontSize: 10, fontWeight: 400, textTransform: "uppercase", letterSpacing: "0.18em", color: "#7E93A8", textAlign: "center", marginBottom: 24 }}>Professional History Intelligence Studio</div>
-
-        {step === "choose" && (
-          <>
-            <div style={{ fontSize: 24, fontWeight: 500, color: "#fff", textAlign: "center", lineHeight: 1.35, marginBottom: 10 }}>The intelligence behind better decisions.</div>
-            <div style={{ fontSize: 13, fontWeight: 300, color: "var(--phis-mist)", textAlign: "center", marginBottom: 40 }}>Adam Waldman, career profile</div>
-            <button style={primaryBtn} onClick={() => setStep("guest")}>Explore the profile</button>
-            <button style={outlineBtn} onClick={() => setStep("adam")}>I&rsquo;m Adam</button>
-          </>
-        )}
-
-        {step === "adam" && (
-          <>
-            <div style={{ fontSize: 14, fontWeight: 400, color: "rgba(255,255,255,.7)", marginBottom: 14, alignSelf: "flex-start" }}>Enter your passcode</div>
-            <input style={inp} type="password" placeholder="Passcode" value={pin}
-              onChange={(e) => { setPin(e.target.value); setPinErr(false); }}
-              onKeyDown={(e) => { if (e.key === "Enter") { pin === ADAM_CODE ? onAdam() : setPinErr(true); } }} autoFocus />
-            {pinErr && <div style={{ fontSize: 12, color: "var(--phis-marigold)", marginBottom: 8, alignSelf: "flex-start" }}>Incorrect passcode.</div>}
-            <button style={primaryBtn} onClick={() => { pin === ADAM_CODE ? onAdam() : setPinErr(true); }}>Enter</button>
-            <button style={outlineBtn} onClick={() => { setStep("choose"); setPin(""); setPinErr(false); }}>Back</button>
-          </>
-        )}
-
-        {step === "guest" && (
-          <>
-            <div style={{ fontSize: 14, fontWeight: 500, color: "#fff", marginBottom: 4, alignSelf: "flex-start" }}>Quick intro</div>
-            <div style={{ fontSize: 12, fontWeight: 300, color: "var(--phis-mist)", marginBottom: 16, alignSelf: "flex-start" }}>So Adam knows who stopped by.</div>
-            <input style={inp} placeholder="Your name *" value={g.name} onChange={(e) => setG({ ...g, name: e.target.value })} autoFocus />
-            <input style={inp} placeholder="Email *" value={g.email} onChange={(e) => setG({ ...g, email: e.target.value })} />
-            <input style={inp} placeholder="Company (optional)" value={g.company} onChange={(e) => setG({ ...g, company: e.target.value })} />
-            <input style={inp} placeholder="Role you're hiring for (optional)" value={g.role} onChange={(e) => setG({ ...g, role: e.target.value })} />
-            {gErr && <div style={{ fontSize: 12, color: "var(--phis-marigold)", marginBottom: 8, alignSelf: "flex-start" }}>{gErr}</div>}
-            <button style={primaryBtn} onClick={() => {
-              if (!g.name.trim()) return setGErr("Please add your name.");
-              if (!validEmail(g.email)) return setGErr("Please add a valid email.");
-              onGuest({ name: g.name.trim(), email: g.email.trim(), company: g.company.trim(), role: g.role.trim() });
-            }}>Continue</button>
-            <button style={outlineBtn} onClick={() => { setStep("choose"); setGErr(""); }}>Back</button>
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
-
 const GUEST_FIT_SYS = `You are the fit-assessment engine on Adam Waldman's candidate portal. A recruiter or hiring manager has entered either a full job description or just a role and company. Your job is to make the strongest HONEST case for Adam against that role.
 
 WHO ADAM IS: A senior finance and analytics executive, ~20 years in financial services (Manulife, OMERS, State Street). CFA charterholder. Led teams up to ~150. Differentiated by building the systems that turn data into decisions: planning models, KPI/OKR architecture, insight engines, executive advisory. Capital markets fluency. Toronto-based, targeting AVP/VP-level roles.
@@ -5309,19 +5241,93 @@ function GuestFitView({ stories, experience, guestSessionId, onFitComplete }) {
   );
 }
 
-function GuestShell({ guest, stories, experience, awards, education, profileContext, guestSessionId, onExit }) {
+// Branded splash shown on first load. Fades out on its own after a beat,
+// and is tap-to-skip. No gate, no click required.
+function BrandSplash({ onDone }) {
+  const GP = "'Poppins', system-ui, sans-serif";
+  const [leaving, setLeaving] = useState(false);
+  useEffect(() => { const t = setTimeout(() => setLeaving(true), 1600); return () => clearTimeout(t); }, []);
+  useEffect(() => { if (!leaving) return; const t = setTimeout(onDone, 500); return () => clearTimeout(t); }, [leaving]);
+  return (
+    <div onClick={() => setLeaving(true)}
+      style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "var(--phis-navy)", fontFamily: GP, cursor: "pointer", opacity: leaving ? 0 : 1, transition: "opacity .5s ease" }}>
+      <PhisWordmark reversed height={44} />
+      <div style={{ fontSize: 11, fontWeight: 400, textTransform: "uppercase", letterSpacing: "0.18em", color: "#7E93A8", textAlign: "center", marginTop: 18 }}>Professional History Intelligence Studio</div>
+    </div>
+  );
+}
+
+// Lightweight info capture shown the first time a guest opens an AI tool
+// (fit / interview). Name required; organization and email optional.
+function GuestInfoGate({ gpage, onSubmit }) {
+  const GP = "'Poppins', system-ui, sans-serif";
+  const [g, setG] = useState({ name: "", company: "", email: "" });
+  const [err, setErr] = useState("");
+  const validEmail = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+  const title = gpage === "fit" ? "See how Adam fits your role" : "Interview Adam";
+  const inp = { width: "100%", padding: "10px 12px", fontSize: 14, borderRadius: 4, border: "1px solid var(--g-hair)", fontFamily: GP, marginBottom: 10, boxSizing: "border-box", background: "var(--g-paper)", color: "var(--g-ink)", outline: "none" };
+  const submit = () => {
+    if (!g.name.trim()) return setErr("Please add your name.");
+    if (g.email.trim() && !validEmail(g.email)) return setErr("That email does not look right. You can also leave it blank.");
+    onSubmit({ name: g.name.trim(), company: g.company.trim(), email: g.email.trim(), role: "" });
+  };
+  return (
+    <div style={{ paddingTop: "2.5rem", maxWidth: 440, fontFamily: GP }}>
+      <div style={{ fontSize: 22, fontWeight: 500, color: "var(--g-ink)", marginBottom: 6 }}>{title}</div>
+      <div style={{ fontSize: 13, fontWeight: 300, color: "var(--g-slate)", marginBottom: "1.5rem", lineHeight: 1.5 }}>One quick intro first, so Adam can follow up and tailor this to you. Your name is all that is needed.</div>
+      <input style={inp} placeholder="Your name *" value={g.name} autoFocus onChange={e => { setG({ ...g, name: e.target.value }); setErr(""); }} onKeyDown={e => { if (e.key === "Enter") submit(); }} />
+      <input style={inp} placeholder="Organization (optional)" value={g.company} onChange={e => setG({ ...g, company: e.target.value })} onKeyDown={e => { if (e.key === "Enter") submit(); }} />
+      <input style={inp} placeholder="Email (optional)" value={g.email} onChange={e => { setG({ ...g, email: e.target.value }); setErr(""); }} onKeyDown={e => { if (e.key === "Enter") submit(); }} />
+      {err && <div style={{ fontSize: 12, color: "var(--phis-vermilion)", marginBottom: 10 }}>{err}</div>}
+      <button onClick={submit} style={{ padding: "11px 22px", fontSize: 14, fontWeight: 500, color: "#fff", background: "var(--g-vermilion)", border: "none", borderRadius: 4, cursor: "pointer", fontFamily: GP }}>Continue →</button>
+    </div>
+  );
+}
+
+// Discreet Adam login. Sits quietly at the bottom of the guest shell; opens
+// a passcode field in place. Invisible to visitors, one click for Adam.
+function GuestFooter({ onAdam }) {
+  const GP = "'Poppins', system-ui, sans-serif";
+  const ADAM_CODE = "phisphis";
+  const [open, setOpen] = useState(false);
+  const [pin, setPin] = useState("");
+  const [err, setErr] = useState(false);
+  const submit = () => { pin === ADAM_CODE ? onAdam() : setErr(true); };
+  return (
+    <div style={{ borderTop: "1px solid var(--phis-hair)", padding: "14px 20px", display: "flex", justifyContent: "center", alignItems: "center", gap: 8, fontFamily: GP }}>
+      {!open ? (
+        <button onClick={() => setOpen(true)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11, color: "var(--phis-mist)", fontFamily: GP }}>I&rsquo;m Adam</button>
+      ) : (
+        <>
+          <input type="password" placeholder="Passcode" value={pin} autoFocus
+            onChange={e => { setPin(e.target.value); setErr(false); }}
+            onKeyDown={e => { if (e.key === "Enter") submit(); }}
+            style={{ padding: "6px 10px", fontSize: 12, borderRadius: 4, border: err ? "1px solid var(--phis-vermilion)" : "1px solid var(--phis-hair)", fontFamily: GP, outline: "none" }} />
+          <button onClick={submit} style={{ padding: "6px 12px", fontSize: 12, fontWeight: 500, color: "#fff", background: "var(--phis-navy)", border: "none", borderRadius: 4, cursor: "pointer", fontFamily: GP }}>Enter</button>
+          <button onClick={() => { setOpen(false); setPin(""); setErr(false); }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11, color: "var(--phis-mist)", fontFamily: GP }}>Cancel</button>
+        </>
+      )}
+    </div>
+  );
+}
+
+function GuestShell({ guest, stories, experience, awards, education, profileContext, guestSessionId, onCapture, onAdam }) {
   const GP = "'Poppins', system-ui, sans-serif";
   const [gpage, setGpage] = useState("home");
   const [fitRole, setFitRole] = useState(null);
+  const captured = !!guest;
+  const GATED = { fit: true, interview: true };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", fontFamily: GP, minHeight: "100vh", background: "var(--phis-stone)" }}>
-      <GuestTopBar gpage={gpage} setGpage={setGpage} guestName={guest.name} />
+      <GuestTopBar gpage={gpage} setGpage={setGpage} guestName={guest && guest.name} />
       <div className="phis-guest-content" style={{ flex: 1, maxWidth: 820, margin: "0 auto", width: "100%" }}>
         {gpage === "home" && <GuestDashboard experience={experience} awards={awards} education={education} profileContext={profileContext} fitRole={fitRole} />}
-        {gpage === "interview" && <InterviewView stories={stories} guestSessionId={guestSessionId} guttered={false} />}
-        {gpage === "fit" && <GuestFitView stories={stories} experience={experience} guestSessionId={guestSessionId} onFitComplete={role => setFitRole(role)} />}
+        {GATED[gpage] && !captured && <GuestInfoGate gpage={gpage} onSubmit={onCapture} />}
+        {gpage === "interview" && captured && <InterviewView stories={stories} guestSessionId={guestSessionId} guttered={false} />}
+        {gpage === "fit" && captured && <GuestFitView stories={stories} experience={experience} guestSessionId={guestSessionId} onFitComplete={role => setFitRole(role)} />}
       </div>
+      <GuestFooter onAdam={onAdam} />
     </div>
   );
 }
@@ -5331,7 +5337,8 @@ export default function App() {
   const [stories,setStories]=useState([]);
   const [loading,setLoading]=useState(true);
   const [page,setPage]=useState("home");
-  const [mode, setMode] = useState(null);
+  const [mode, setMode] = useState("guest");
+  const [splashDone, setSplashDone] = useState(false);
   const [guest, setGuest] = useState(null);
   const [guestSessionId, setGuestSessionId] = useState(null);
   const [selected,setSelected]=useState(null);
@@ -5406,8 +5413,8 @@ export default function App() {
   );
 
   if(loading)return <div style={{padding:"2rem",color:"var(--phis-slate)",fontSize:14}}>Loading PHIS…</div>;
-  if (!mode) return <EntryGate onAdam={() => setMode("adam")} onGuest={(info) => { setGuest(info); setMode("guest"); createGuestSession(info).then(row => { if (row?.id) setGuestSessionId(row.id); }); }} />;
-  if (mode === "guest") return <GuestShell guest={guest} stories={stories} experience={experience} awards={awards} education={education} profileContext={profileContext} guestSessionId={guestSessionId} onExit={() => { setMode(null); setGuest(null); setGuestSessionId(null); }} />;
+  if (!splashDone) return <BrandSplash onDone={() => setSplashDone(true)} />;
+  if (mode === "guest") return <GuestShell guest={guest} stories={stories} experience={experience} awards={awards} education={education} profileContext={profileContext} guestSessionId={guestSessionId} onCapture={(info) => { setGuest(info); createGuestSession(info).then(row => { if (row?.id) setGuestSessionId(row.id); }); }} onAdam={() => setMode("adam")} />;
 
   return(
     <div style={{display:"flex",fontFamily:"inherit",minHeight:600,borderTop:"3px solid var(--phis-marigold)"}}>

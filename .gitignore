@@ -19,4 +19,4 @@ soar_export_for_review.json
 
 # local test / scratch artifacts
 test_*.png
-test_values_view.js
+test_*.js

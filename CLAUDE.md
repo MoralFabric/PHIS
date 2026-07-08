@@ -39,6 +39,7 @@ scripts/
   apply-profile-context-patch.js  # Data review: targeted patch — applies patch_profile_context.json (singleton)
   migration_001_profile.sql  # Adds salary columns to profile table
   migration_002_schema.sql   # Adds awards, education, profile_context tables; facets column on experience
+  migration_003_guest_email_optional.sql  # Makes guest_sessions.email nullable (trust-first landing)
   step5_resume_v2.js         # ResumeStep source (Phase 3)
   step6_coverletter_v2.js    # CoverLetterStep source (Phase 3)
   inject_step5_step6.js      # Node injection script for step5+6 (run once; file stays for reference)
@@ -287,6 +288,17 @@ Step component source files in `scripts/step*.js` are the source-of-truth for th
 | `awards` | `AwardsView` | Awards list |
 | `apply` | `ApplyView` | Application Engine — JD analysis → CPS → gaps → rescore → resume → cover letter |
 | `profile` | `ProfileView` | Profile & settings |
+
+## Visitor entry flow (trust-first landing)
+
+`App` has two modes: `guest` (default) and `adam`. There is **no entry gate** — visitors land directly on the guest experience so no one is asked for info before seeing anything.
+
+1. **`BrandSplash`** — shown on every load (gated on `splashDone` state). Navy PHIS splash that auto-fades after ~1.6s and is tap-to-skip. Purely cosmetic; collects nothing.
+2. **`GuestShell`** — the visitor app. Three tabs (`GuestTopBar`): `home` (`GuestDashboard`, ungated), `fit` (`GuestFitView`), `interview` (`InterviewView`).
+3. **`GuestInfoGate`** — the info ask. Only `fit` and `interview` are gated (`GATED = {fit, interview}`). The first time an anonymous guest (`guest == null`) opens either, this card appears instead of the tool. **Name required; Organization + Email optional.** On submit → `onCapture` in `App` sets `guest` and fires `createGuestSession` → `guestSessionId`. Once captured, both tools stay unlocked for the session (no re-gate).
+4. **`GuestFooter`** — discreet "I'm Adam" link at the bottom of `GuestShell`; opens an inline passcode field (`ADAM_CODE = "phisphis"`) → `onAdam` sets `mode = "adam"` → full internal app.
+
+`createGuestSession` sends `email: info.email || null`. The `guest_sessions.email` column must be nullable (`migration_003_guest_email_optional.sql`) or the insert 400s on blank email. **Trade-off:** pure browsers who never open an AI tool create no `guest_sessions` row, so Adam has no record they visited — this is the intended cost of the no-gate design.
 
 ## Interview AI system prompt policy
 
