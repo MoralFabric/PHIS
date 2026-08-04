@@ -1,0 +1,242 @@
+[
+  {
+    "id": "soar_064_cx_voc_measurement_program",
+    "title": "Customer Experience and Voice of Customer: NPS as an OKR Metric",
+    "type": "insight",
+    "employer": "Manulife Retirement",
+    "year": "TO CONFIRM",
+    "role": "Owned the CX and VoC measurement program within the enterprise insight and reporting function.",
+    "situation": "Following the Krypton research, the business had behavioural evidence about members but no continuous instrument for customer sentiment tied to business outcomes. Customer experience was discussed qualitatively and measured episodically, which meant it could not compete for investment against initiatives with hard numbers attached.",
+    "obstacle": "Making customer experience a governed metric rather than a talking point required putting NPS into the OKR framework, which means committing to report it monthly whether it moves favourably or not, and explaining why it moved. It also required a research capability that could interpret sentiment rather than just publish a score.",
+    "actions": [
+      "Added NPS data sets to ongoing enterprise reporting following the Krypton research",
+      "Established relationship NPS and transactional NPS as OKR metrics reported monthly at both the customer and institutional level",
+      "Built the monthly analysis around expected drivers of change and the anticipated business impact, rather than publishing the score alone",
+      "Partnered with ANOVA to design surveys and monitor results on a continuous basis",
+      "Built an ANOVA reporting hub as the standing home for voice of customer results",
+      "Applied AI to open-text research responses to surface common themes at scale"
+    ],
+    "results": [
+      "Customer sentiment became a governed, monthly-reported OKR metric rather than an episodic research exercise",
+      "The business had a continuous voice of customer instrument covering both plan sponsors and plan members",
+      "Research findings from the program became the building blocks for CX and marketing strategy",
+      "TO CONFIRM: measured movement in rNPS or tNPS over the period",
+      "TO CONFIRM: whether the ANOVA hub and AI thematic analysis remain in use"
+    ],
+    "competenciesDemonstrated": [
+      "Voice of Customer Program Ownership",
+      "Customer Experience Measurement",
+      "OKR and KPI Governance",
+      "Research Partnership Management",
+      "AI Applied to Qualitative Research"
+    ],
+    "themes": [
+      "Customer Experience",
+      "Voice of Customer",
+      "NPS",
+      "OKRs",
+      "Research",
+      "AI Application"
+    ],
+    "useCases": ["Resume", "Interview", "Cover Letter", "Book"],
+    "relatedSOARs": ["soar_059_krypton_targeting_model", "soar_065_sponsor_employee_nps_finding"],
+    "toConfirm": [
+      "Years the program ran",
+      "Whether ANOVA is the correct vendor name and spelling",
+      "Team size supporting the program",
+      "Measured NPS movement",
+      "Which AI tooling was used for thematic analysis"
+    ],
+    "fullStory": "Krypton gave us behaviour. What we did not have was sentiment, measured continuously and tied to something the business cared about. So we put NPS into the reporting, made relationship and transactional NPS OKR metrics, and reported them monthly. The part that mattered was not the score. It was that every month we explained what moved it and what we expected that to do to the business. We partnered with ANOVA on survey design and monitoring, built a reporting hub so the results had a permanent home, and later used AI to pull common themes out of the open-text responses at a scale nobody could read manually. Customer experience stopped being a thing people asserted in meetings and became a number with a story attached, which is the only form in which it can compete for investment."
+  },
+  {
+    "id": "soar_065_sponsor_employee_nps_finding",
+    "title": "The Sponsor and Employee NPS Finding: Redirecting CX Investment",
+    "type": "insight",
+    "employer": "Manulife Retirement",
+    "year": "TO CONFIRM",
+    "situation": "The CX strategy was heavily weighted toward the advisor and plan sponsor experience. Investment was flowing to onboarding automation, sponsor site upgrades, and improved advisor integration. The logic was straightforward: sponsors and advisors make the buying decision, so improve their experience.",
+    "obstacle": "The logic was intuitive, funded, and already in motion. Challenging it meant producing evidence strong enough to redirect committed investment, and telling the people running those initiatives that the premise underneath them was incomplete.",
+    "actions": [
+      "Analyzed the relationship between sponsor NPS and employee NPS, including the underlying attributes driving each score",
+      "Ranked what sponsors and employees each said mattered most about the plan",
+      "Identified that the two rankings were identical except for price, which sponsors ranked first and employees ranked last",
+      "Concluded that what mattered most to a sponsor was, in substance, the member experience",
+      "Brought the finding to the CX and marketing strategy discussion and argued for a change in investment direction"
+    ],
+    "results": [
+      "Significant correlation established between sponsor and employee NPS and their underlying attributes",
+      "CX strategy shifted from an advisor and sponsor focus toward member experience",
+      "Investment moved toward longevity, financial health, and the member-facing site",
+      "TO CONFIRM: dollar value of investment redirected",
+      "TO CONFIRM: subsequent movement in sponsor or employee NPS following the shift"
+    ],
+    "competenciesDemonstrated": [
+      "Customer Research and Insight",
+      "Insight to Investment Decision",
+      "Challenging Established Strategy with Evidence",
+      "Executive Influence"
+    ],
+    "themes": [
+      "Customer Experience",
+      "Voice of Customer",
+      "NPS",
+      "Strategy Redirection",
+      "Evidence Over Assumption"
+    ],
+    "useCases": ["Resume", "Interview", "Cover Letter", "Book"],
+    "relatedSOARs": ["soar_064_cx_voc_measurement_program"],
+    "toConfirm": [
+      "Year the analysis was completed",
+      "Sample sizes behind the sponsor and employee rankings",
+      "Named initiatives that were funded or defunded as a result",
+      "Whether the strategy shift is documented anywhere Adam can reference"
+    ],
+    "fullStory": "The CX strategy was pointed at advisors and sponsors. Onboarding automation, sponsor site upgrades, better advisor integration. Reasonable, because sponsors sign the contract. Then we ranked what sponsors and employees each said mattered about the plan, and the two lists came back identical except for one line. Price was first for sponsors and last for employees. Everything else, in the same order. Which meant the thing sponsors actually cared about, underneath the commercial conversation, was whether the plan worked for their people. That reframed where the money should go. Investment moved toward longevity, financial health, and the member site. The uncomfortable part of this story is that the prior strategy was not stupid. It was intuitive, and intuitive is what evidence is for."
+  },
+  {
+    "id": "soar_066_enterprise_digital_definitions",
+    "title": "Enterprise Digital Definitions: Setting the Standards Others Had to Use",
+    "type": "strategy",
+    "employer": "Manulife",
+    "year": "TO CONFIRM",
+    "situation": "The organization had committed to digital leadership without agreeing what digital meant. Different business units counted digital service intents and digital products differently, which made the enterprise measure meaningless and any comparison across units an argument rather than a fact.",
+    "obstacle": "Definitional standards are unglamorous and contested. Every business unit has an incentive to define digital in whatever way flatters its own numbers, and the person proposing a stricter definition is proposing that some existing claims stop counting.",
+    "actions": [
+      "Defined a digital service intent as one where no human interaction occurs between the customer learning about the service and acting on the decision to use it, with manual delivery or KYC on the firm's side not disqualifying it",
+      "Defined a digital product as one where no human interaction is required after all information is provided and through acquisition, with manual RFPs not disqualifying it but manual onboarding violating it",
+      "Grounded both definitions in analytical reasoning and outcome statements rather than convenience",
+      "Set the measurement methodology, including whether metrics should be trailing twelve month, last snapshot, or otherwise",
+      "Carried the definitions and methodology through enterprise adoption"
+    ],
+    "results": [
+      "The digital service intent and digital product definitions were adopted enterprise wide",
+      "The measurement methodology Adam specified was adopted enterprise wide",
+      "Digital leadership became measurable on a consistent basis across business units",
+      "Research findings on the financial impact of higher customer satisfaction were adopted enterprise wide",
+      "TO CONFIRM: which forum or governance body formally ratified the definitions",
+      "TO CONFIRM: number of business units operating under them"
+    ],
+    "competenciesDemonstrated": [
+      "Enterprise Standard Setting",
+      "Measurement Methodology Design",
+      "Influence Without Formal Authority",
+      "Centre of Excellence Leadership",
+      "Digital Strategy"
+    ],
+    "themes": [
+      "Digital Strategy",
+      "KPI Design",
+      "Definitional Governance",
+      "Enterprise Influence",
+      "Measurement"
+    ],
+    "useCases": ["Resume", "Interview", "Cover Letter", "Book"],
+    "relatedSOARs": ["soar_062_gr_digital_leader_product_analytics", "soar_055_digital_leader_strategy"],
+    "toConfirm": [
+      "Years this work took place",
+      "The governance forum that ratified the definitions",
+      "How many business units adopted them",
+      "Whether the definitions are still in force"
+    ],
+    "fullStory": "The company wanted to be a digital leader and had never agreed what digital meant. Everyone counted it differently, which meant the enterprise number was fiction and every cross-unit comparison was a negotiation. So we set the goalposts. A service intent is digital if there is no human interaction between the customer learning about it and acting on the decision. If it is manual on our end, or needs KYC, that is fine, that is our problem not theirs. A product is digital if no human interaction is required after the information is given, through acquisition. A manual RFP does not disqualify it. Manual onboarding does. Then the measurement methodology, trailing twelve month or last snapshot, because a definition without a measurement convention is still an argument. All of it was adopted enterprise wide. This is the least glamorous work I have done and among the most consequential, because until the definitions were settled nobody could tell whether the strategy was working."
+  },
+  {
+    "id": "soar_067_grid_program_governance_and_products",
+    "title": "GRID: Building an Enterprise Platform Through Adjacent Funding, Then Formalizing It",
+    "type": "transformation",
+    "employer": "Manulife Retirement",
+    "year": "TO CONFIRM start, through 2026",
+    "role": "Owner of the GRID initiative throughout. Product owner on constituent funded projects. Program owner from 2025.",
+    "situation": "GRID was the enterprise data and reporting platform the business needed and would not directly fund. It existed initially as an unfunded initiative Adam owned, with no budget line of its own.",
+    "obstacle": "Large organizations fund outputs, not infrastructure. A multi-year platform build has no single deliverable to point at in year one, which makes it nearly impossible to fund directly. Building it anyway required delivering other people's business cases while constructing the platform underneath them.",
+    "actions": [
+      "Owned GRID as an unfunded enterprise initiative and sequenced its construction through adjacent funded projects",
+      "Served as product owner on the Participant Engagement Program, a funded project with a stated budget and Fraser, Head of Participant Outcomes, as executive sponsor",
+      "Carried that project from original business plan through leading a cross-functional group from the CDO team, planning, execution, testing, sign-off, and delivery",
+      "Built the tables and data modeling required for average contribution rate reporting, which delivered the project's stated output and also delivered GRID 1.0",
+      "Developed the resulting reporting in Power BI",
+      "Repeated the pattern across further projects, with product ownership held inside Adam's organization",
+      "Established a funded GRID Program in 2025 with named data layer owners, business owners, reporting and processes for continuous build-out",
+      "Integrated the GRID Program into enterprise CDO, Transformation, and Product governance"
+    ],
+    "results": [
+      "Enterprise data and reporting platform built and adopted as the single source of truth across the business",
+      "Platform infrastructure constructed through adjacent project funding before it had a budget of its own",
+      "Formal funded program with named ownership and enterprise governance established in 2025",
+      "GRID became the foundation for downstream customer-facing analytical products",
+      "TO CONFIRM: total investment across all constituent projects",
+      "TO CONFIRM: number of constituent projects and their sequence"
+    ],
+    "competenciesDemonstrated": [
+      "Program Ownership and Governance",
+      "Product Ownership",
+      "Enterprise Platform Delivery",
+      "Business Case Development",
+      "Cross-Functional Leadership",
+      "Transformation Sequencing"
+    ],
+    "themes": [
+      "Data Platform",
+      "Transformation",
+      "Program Governance",
+      "Product Ownership",
+      "Enterprise Adoption"
+    ],
+    "useCases": ["Resume", "Interview", "Cover Letter", "Book"],
+    "relatedSOARs": ["soar_001_building_grid", "soar_068_external_analytical_products"],
+    "usageWarning": "Adam was PRODUCT owner on the Participant Engagement Program. Fraser was the SPONSOR. Adam was PROGRAM owner from 2025. Never phrase pre-2025 work as executive sponsorship. Fraser is an approved reference and this would be checkable.",
+    "toConfirm": [
+      "Year the GRID initiative began",
+      "Names and sequence of the other constituent projects",
+      "Whether Adam was program owner or a named role within the 2025 program governance",
+      "Total investment across constituent projects"
+    ],
+    "fullStory": "GRID was the platform the business needed and would never have funded as a platform. Large organizations fund outputs. So I owned it as an unfunded initiative and built it through other people's projects. The Participant Engagement Program is the clearest example. Real budget, Fraser sponsoring, me as product owner, running a group from the CDO team from business plan through testing and delivery. On paper it delivered reporting on average contribution rates across the business. What it actually delivered was GRID 1.0, because the tables and modeling required for contribution rates were the tables and modeling GRID needed. Then I built the reporting in Power BI. We ran the same pattern on further projects, with product ownership sitting inside my organization each time. By 2025 there was enough there to formalize it: a funded GRID Program with data layer owners, business owners, defined reporting and processes, integrated into the enterprise CDO, Transformation, and Product governance. The sequencing is the story. You cannot get a platform funded before it exists, so you build it inside things that can be."
+  },
+  {
+    "id": "soar_068_external_analytical_products",
+    "title": "Client-Facing Analytical Products Built on GRID",
+    "type": "insight",
+    "employer": "Manulife Retirement",
+    "year": "TO CONFIRM",
+    "situation": "Plan sponsors wanted to know how their plan compared and what would happen if they changed it. Answering either question well required benchmarking infrastructure that did not exist until GRID and the Participant Outcome Index made it possible.",
+    "obstacle": "Benchmarking products are only as credible as the data underneath them. Comparing a sponsor's plan to their industry, their state, or the full universe requires a consistent outcome measure across the entire book, which is a data problem before it is a product problem.",
+    "actions": [
+      "Built plan review reporting on the GRID platform, benchmarking a sponsor's participant financial health against a stated comparison group including industry, state, or the full universe, using the Participant Outcome Index",
+      "Made it available on request through the sponsor portal or customizable through the relationship manager",
+      "Owned plan fit analysis, an inherited product where sponsors complete a survey of the design features they are considering and receive analysis of the projected impact, run through a SQL engine",
+      "Deployed the Participant Outcome Index to selected clients"
+    ],
+    "results": [
+      "Sponsors could obtain benchmarked analysis of their participants' financial health against a comparison group of their choosing",
+      "Sponsors could model the projected impact of plan design changes before making them",
+      "Analytical products delivered to institutional clients through the sponsor portal and relationship managers",
+      "TO CONFIRM: number of sponsors using each product",
+      "TO CONFIRM: commercial impact, retention or sales influence"
+    ],
+    "competenciesDemonstrated": [
+      "Client-Facing Analytical Product Ownership",
+      "Benchmarking and Index Design",
+      "Data Platform to Product",
+      "Institutional Client Delivery"
+    ],
+    "themes": [
+      "Client Products",
+      "Benchmarking",
+      "Participant Outcome Index",
+      "Plan Design",
+      "Data Platform"
+    ],
+    "useCases": ["Resume", "Interview", "Book"],
+    "usageWarning": "These are advisory analytical products delivered through the sponsor portal and relationship managers. POI was deployed to SELECTED clients only during Adam's tenure. Do not phrase as customer-facing deployment at scale, unattended transactional product, or full rollout. The first interview question will be how many customers.",
+    "relatedSOARs": ["soar_067_grid_program_governance_and_products", "soar_018_member_outcome_index"],
+    "toConfirm": [
+      "Years each product was live",
+      "Approximate number of sponsors served",
+      "Whether POI has since been deployed more broadly",
+      "Whether plan fit analysis was upgraded after Adam's departure"
+    ],
+    "fullStory": "Two products went outside the firm on the back of GRID. Plan review reporting let a sponsor benchmark their participants' financial health against whatever comparison group they named, their industry, their state, or the whole universe, using the Participant Outcome Index. Available on request through the sponsor portal or customized with their relationship manager. Plan fit analysis I inherited: a sponsor tells us which design features they are weighing, a survey feeds a SQL engine, and they get back the projected impact of the change. It was years from getting funded for an upgrade and it worked anyway. Both are advisory products delivered through an intermediary rather than software a client sits in unattended, and POI only went to selected clients while I was there. Worth being precise about that, because the distinction matters to anyone who has actually shipped external product."
+  }
+]

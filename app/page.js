@@ -3679,6 +3679,32 @@ function RescoreStep({active,jdAnalysis,cpsResult,gapResolutions,result,stories,
 
 
 // ─── STEP 5: RESUME GENERATION ───────────────────────────
+// Generation guardrails for SOAR stories.
+// The stories table has no column for authoring metadata, so usage warnings and
+// unresolved TO CONFIRM markers live in `notes` (see scripts/import-soar-064-068.js).
+// Resume and cover letter output is the path where an overclaim gets checked by a
+// reference, so both filter blocked stories and forward warnings as binding rules.
+// AskView / InterviewView deliberately keep the full library.
+function isGenerationBlocked(story){
+  // Unresolved TO CONFIRM placeholders: not fit for output until filled in.
+  if(/^\s*NOT GENERATION READY/im.test((story&&story.notes)||'')) return true;
+  // use_for is the author's own scoping (soar_063 is Interview-only for a reason).
+  // Treat it as an opt-out only when populated, so untagged rows stay available.
+  const u=(Array.isArray(story&&story.use_for)?story.use_for:[])
+    .map(function(x){return String(x).toLowerCase().replace(/[^a-z]/g,'');});
+  return u.length>0 && u.indexOf('resume')===-1 && u.indexOf('coverletter')===-1;
+}
+
+function usageWarningOf(story){
+  const notes=(story&&story.notes)||'';
+  const m=notes.match(/^\s*USAGE WARNING:\s*([\s\S]*?)(?=\n\s*(?:NOT GENERATION READY|Role:|Year:|Related SOARs:|TO CONFIRM:)|$)/im);
+  return m?m[1].trim().replace(/\s+/g,' '):'';
+}
+
+function generationStories(list){
+  return (list||[]).filter(function(s){return !isGenerationBlocked(s);});
+}
+
 function ResumeStep({active,jdAnalysis,rescore,result,stories,experience,awards,education,profileContext,onComplete,onError}) {
   const [loading,setLoading]=useState(false);
   const [loadingPhase,setLoadingPhase]=useState('');
@@ -3787,7 +3813,8 @@ HARD RULES (non-negotiable):
 11. Plain text only. No markdown, no asterisks. Section headers ALL CAPS with colon. Bullets start with bullet character.
 12. Generate CORE COMPETENCIES dynamically for this specific JD.
 13. SOURCE TRACE: every relational claim (led, advised, partner, head of, direct report) and every numeric claim ($, %, headcount, AUM, time period) must be supported by the source data for that specific role. Do not import context from one role into another. Do not promote titles beyond what source supports.
-14. Current role end date is 2026.`;
+14. Current role end date is 2026.
+15. USAGE WARNING lines attached to a story are binding constraints written by the candidate. They override every other instruction here, including rule 7 advisory framing and rule 9 JD mirroring. Never write a claim a usage warning forbids, and never restate the warning itself in the resume. If a warning makes a story unusable for a given bullet, drop the bullet.`;
 
   const FRAMING_SYS='Review the bullets in this resume. For each bullet, identify the verb and frame. Bullets framed operationally (provided X with reporting, built dashboards for, produced reports on, delivered data to) should be rewritten in advisory framing where source supports it (advised X on, recommended, shaped, guided decisions on, partnered on). Do NOT change the substance of any bullet — only the framing verb and structure. Do NOT introduce claims not already in the bullet. Return the full revised resume in the same plain-text format with the same section structure.';
 
@@ -3797,7 +3824,7 @@ HARD RULES (non-negotiable):
     const nl='\n';
     try{
       // SOAR pre-filter: top 15 by JD relevance
-      const scored=stories.map(function(s){return Object.assign({},s,{_sc:scoreStoryAgainstJD(s)});})
+      const scored=generationStories(stories).map(function(s){return Object.assign({},s,{_sc:scoreStoryAgainstJD(s)});})
         .sort(function(a,b){return b._sc-a._sc;}).slice(0,15);
 
       const expCtx=buildExpContextDetailed(experience);
@@ -3816,7 +3843,8 @@ HARD RULES (non-negotiable):
           'Obstacle: '+(s.obstacle||'')+nl+
           'Action: '+(s.action||'')+nl+
           'Result: '+(s.result||'')+nl+
-          'Impact: '+(s.impact||'');
+          'Impact: '+(s.impact||'')+
+          (usageWarningOf(s)?nl+'USAGE WARNING (binding): '+usageWarningOf(s):'');
       }).join(nl+nl);
 
       const userPrompt=[
@@ -3975,7 +4003,7 @@ function CoverLetterStep({active,jdAnalysis,rescore,resume,result,stories,experi
 
   const today=new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
 
-  const CL_SYS='You are an expert executive cover letter writer. Write a complete, tailored cover letter in plain text. The candidate\'s name and contact information are added by the application — do NOT generate a header with name or contact details.\n\nOUTPUT STRUCTURE (exact order):\n\n'+today+'\n\n[Hiring manager name and title if known, otherwise omit and go straight to company]\n[Company name]\n\nRe: [Role title] — Application\n\nDear [Hiring Manager name, or "Hiring Committee" if unknown],\n\n[Paragraph 1 — Opening: A statement of perspective or conviction about why THIS role at THIS company. NEVER open with "I am excited to apply", "I am writing to", or any cliche opener. Open with a substantive observation about the company, sector, or the problem the role exists to solve, then connect it to the candidate\'s specific experience.]\n\n[Paragraph 2 — Fit: Connect 2-3 of the candidate\'s strongest JD-matched skills or SOAR stories to the role\'s top responsibilities. Be concrete — name the story or outcome. Mirror the JD\'s distinctive vocabulary where meaning matches.]\n\n[Paragraph 3 — Company/context: Demonstrate knowledge of the company\'s situation, strategy, or challenges and show how the candidate\'s background is specifically relevant. Not generic industry commentary — specific to this company and role.]\n\n[Paragraph 4 — Closing: Confident, brief, no groveling. Express clear interest in next steps. One or two sentences max.]\n\nSincerely,\n\n[Leave name blank — application adds it]\n\nHARD RULES:\n1. NEVER generate the candidate\'s name, phone, email, or address in the body.\n2. NEVER use em-dashes (—), en-dashes (–), or \' - \' (space-hyphen-space). Use commas, semicolons, or rewrite.\n3. Banned phrases: leveraged, spearheaded, passionate, synergy, utilized, holistic, robust, transformative, cutting-edge, best-in-class, thought leader, I am excited to apply, I am writing to express, perfect fit, passionate about, results-driven, dynamic, world-class, in today\'s fast-paced.\n4. Body paragraphs: exactly 4. Total body word count: 280-420 words.\n5. Plain text only. No markdown, no asterisks, no bullet points in body.\n6. Mirror the JD\'s distinctive vocabulary and top responsibilities where source data supports it.\n7. Every claim about the candidate must be supported by the experience or stories provided — no fabrication.';
+  const CL_SYS='You are an expert executive cover letter writer. Write a complete, tailored cover letter in plain text. The candidate\'s name and contact information are added by the application — do NOT generate a header with name or contact details.\n\nOUTPUT STRUCTURE (exact order):\n\n'+today+'\n\n[Hiring manager name and title if known, otherwise omit and go straight to company]\n[Company name]\n\nRe: [Role title] — Application\n\nDear [Hiring Manager name, or "Hiring Committee" if unknown],\n\n[Paragraph 1 — Opening: A statement of perspective or conviction about why THIS role at THIS company. NEVER open with "I am excited to apply", "I am writing to", or any cliche opener. Open with a substantive observation about the company, sector, or the problem the role exists to solve, then connect it to the candidate\'s specific experience.]\n\n[Paragraph 2 — Fit: Connect 2-3 of the candidate\'s strongest JD-matched skills or SOAR stories to the role\'s top responsibilities. Be concrete — name the story or outcome. Mirror the JD\'s distinctive vocabulary where meaning matches.]\n\n[Paragraph 3 — Company/context: Demonstrate knowledge of the company\'s situation, strategy, or challenges and show how the candidate\'s background is specifically relevant. Not generic industry commentary — specific to this company and role.]\n\n[Paragraph 4 — Closing: Confident, brief, no groveling. Express clear interest in next steps. One or two sentences max.]\n\nSincerely,\n\n[Leave name blank — application adds it]\n\nHARD RULES:\n1. NEVER generate the candidate\'s name, phone, email, or address in the body.\n2. NEVER use em-dashes (—), en-dashes (–), or \' - \' (space-hyphen-space). Use commas, semicolons, or rewrite.\n3. Banned phrases: leveraged, spearheaded, passionate, synergy, utilized, holistic, robust, transformative, cutting-edge, best-in-class, thought leader, I am excited to apply, I am writing to express, perfect fit, passionate about, results-driven, dynamic, world-class, in today\'s fast-paced.\n4. Body paragraphs: exactly 4. Total body word count: 280-420 words.\n5. Plain text only. No markdown, no asterisks, no bullet points in body.\n6. Mirror the JD\'s distinctive vocabulary and top responsibilities where source data supports it.\n7. Every claim about the candidate must be supported by the experience or stories provided — no fabrication.\n8. USAGE WARNING lines attached to a story are binding constraints written by the candidate. They override every other rule here, including rule 6 JD mirroring. Never write a claim a usage warning forbids, and never restate the warning itself in the letter. If a warning makes a story unusable, use a different story.';
 
   function validateCoverLetter(text){
     var issues=[];
@@ -4025,8 +4053,9 @@ function CoverLetterStep({active,jdAnalysis,rescore,resume,result,stories,experi
       const topSkills=jdAnalysis.skills.filter(function(s){return s.weight>=7;}).map(function(s){return s.name+' (weight '+s.weight+')';}).join(', ');
       const respCtx=(jdAnalysis.responsibilities||[]).slice(0,8).map(function(r){return '• '+(r.description||r)+(r.priority?' (priority: '+r.priority+')':'');}).join(nl);
       const vocabCtx=(jdAnalysis.distinctive_vocabulary||[]).map(function(v){return v.phrase||v;}).join(', ');
-      const storyCtx=stories.slice(0,8).map(function(s){
-        return s.title+' ('+s.employer+'): '+s.result+(s.impact?' — '+s.impact:'');
+      const storyCtx=generationStories(stories).slice(0,8).map(function(s){
+        return s.title+' ('+s.employer+'): '+s.result+(s.impact?' — '+s.impact:'')+
+          (usageWarningOf(s)?nl+'  USAGE WARNING (binding): '+usageWarningOf(s):'');
       }).join(nl);
       const resumeSnippet=resume&&resume.content?resume.content.slice(0,600):'';
 

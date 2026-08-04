@@ -1,4 +1,30 @@
 // ─── STEP 5: RESUME GENERATION ───────────────────────────
+// Generation guardrails for SOAR stories.
+// The stories table has no column for authoring metadata, so usage warnings and
+// unresolved TO CONFIRM markers live in `notes` (see scripts/import-soar-064-068.js).
+// Resume and cover letter output is the path where an overclaim gets checked by a
+// reference, so both filter blocked stories and forward warnings as binding rules.
+// AskView / InterviewView deliberately keep the full library.
+function isGenerationBlocked(story){
+  // Unresolved TO CONFIRM placeholders: not fit for output until filled in.
+  if(/^\s*NOT GENERATION READY/im.test((story&&story.notes)||'')) return true;
+  // use_for is the author's own scoping (soar_063 is Interview-only for a reason).
+  // Treat it as an opt-out only when populated, so untagged rows stay available.
+  const u=(Array.isArray(story&&story.use_for)?story.use_for:[])
+    .map(function(x){return String(x).toLowerCase().replace(/[^a-z]/g,'');});
+  return u.length>0 && u.indexOf('resume')===-1 && u.indexOf('coverletter')===-1;
+}
+
+function usageWarningOf(story){
+  const notes=(story&&story.notes)||'';
+  const m=notes.match(/^\s*USAGE WARNING:\s*([\s\S]*?)(?=\n\s*(?:NOT GENERATION READY|Role:|Year:|Related SOARs:|TO CONFIRM:)|$)/im);
+  return m?m[1].trim().replace(/\s+/g,' '):'';
+}
+
+function generationStories(list){
+  return (list||[]).filter(function(s){return !isGenerationBlocked(s);});
+}
+
 function ResumeStep({active,jdAnalysis,rescore,result,stories,experience,awards,education,profileContext,onComplete,onError}) {
   const [loading,setLoading]=useState(false);
   const [loadingPhase,setLoadingPhase]=useState('');
@@ -106,7 +132,8 @@ HARD RULES (non-negotiable):
 11. Plain text only. No markdown, no asterisks. Section headers ALL CAPS with colon. Bullets start with bullet character.
 12. Generate CORE COMPETENCIES dynamically for this specific JD.
 13. SOURCE TRACE: every relational claim (led, advised, partner, head of, direct report) and every numeric claim ($, %, headcount, AUM, time period) must be supported by the source data for that specific role. Do not import context from one role into another. Do not promote titles beyond what source supports.
-14. Current role end date is 2026.`;
+14. Current role end date is 2026.
+15. USAGE WARNING lines attached to a story are binding constraints written by the candidate. They override every other instruction here, including rule 7 advisory framing and rule 9 JD mirroring. Never write a claim a usage warning forbids, and never restate the warning itself in the resume. If a warning makes a story unusable for a given bullet, drop the bullet.`;
 
   const FRAMING_SYS='Review the bullets in this resume. For each bullet, identify the verb and frame. Bullets framed operationally (provided X with reporting, built dashboards for, produced reports on, delivered data to) should be rewritten in advisory framing where source supports it (advised X on, recommended, shaped, guided decisions on, partnered on). Do NOT change the substance of any bullet — only the framing verb and structure. Do NOT introduce claims not already in the bullet. Return the full revised resume in the same plain-text format with the same section structure.';
 
@@ -116,7 +143,7 @@ HARD RULES (non-negotiable):
     const nl='\n';
     try{
       // SOAR pre-filter: top 15 by JD relevance
-      const scored=stories.map(function(s){return Object.assign({},s,{_sc:scoreStoryAgainstJD(s)});})
+      const scored=generationStories(stories).map(function(s){return Object.assign({},s,{_sc:scoreStoryAgainstJD(s)});})
         .sort(function(a,b){return b._sc-a._sc;}).slice(0,15);
 
       const expCtx=buildExpContextDetailed(experience);
@@ -135,7 +162,8 @@ HARD RULES (non-negotiable):
           'Obstacle: '+(s.obstacle||'')+nl+
           'Action: '+(s.action||'')+nl+
           'Result: '+(s.result||'')+nl+
-          'Impact: '+(s.impact||'');
+          'Impact: '+(s.impact||'')+
+          (usageWarningOf(s)?nl+'USAGE WARNING (binding): '+usageWarningOf(s):'');
       }).join(nl+nl);
 
       const userPrompt=[

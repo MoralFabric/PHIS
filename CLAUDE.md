@@ -234,6 +234,22 @@ Output schema:
 
 **Banned phrases** (both resume and cover letter): `leveraged, spearheaded, passionate, synergy, in today's fast-paced, utilized, holistic, robust, transformative, cutting-edge, best-in-class, thought leader, results-driven, dynamic, world-class`.
 
+**Generation guardrails (steps 5 and 6 only)**
+
+The `stories` table has no column for authoring metadata, so usage warnings and unresolved placeholders are folded into `notes` at import time. Three top-level helpers in `page.js` (mirrored in `scripts/step5_resume_v2.js`) enforce them:
+
+| Helper | Behaviour |
+|---|---|
+| `isGenerationBlocked(story)` | `true` if `notes` begins with `NOT GENERATION READY`, **or** if `use_for` is populated and contains neither `Resume` nor `Cover Letter` |
+| `usageWarningOf(story)` | Extracts the `USAGE WARNING:` block from `notes`, empty string if absent |
+| `generationStories(list)` | `list` minus blocked stories |
+
+`ResumeStep` filters through `generationStories` before the top-15 pre-filter; `CoverLetterStep` filters before its `slice(0,8)`. Surviving warnings are appended to each story's context block as `USAGE WARNING (binding):` and enforced by RESUME_SYS rule 15 / CL_SYS rule 8, which state that warnings override all other prompt rules.
+
+`use_for` is treated as an **opt-out only when populated** — the ~25 rows with an empty `use_for` stay available rather than being silently dropped. `AskView` and `InterviewView` deliberately keep the full library; these guardrails are resume and cover letter only, because that is where an overclaim gets checked by a reference.
+
+To make a story generation-eligible again, resolve its `TO CONFIRM` items and remove the `NOT GENERATION READY` line from `notes`.
+
 **RTF export** — `buildResumeRTF(text, headline)` takes the per-application `headline` state from `ResumeStep` as its second argument (not a direct `profileContext` lookup). `buildCoverLetterRTF(text)` and `buildFullCVRTF(exp, edu, awards, subtitle)` use `escRTF()` for escaping; the full CV subtitle falls back to `profileContext?.headerTagline || CANDIDATE.subtitle`.
 
 **`CANDIDATE` constants** (`app/page.js` top of file) — `CANDIDATE.subtitle` is the last-resort headline fallback: `"Data and Analytics Leader  |  Insight Strategy  |  Enterprise Decision Systems"`. Do not change it to a job title — it must be accurate without any active application context. The `profileContext.headerTagline` field (editable in ProfileView) and the per-application `headline` input in ResumeStep both take precedence over this default.
