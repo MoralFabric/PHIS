@@ -33,10 +33,23 @@ const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
 })
 
 // ── Normalize any soar document shape → stories row ──────────────────────────
+// Some soar files carry `actions` / `results` as arrays of bullets; the DB
+// columns are single text fields, so flatten them into sentences.
+function flatten(single, list) {
+  if (typeof single === 'string' && single) return single
+  if (!Array.isArray(list)) return ''
+  return list
+    .map(x => String(x).trim())
+    .filter(Boolean)
+    .map(x => (/[.!?]$/.test(x) ? x : x + '.'))
+    .join(' ')
+}
+
 function toRow(s) {
   const skills =
-    Array.isArray(s.skills)  ? s.skills  :
-    Array.isArray(s.themes)  ? s.themes.map(t => t.toLowerCase()) : []
+    Array.isArray(s.skills)                   ? s.skills :
+    Array.isArray(s.competenciesDemonstrated) ? s.competenciesDemonstrated.map(t => t.toLowerCase()) :
+    Array.isArray(s.themes)                   ? s.themes.map(t => t.toLowerCase()) : []
 
   return {
     id:         String(s.id),
@@ -45,14 +58,15 @@ function toRow(s) {
     employer:   s.employer                 || '',
     situation:  s.situation                || '',
     obstacle:   s.obstacle                 || '',
-    action:     s.action                   || '',
-    result:     s.result                   || '',
+    action:     flatten(s.action, s.actions),
+    result:     flatten(s.result, s.results),
     impact:     s.impact                   || '',
     full_story: s.fullStory || s.full_story || s.fullNarrative || '',
     themes:     Array.isArray(s.themes)  ? s.themes  : [],
     skills,
-    use_for:    Array.isArray(s.useFor)  ? s.useFor  :
-                Array.isArray(s.use_for) ? s.use_for : [],
+    use_for:    Array.isArray(s.useFor)    ? s.useFor    :
+                Array.isArray(s.use_for)   ? s.use_for   :
+                Array.isArray(s.useCases)  ? s.useCases  : [],
     notes:      s.notes                    || '',
     date_added: s.dateAdded || s.date_added || '',
   }
