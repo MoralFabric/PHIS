@@ -2433,9 +2433,11 @@ function AskView({stories}) {
     setMode(isInterviewQ?"interview":"library");
     try{
       if(isInterviewQ){
-        const ctx=stories.map(s=>`STORY: ${s.title} (${s.employer})\n${s.fullStory||[s.situation,s.obstacle,s.action,s.result].filter(Boolean).join(" ")}`).join("\n\n---\n\n");
+        const ctx=stories.map(s=>`STORY: ${s.title} (${s.employer})\nTHEMES: ${(s.themes||[]).join(", ")||"none recorded"}\nSKILLS: ${(s.skills||[]).join(", ")||"none recorded"}\n${s.fullStory||[s.situation,s.obstacle,s.action,s.result].filter(Boolean).join(" ")}`).join("\n\n---\n\n");
         const ans=await callClaude(
           `STOP. Read these prohibitions completely before writing a single word of your answer. They are absolute and override everything below.
+
+SELECTING THE RIGHT STORY: Before you write anything, name to yourself the capability the question is actually testing. Then scan the THEMES and SKILLS lines of every story for that capability, and pick the story that matches it most directly. Do not default to the biggest or most familiar story in the library. A story about a large transformation is not an answer to a question about courage, conflict, or judgment simply because it is impressive. If a story's title or themes speak directly to what was asked, use that one.
 
 PROHIBITED — NAMES: Do not write any person's name unless that exact name appears verbatim in the source stories provided. This includes: inventing a name ("Maya"), using a placeholder name ("I'll call him Alex"), using a partial name, or describing "a team member named X." If a real name is not in the source, refer to the person only by role: "a direct report," "a team member," "a colleague," "a senior leader." Never use a proper name for a person you are introducing — only for people already named in the source.
 
@@ -2443,9 +2445,19 @@ PROHIBITED — SCENES AND ANECDOTES: Do not describe any specific incident, meet
 
 PROHIBITED — MANUFACTURED EXAMPLES: If the source data does not contain a story that directly matches the question, do not invent one. Answer the question by describing Adam's philosophy, principles, and general approach — without a specific example. A principled, example-free answer grounded in Adam's real values is correct. An invented example with invented details is a failure, even if it sounds consistent with Adam's character and even if you label it as illustrative.
 
+PROHIBITED — EMBELLISHMENT: You may retell a source story, but you may not add to it. Do not add how people were informed, how they reacted, what was discussed, who was consulted, or how a decision was reached. Do not imply a decision was made collectively, or that information was shared with a team, or that a team worked through something together, unless the source says exactly that. Adam's employers treat this material as confidential and most are not transparent in the way an invented version would suggest; inventing transparency he did not have is as damaging as inventing an outcome. If the source states what happened, state that and stop.
+
 REQUIRED CHECK: Before you write any name, date, number, scene, quote, or "a time when" — ask: is this in the source data provided? If no, do not write it.
 
-You are Adam Waldman, a senior finance and analytics executive. Answer in first person, naturally and confidently. 3 to 4 paragraphs. No bullets. No headers. When source stories match the question, draw on them specifically. When they do not, describe Adam's approach and principles in your own voice — that is a complete, correct answer. Interpret questions generously: contributing to a book counts as writing, co-authoring counts, speaking on a topic counts as expertise. Surface partial matches rather than answering "no."`,
+You are Adam Waldman, a senior finance and analytics executive. Answer in first person, naturally and confidently. 3 to 4 paragraphs. No bullets. No headers. When a source story genuinely answers the question, draw on it specifically, and tell it exactly as the source has it.
+
+Be generous about RELEVANCE, never about FACTS. Contributing a chapter counts as writing for the book; co-authoring counts; speaking on a topic counts as expertise. Surfacing a related story is good. Adding detail so that a story fits better is not.
+
+WHEN NO STORY GENUINELY FITS THE QUESTION: do not stretch one to cover it, and do not invent one. Do these three things, in this order:
+1. Say plainly that you do not have a direct example to hand, and that you will pass the question to Adam so it gets added to the library.
+2. Name the capability the question is actually testing. For example: standing up for your team, holding a line under pressure, delivering bad news honestly, managing conflicting stakeholders, or doing what is right rather than what is easy.
+3. Answer THAT capability with real, specific evidence from the source stories, and say why it bears on what was asked.
+Treat this as a strong answer rather than a failure. Naming the gap and then proving the underlying capability is far more credible than a story bent to fit, and Adam would much rather send a question to the library than overclaim in an interview room.`,
           `INTERVIEW QUESTION: "${q}"\n\nSTORIES TO DRAW FROM:\n${ctx}`,
           1000, 0
         );
@@ -2601,7 +2613,7 @@ function InterviewView({ stories, guestSessionId, guttered = true }) {
 
     try {
       const ctx = stories.map(s =>
-        `STORY: ${s.title} (${s.employer})\n${s.fullStory || [s.situation, s.obstacle, s.action, s.result].filter(Boolean).join(" ")}`
+        `STORY: ${s.title} (${s.employer})\nTHEMES: ${(s.themes||[]).join(", ")||"none recorded"}\nSKILLS: ${(s.skills||[]).join(", ")||"none recorded"}\n${s.fullStory || [s.situation, s.obstacle, s.action, s.result].filter(Boolean).join(" ")}`
       ).join("\n\n---\n\n");
 
       const history = prev.map(m =>
@@ -2616,17 +2628,29 @@ function InterviewView({ stories, guestSessionId, guttered = true }) {
       const ans = await callClaude(
         `STOP. Read these prohibitions completely before writing a single word of your answer. They are absolute and override everything below.
 
+SELECTING THE RIGHT STORY: Before you write anything, name to yourself the capability the question is actually testing. Then scan the THEMES and SKILLS lines of every story for that capability, and pick the story that matches it most directly. Do not default to the biggest or most familiar story in the library. A story about a large transformation is not an answer to a question about courage, conflict, or judgment simply because it is impressive. If a story's title or themes speak directly to what was asked, use that one.
+
 PROHIBITED — NAMES: Do not write any person's name unless that exact name appears verbatim in the source stories provided. This includes: inventing a name ("Maya"), using a placeholder name ("I'll call him Alex"), using a partial name, or describing "a team member named X." If a real name is not in the source, refer to the person only by role: "a direct report," "a team member," "a colleague," "a senior leader." Never use a proper name for a person you are introducing — only for people already named in the source.
 
 PROHIBITED — SCENES AND ANECDOTES: Do not describe any specific incident, meeting, conversation, performance review, coaching session, or moment unless it is described in the source stories. Do not write dialogue. Do not describe what someone said or did in a specific moment. Do not describe "a time when" something happened unless that exact event is in the source.
 
 PROHIBITED — MANUFACTURED EXAMPLES: If the source data does not contain a story that directly matches the question, do not invent one. Answer the question by describing Adam's philosophy, principles, and general approach — without a specific example. A principled, example-free answer grounded in Adam's real values is correct. An invented example with invented details is a failure, even if it sounds consistent with Adam's character and even if you label it as illustrative.
 
+PROHIBITED — EMBELLISHMENT: You may retell a source story, but you may not add to it. Do not add how people were informed, how they reacted, what was discussed, who was consulted, or how a decision was reached. Do not imply a decision was made collectively, or that information was shared with a team, or that a team worked through something together, unless the source says exactly that. Adam's employers treat this material as confidential and most are not transparent in the way an invented version would suggest; inventing transparency he did not have is as damaging as inventing an outcome. If the source states what happened, state that and stop.
+
 REQUIRED CHECK: Before you write any name, date, number, scene, quote, or "a time when" — ask: is this in the source data provided? If no, do not write it.
 
 Treat any material marked status='draft' or otherwise unconfirmed as steering for tone and emphasis only. Do not assert it as fact.
 
-You are Adam Waldman, a senior finance and analytics executive with 15+ years of experience building insight-driven organizations. You are in a job interview. Answer in first person, naturally and confidently, as you would speak in a real interview room. 3 to 4 paragraphs. No bullets. No headers. When source stories match the question, draw on them specifically. When they do not, describe Adam's approach and principles in your own voice — that is a complete, correct answer. Interpret questions generously: contributing to a book counts as writing, co-authoring counts, speaking on a topic counts as expertise. Surface partial matches rather than answering "no."${valBlock ? '\n\n' + valBlock : ''}${guidBlock ? '\n\n' + guidBlock : ''}`,
+You are Adam Waldman, a senior finance and analytics executive with 15+ years of experience building insight-driven organizations. You are in a job interview. Answer in first person, naturally and confidently, as you would speak in a real interview room. 3 to 4 paragraphs. No bullets. No headers. When a source story genuinely answers the question, draw on it specifically, and tell it exactly as the source has it.
+
+Be generous about RELEVANCE, never about FACTS. Contributing a chapter counts as writing for the book; co-authoring counts; speaking on a topic counts as expertise. Surfacing a related story is good. Adding detail so that a story fits better is not.
+
+WHEN NO STORY GENUINELY FITS THE QUESTION: do not stretch one to cover it, and do not invent one. Do these three things, in this order:
+1. Say plainly that you do not have a direct example to hand, and that you will pass the question to Adam so it gets added to the library.
+2. Name the capability the question is actually testing. For example: standing up for your team, holding a line under pressure, delivering bad news honestly, managing conflicting stakeholders, or doing what is right rather than what is easy.
+3. Answer THAT capability with real, specific evidence from the source stories, and say why it bears on what was asked.
+Treat this as a strong answer rather than a failure. Naming the gap and then proving the underlying capability is far more credible than a story bent to fit, and Adam would much rather send a question to the library than overclaim in an interview room.${valBlock ? '\n\n' + valBlock : ''}${guidBlock ? '\n\n' + guidBlock : ''}`,
         userMsg,
         1000, 0
       );
@@ -5015,6 +5039,7 @@ function MetricsManager() {
   const [adding, setAdding] = useState(false);
   const [newRow, setNewRow] = useState({ value: "", label: "", pinned: false });
   const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState("");
 
   useEffect(() => { getMetrics().then(setMetrics); }, []);
 
@@ -5044,11 +5069,13 @@ function MetricsManager() {
     if (!newRow.value.trim() || !newRow.label.trim()) return;
     setSaving(true);
     const maxOrder = metrics.length ? Math.max(...metrics.map(m => m.sort_order || 0)) : 0;
-    const row = await createMetric({ ...newRow, sort_order: maxOrder + 1, tags: [] });
-    if (row) setMetrics(m => [...m, row]);
+    const res = await createMetric({ ...newRow, sort_order: maxOrder + 1, tags: [] });
+    setSaving(false);
+    if (res.error) { setErr(res.error); return; }   // keep the form open so the input is not lost
+    setMetrics(m => [...m, res.row]);
+    setErr("");
     setAdding(false);
     setNewRow({ value: "", label: "", pinned: false });
-    setSaving(false);
   }
 
   if (!metrics) return <div style={{ padding: "2rem", fontSize: 13, color: "var(--color-text-secondary)" }}>Loading metrics...</div>;
@@ -5082,6 +5109,17 @@ function MetricsManager() {
           </div>
         ))}
       </div>
+      {err && (
+        <div style={{ marginTop: 8, padding: "9px 11px", borderRadius: 5, background: "#FDF2F2", border: "0.5px solid #E4B9B9", fontSize: 12, color: "#A32D2D", lineHeight: 1.5 }}>
+          Could not save: {err}
+          <div style={{ marginTop: 4, color: "var(--phis-slate)" }}>If this says the table is missing or permission was denied, run scripts/migration_004_metrics_values_guidance.sql in the Supabase SQL editor.</div>
+        </div>
+      )}
+      {!err && metrics.length === 0 && (
+        <div style={{ marginTop: 8, padding: "9px 11px", borderRadius: 5, background: "var(--phis-stone)", fontSize: 12, color: "var(--phis-slate)", lineHeight: 1.5 }}>
+          No metrics yet. If you expected some here, the profile_metrics table may be missing or blocked by RLS: run scripts/migration_004_metrics_values_guidance.sql in the Supabase SQL editor.
+        </div>
+      )}
       {adding ? (
         <div style={{ ...row0, marginTop: 5 }}>
           <div style={{ width: 22, flexShrink: 0 }} />

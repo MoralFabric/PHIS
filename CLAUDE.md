@@ -43,6 +43,7 @@ scripts/
   migration_001_profile.sql  # Adds salary columns to profile table
   migration_002_schema.sql   # Adds awards, education, profile_context tables; facets column on experience
   migration_003_guest_email_optional.sql  # Makes guest_sessions.email nullable (trust-first landing)
+  migration_004_metrics_values_guidance.sql  # Creates profile_metrics, profile_values, interview_guidance + RLS
   step5_resume_v2.js         # ResumeStep source (Phase 3)
   step6_coverletter_v2.js    # CoverLetterStep source (Phase 3)
   inject_step5_step6.js      # Node injection script for step5+6 (run once; file stays for reference)
@@ -155,6 +156,16 @@ Each facet object: `{ facet_id: uuid-string, name: string, narrative: string, th
 | geographic_preferences | text[] |
 | industries_excluded | text[] |
 | created_at / updated_at | timestamptz |
+
+## Tables added by migration_004
+
+`profile_metrics`, `profile_values` and `interview_guidance` were created by hand in the Supabase dashboard and were never captured in a migration, so there was no way to recreate them and no record of their shape. `scripts/migration_004_metrics_values_guidance.sql` now creates all three and sets an `allow all` RLS policy on each. It is safe to re-run.
+
+**These three fail silently when missing or when RLS blocks them.** `getMetrics`, `getValues` and `getGuidance` all return `[]` on error, so a missing table or a policy gap looks exactly like an empty list. `createMetric` used to return `null` the same way; it now returns `{ error }` and `MetricsManager` renders it. The migration file ends with a diagnostic query that shows `rls_enabled` and policy count per table; `rls_enabled = true` with `policies = 0` is the silent-failure state.
+
+**What Review Values is for.** `profile_values` holds Adam's principles and leadership approach: `principle` (short label), `in_practice` (first person, 1-2 sentences), `kind`, `soar_refs` (stories that demonstrate it), and `status`. Rows are captured by `FreeAddView` as `status='draft'`, confirmed on the Review Values page, then injected into the interview system prompt by `buildValuesBlock()`. Confirmed values are stated as fact; **drafts steer tone and emphasis only and are never asserted**.
+
+`interview_guidance` is the correction channel: `buildGuidanceBlock()` injects `CORRECTION` / `TONE` / `GUIDANCE` lines into the same prompt. This is the mechanism for fixing a bad interview answer so the same mistake does not recur, and it is where a correction like "do not imply my team was consulted on headcount decisions" belongs.
 
 ## Key architectural decisions
 
@@ -392,10 +403,27 @@ Land every reveal by about `t = 0.8`. The scene envelope starts closing at `0.93
 
 ## Interview AI system prompt policy
 
-Both `AskView.ask` (interview branch) and `InterviewView.ask` carry the same two-part system prompt:
+Both `AskView.ask` (interview branch) and `InterviewView.ask` carry the **same** system prompt. Keep them identical; they are patched together for a reason.
 
-1. Speak in first person, naturally, 3-4 paragraphs, no bullets, no headers.
-2. **Interpret questions generously** — contributing a chapter counts as writing for the book, co-authoring counts, speaking on a topic counts as expertise. Surface partial matches rather than answering "no."
+Rule order in the prompt is deliberate:
+
+1. `SELECTING THE RIGHT STORY` — name the capability being tested, then match on THEMES and SKILLS. Explicitly warns against defaulting to the biggest or most familiar story.
+2. `PROHIBITED` blocks — names, scenes and anecdotes, manufactured examples, embellishment.
+3. `REQUIRED CHECK` — is this in the source data?
+4. Persona and delivery (first person, 3-4 paragraphs, no bullets).
+5. Generous about relevance, never about facts.
+6. `WHEN NO STORY GENUINELY FITS` — the gap protocol, deliberately last so it sits in the recency position.
+
+**A fabrication got through once; understand how before editing this.** Asked about a stakeholder conflict, the model reached past `Standing Up to the Head of Risk` (themes: Ethical Judgment, Political Navigation, Resilience) and instead retold the 25% workforce reduction story with invented detail: that the team was told and worked through it together. Neither happened, and it implied a collective decision about who was cut. Two separate causes:
+
+- **Retrieval.** `themes` and `skills` were not in the story context at all, so capability matching was impossible. They are now included on every story.
+- **A contradictory instruction.** The prompt used to end with *"Surface partial matches rather than answering 'no.'"* Being last, it outranked the prohibitions above it and forced a stretch. It is replaced by the gap protocol.
+
+**The gap protocol** is what the model must do when nothing fits: say plainly there is no direct example and that the question will be passed to Adam for the library, name the capability being tested, then answer *that* with real evidence. This is framed in the prompt as a strong answer, not a failure, and it is the same gap-to-library loop the film celebrates.
+
+**`PROHIBITED — EMBELLISHMENT`** is the newest rule and the easiest to lose: a source story may be retold but never added to. No how people were informed, how they reacted, what was discussed, who was consulted, or how a decision was reached. Adam's employers are not transparent in the way an invented version implies, so inventing transparency is as damaging as inventing an outcome.
+
+Do not reintroduce anything that rewards answering over declining. Overclaiming in an interview room is the failure mode this whole tool exists to prevent.
 
 ## Running locally
 
