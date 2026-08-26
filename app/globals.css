@@ -147,3 +147,32 @@ textarea, input, select, button {
   0%, 60%, 100% { opacity: 0.3; transform: scale(1); }
   30% { opacity: 1; transform: scale(1.2); }
 }
+
+/* Splash progress sweep. Hidden by default; only a slow data load reveals it,
+   so a fast connection never sees a loading indicator at all. */
+.phis-splash-track {
+  width: 132px;
+  height: 2px;
+  margin-top: 26px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.14);
+  overflow: hidden;
+  opacity: 0;
+  transition: opacity .45s ease;
+}
+.phis-splash-track.is-visible { opacity: 1; }
+.phis-splash-track > span {
+  display: block;
+  width: 26%;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--phis-marigold);
+  animation: phisSplashSweep 1.15s ease-in-out infinite;
+}
+@keyframes phisSplashSweep {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(385%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .phis-splash-track > span { animation: none; width: 100%; opacity: .55; }
+}

@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useMemo, useRef } from "react";
+import PhisFilm from './components/PhisFilm';
 import { seedAndGetStories, upsertStory, upsertStories, deleteStory as dbDeleteStory, getExperience, saveExperience, getProfile, saveProfile, getAwards, insertAward, getEducation, insertEducation, getProfileContext, saveProfileContext, createGuestSession, logFitRun, logGuestQuestion, logInterviewQuestion, getGuestSessions, getMetrics, createMetric, updateMetric, deleteMetric, getValues, insertValue, updateValue, deleteValue, getGuidance, insertGuidance } from '@/lib/data';
 
 // ─── CONFIG ───────────────────────────────────────────────
@@ -4489,6 +4490,7 @@ function GuestTopBar({ gpage, setGpage, guestName }) {
     { id: "home", label: "Profile" },
     { id: "fit", label: "How I fit your role" },
     { id: "interview", label: "Interview Adam" },
+    { id: "about", label: "About" },
   ];
   return (
     <div style={{ background: "var(--phis-paper)", borderTop: "3px solid var(--phis-marigold)", borderBottom: "1px solid var(--phis-hair)", position: "sticky", top: 0, zIndex: 10, fontFamily: GP }}>
@@ -5272,16 +5274,24 @@ function GuestFitView({ stories, experience, guestSessionId, onFitComplete }) {
 
 // Branded splash shown on first load. Fades out on its own after a beat,
 // and is tap-to-skip. No gate, no click required.
-function BrandSplash({ onDone }) {
+function BrandSplash({ onDone, waiting }) {
   const GP = "'Poppins', system-ui, sans-serif";
+  const [minElapsed, setMinElapsed] = useState(false);
+  const [skipped, setSkipped] = useState(false);
   const [leaving, setLeaving] = useState(false);
-  useEffect(() => { const t = setTimeout(() => setLeaving(true), 1600); return () => clearTimeout(t); }, []);
+  // Hold the brand beat for at least 1.6s so a fast load still feels composed,
+  // then leave as soon as the data is in. A tap skips the beat but not the data.
+  useEffect(() => { const t = setTimeout(() => setMinElapsed(true), 1600); return () => clearTimeout(t); }, []);
+  useEffect(() => { if ((minElapsed || skipped) && !waiting) setLeaving(true); }, [minElapsed, skipped, waiting]);
   useEffect(() => { if (!leaving) return; const t = setTimeout(onDone, 500); return () => clearTimeout(t); }, [leaving]);
+  // Only a genuinely slow connection ever sees the progress sweep.
+  const stalled = (minElapsed || skipped) && waiting;
   return (
-    <div onClick={() => setLeaving(true)}
+    <div onClick={() => setSkipped(true)}
       style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "var(--phis-navy)", fontFamily: GP, cursor: "pointer", opacity: leaving ? 0 : 1, transition: "opacity .5s ease" }}>
       <PhisWordmark reversed height={44} />
       <div style={{ fontSize: 11, fontWeight: 400, textTransform: "uppercase", letterSpacing: "0.18em", color: "#7E93A8", textAlign: "center", marginTop: 18 }}>Professional History Intelligence Studio</div>
+      <div className={"phis-splash-track" + (stalled ? " is-visible" : "")} aria-hidden="true"><span /></div>
     </div>
   );
 }
@@ -5309,6 +5319,103 @@ function GuestInfoGate({ gpage, onSubmit }) {
       <input style={inp} placeholder="Email (optional)" value={g.email} onChange={e => { setG({ ...g, email: e.target.value }); setErr(""); }} onKeyDown={e => { if (e.key === "Enter") submit(); }} />
       {err && <div style={{ fontSize: 12, color: "var(--phis-vermilion)", marginBottom: 10 }}>{err}</div>}
       <button onClick={submit} style={{ padding: "11px 22px", fontSize: 14, fontWeight: 500, color: "#fff", background: "var(--g-vermilion)", border: "none", borderRadius: 4, cursor: "pointer", fontFamily: GP }}>Continue →</button>
+    </div>
+  );
+}
+
+// ─── GUEST ABOUT ──────────────────────────────────────────
+// The About tab. Leads with the film, then the written case in the order
+// Adam asked for: what PHIS is, why it exists, and who built it.
+function GuestAboutView({ stories, experience }) {
+  const GP = "'Poppins', system-ui, sans-serif";
+  const [playing, setPlaying] = useState(false);
+  const storyCount = (stories || []).length;
+  const employerCount = useMemo(() => {
+    const fromStories = (stories || []).map(s => s.employer).filter(Boolean);
+    const fromExp = (experience || []).map(e => e.org).filter(Boolean);
+    return new Set([...fromStories, ...fromExp]).size || 6;
+  }, [stories, experience]);
+
+  const H = { fontSize: 13, fontWeight: 500, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--phis-marigold)", marginBottom: 14 };
+  const P = { fontSize: 15, fontWeight: 300, lineHeight: 1.72, color: "var(--phis-body)", marginBottom: 16 };
+
+  return (
+    <div style={{ paddingTop: "2.5rem", paddingBottom: "3rem", fontFamily: GP }}>
+
+      {/* Poster. Clicking anywhere on it starts the film. */}
+      <div
+        onClick={() => setPlaying(true)}
+        style={{
+          position: "relative", borderRadius: 6, overflow: "hidden", cursor: "pointer",
+          background: "radial-gradient(ellipse at 50% 30%, #24456E 0%, var(--phis-navy) 58%, #142B47 100%)",
+          padding: "clamp(38px, 7vw, 68px) clamp(24px, 5vw, 52px)",
+          display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: 22,
+          borderTop: "3px solid var(--phis-marigold)",
+        }}
+      >
+        <PhisWordmark reversed height={40} />
+        <div style={{ fontSize: "clamp(20px, 3.4vw, 31px)", fontWeight: 300, color: "#fff", lineHeight: 1.28, maxWidth: 520, letterSpacing: "-0.01em" }}>
+          Every career is a data set.<br />Almost nobody treats it like one.
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 13, marginTop: 6 }}>
+          <span style={{ width: 44, height: 44, borderRadius: "50%", background: "var(--phis-marigold)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <span style={{ width: 0, height: 0, borderTop: "8px solid transparent", borderBottom: "8px solid transparent", borderLeft: "13px solid #fff", marginLeft: 4 }} />
+          </span>
+          <span style={{ fontSize: 11, fontWeight: 400, letterSpacing: "0.18em", textTransform: "uppercase", color: "#9FB3C8" }}>Play the film &middot; 1 min 7 sec</span>
+        </div>
+      </div>
+
+      <div style={{ marginTop: "2.75rem" }}>
+        <div style={H}>What this is</div>
+        <p style={P}>
+          PHIS is a Professional History Intelligence Studio. It holds twenty years of my work as structured records
+          rather than as a resume. Every piece of work is captured as a situation, an obstacle, an action and a result,
+          with the numbers attached and the source kept, across {storyCount} stories and {employerCount} organizations.
+        </p>
+        <p style={P}>
+          On top of that library sits a small set of tools. Paste in a job description and PHIS scores my fit against the
+          real record, skill by skill, and shows you where the gaps are. Ask it a question and it answers in my voice,
+          drawn from the library, without inventing anything it cannot point back to.
+        </p>
+      </div>
+
+      <div style={{ marginTop: "2.25rem" }}>
+        <div style={H}>Why I built it</div>
+        <p style={P}>
+          Hiring runs on documents that are optimized to be skimmed and are therefore almost content free. A resume
+          compresses a career down to keywords and then asks you to trust the compression. You cannot interrogate it.
+          You cannot tell what is load bearing and what is decoration.
+        </p>
+        <p style={P}>
+          I wanted the opposite of that. Hand someone the underlying record, give them the tools to question it, and let
+          them reach their own conclusion. Including the unflattering one. When the fit is not there, the tool is built
+          to say so, and it does.
+        </p>
+      </div>
+
+      <div style={{ marginTop: "2.25rem" }}>
+        <div style={H}>And I built it</div>
+        <p style={P}>
+          No agency, no template, no development team. I designed the data model, wrote the prompts, built the interface
+          and shipped it.
+        </p>
+        <p style={{ ...P, marginBottom: 0 }}>
+          That is the part worth reading as a signal. Twenty years of building planning and analytics functions is a
+          claim you have to take on faith. This is a claim you can click.
+        </p>
+      </div>
+
+      <div style={{ marginTop: "2.5rem", paddingTop: "1.5rem", borderTop: "1px solid var(--phis-hair)", fontSize: 13, fontWeight: 300, color: "var(--phis-slate)", lineHeight: 1.7 }}>
+        Built with Next.js, Supabase and Claude. The fit scoring, the interview answers and the writing all run against
+        the same library you can browse on the profile tab.
+      </div>
+
+      <PhisFilm
+        open={playing}
+        onClose={() => setPlaying(false)}
+        storyCount={storyCount}
+        employerCount={employerCount}
+      />
     </div>
   );
 }
@@ -5355,6 +5462,7 @@ function GuestShell({ guest, stories, experience, awards, education, profileCont
         {GATED[gpage] && !captured && <GuestInfoGate gpage={gpage} onSubmit={onCapture} />}
         {gpage === "interview" && captured && <InterviewView stories={stories} guestSessionId={guestSessionId} guttered={false} />}
         {gpage === "fit" && captured && <GuestFitView stories={stories} experience={experience} guestSessionId={guestSessionId} onFitComplete={role => setFitRole(role)} />}
+        {gpage === "about" && <GuestAboutView stories={stories} experience={experience} />}
       </div>
       <GuestFooter onAdam={onAdam} />
     </div>
@@ -5389,22 +5497,22 @@ export default function App() {
         const loaded=await seedAndGetStories(allBase);
         setStories(loaded.map(normalizeStory));
       }catch(e){setStories([...SEEDS,...EXTENDED_SOAR].map(normalizeStory));}
-      try{
-        const exp=await getExperience();
-        if(exp.length>0)setExperience(exp);
-      }catch(e){}
-      try{
-        const prof=await getProfile();
-        if(prof)setProfile(p=>({...p,
-          baseSalaryFrom: prof.base_salary_from ?? p.baseSalaryFrom,
-          baseSalaryTo:   prof.base_salary_to   ?? p.baseSalaryTo,
-          totalCompFrom:  prof.total_comp_from   ?? p.totalCompFrom,
-          totalCompTo:    prof.total_comp_to     ?? p.totalCompTo,
-        }));
-      }catch(e){}
-      try{const aw=await getAwards();if(aw.length>0)setAwards(aw);}catch(e){}
-      try{const edu=await getEducation();if(edu.length>0)setEducation(edu);}catch(e){}
-      try{const ctx=await getProfileContext();if(ctx)setProfileContext(ctx);}catch(e){}
+      // These five reads are independent of each other and of the story load.
+      // Running them together turns five sequential round trips into one.
+      const settle=r=>r.status==="fulfilled"?r.value:null;
+      const [exp,prof,aw,edu,ctx]=(await Promise.allSettled([
+        getExperience(),getProfile(),getAwards(),getEducation(),getProfileContext(),
+      ])).map(settle);
+      if(exp&&exp.length>0)setExperience(exp);
+      if(prof)setProfile(p=>({...p,
+        baseSalaryFrom: prof.base_salary_from ?? p.baseSalaryFrom,
+        baseSalaryTo:   prof.base_salary_to   ?? p.baseSalaryTo,
+        totalCompFrom:  prof.total_comp_from   ?? p.totalCompFrom,
+        totalCompTo:    prof.total_comp_to     ?? p.totalCompTo,
+      }));
+      if(aw&&aw.length>0)setAwards(aw);
+      if(edu&&edu.length>0)setEducation(edu);
+      if(ctx)setProfileContext(ctx);
       setLoading(false);
     })();
   },[]);
@@ -5441,8 +5549,7 @@ export default function App() {
     <button onClick={()=>{setPage(id);if(!["detail"].includes(id)){setSelected(null);}}} style={{textAlign:"left",padding:"7px 10px",borderRadius:6,border:"none",borderLeft:active?"2px solid var(--phis-marigold)":"2px solid transparent",cursor:"pointer",fontSize:13,fontWeight:active?500:400,background:"none",color:active?"var(--phis-navy)":(color||"var(--phis-slate)")}}>{lbl}</button>
   );
 
-  if(loading)return <div style={{padding:"2rem",color:"var(--phis-slate)",fontSize:14}}>Loading PHIS…</div>;
-  if (!splashDone) return <BrandSplash onDone={() => setSplashDone(true)} />;
+  if (loading || !splashDone) return <BrandSplash waiting={loading} onDone={() => setSplashDone(true)} />;
   if (mode === "guest") return <GuestShell guest={guest} stories={stories} experience={experience} awards={awards} education={education} profileContext={profileContext} guestSessionId={guestSessionId} onCapture={(info) => { setGuest(info); createGuestSession(info).then(row => { if (row?.id) setGuestSessionId(row.id); }); }} onAdam={() => setMode("adam")} />;
 
   return(

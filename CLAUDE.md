@@ -1,6 +1,6 @@
-# PHIS — Personal History & Interview System
+# PHIS — Professional History Intelligence Studio
 
-Next.js + Supabase migration of PHIS_v5.jsx. Adam Waldman's personal career story library and AI-powered interview prep tool.
+Next.js + Supabase migration of PHIS_v5.jsx. Adam Waldman's career record, held as structured data, with AI tools over it for fit scoring, interviewing and document generation. The product name, everywhere it is shown, is Professional History Intelligence Studio.
 
 ## Stack
 
@@ -14,8 +14,11 @@ Next.js + Supabase migration of PHIS_v5.jsx. Adam Waldman's personal career stor
 ```
 app/
   page.js              # Full app UI — single 'use client' component (~5300 lines)
-  layout.js            # Root layout, imports globals.css
-  globals.css          # CSS variables (colors, font, borders)
+  layout.js            # Root layout + all social/SEO metadata (see 'Social preview card')
+  globals.css          # CSS variables (colors, font, borders) + splash and film keyframes
+  opengraph-image.js   # Generated 1200x630 social card (next/og). Wires og:image automatically
+  components/
+    PhisFilm.js        # ~65s generated motion piece played from the About tab
   api/
     claude/
       route.js         # Server-side Anthropic proxy — POST /api/claude
@@ -43,6 +46,10 @@ scripts/
   step5_resume_v2.js         # ResumeStep source (Phase 3)
   step6_coverletter_v2.js    # CoverLetterStep source (Phase 3)
   inject_step5_step6.js      # Node injection script for step5+6 (run once; file stays for reference)
+  inject_splash_boot.js      # Boot fix: splash-as-loader + parallel data load (run once, kept for reference)
+  inject_about.js            # Injects GuestAboutView + About nav tab (run once, kept for reference)
+  fix_film_timing.js         # One-off: collapsed double fade windows in PhisFilm
+  fix_film_holds.js          # One-off: retimed PhisFilm payoff-line reveals
   step3_gap.js               # GapCard + GapResolutionStep source
   step4_rescore.js           # RescoreStep source
 SOAR_Library.json        # 50 canonical SOAR stories (seed source)
@@ -304,6 +311,7 @@ Step component source files in `scripts/step*.js` are the source-of-truth for th
 | `awards` | `AwardsView` | Awards list |
 | `apply` | `ApplyView` | Application Engine — JD analysis → CPS → gaps → rescore → resume → cover letter |
 | `profile` | `ProfileView` | Profile & settings |
+| `about` (guest) | `GuestAboutView` | About PHIS + the generated film. Ungated. |
 
 ## Visitor entry flow (trust-first landing)
 
@@ -315,6 +323,64 @@ Step component source files in `scripts/step*.js` are the source-of-truth for th
 4. **`GuestFooter`** — discreet "I'm Adam" link at the bottom of `GuestShell`; opens an inline passcode field (`ADAM_CODE = "phisphis"`) → `onAdam` sets `mode = "adam"` → full internal app.
 
 `createGuestSession` sends `email: info.email || null`. The `guest_sessions.email` column must be nullable (`migration_003_guest_email_optional.sql`) or the insert 400s on blank email. **Trade-off:** pure browsers who never open an AI tool create no `guest_sessions` row, so Adam has no record they visited — this is the intended cost of the no-gate design.
+
+## Social preview card (LinkedIn, Slack, iMessage)
+
+All metadata lives in `app/layout.js`. The card leads with identity, not the product codename: `og:title` is `Adam Waldman, CFA | Builds the systems that turn information into decisions.` The tagline is the same line stored in `profile_context.header_tagline`.
+
+**The document `<title>` is deliberately short** (`Adam Waldman, CFA`) because it is a browser-tab label; the long line is set separately on `openGraph.title` and `twitter.title`. Do not merge them.
+
+**`metadataBase` resolves without a hardcoded domain:**
+
+```js
+process.env.NEXT_PUBLIC_SITE_URL
+  || (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${...}` : 'http://localhost:3000')
+```
+
+Vercel injects `VERCEL_PROJECT_PRODUCTION_URL` automatically (the custom domain if one is attached). Locally the tags read `localhost:3000` and that is expected. Set `NEXT_PUBLIC_SITE_URL` only to override.
+
+**`app/opengraph-image.js`** generates the 1200x630 PNG at request time via `next/og`. Next wires `og:image`, its dimensions and `og:image:alt` from the file's exports, so never hand-write those tags.
+
+- The wordmark is inlined as a base64 SVG data URI, because satori renders `<img>` far more reliably than raw SVG children.
+- Poppins is fetched from Google Fonts at render and **falls back to Next's bundled font inside a try/catch**. A font fetch failure must never fail the image.
+- `revalidate = 86400`. The tagline is hardcoded rather than read from `profile_context`: a crawler request must not depend on a Supabase round trip. If you change `header_tagline`, change it here too.
+
+LinkedIn caches aggressively. After changing any of this, re-scrape via the LinkedIn Post Inspector or the card will keep showing the old version.
+
+## Boot sequence
+
+`App` renders in this order, and the order matters:
+
+```js
+if (loading || !splashDone) return <BrandSplash waiting={loading} onDone={...} />
+```
+
+**`BrandSplash` is the loading screen.** It used to play *after* a bare `Loading PHIS…` text node, so a visitor saw the ugly wait first and then paid another 2.1s for the brand moment. It now covers the wait.
+
+- Holds a minimum 1.6s beat so a fast load still feels composed, then leaves as soon as `waiting` goes false.
+- Tapping sets `skipped`, which skips the beat but **not** the data wait.
+- `.phis-splash-track` (in `globals.css`) is a marigold sweep that appears only when the minimum beat has elapsed and data is still loading. A fast connection never sees a loading indicator at all.
+
+The boot effect loads stories first (they seed), then runs the other five reads through a single `Promise.allSettled`. They are independent of each other, so keep them batched; do not reintroduce sequential `await`s.
+
+## About tab and the PHIS film
+
+`GuestAboutView` (in `page.js`) is the fourth guest tab and is **ungated** on purpose: it is a pitch, not a tool, so it must not sit behind `GuestInfoGate`. Its narrative order is fixed by Adam: what PHIS is, why it exists, then who built it.
+
+`app/components/PhisFilm.js` is a ~67s motion piece. There is no video file, no footage and no third-party embed. Everything is generated:
+
+| Piece | How |
+|---|---|
+| Timeline | `requestAnimationFrame` accumulating into `elapsed`, not chained timeouts. This is what makes pause, seek and the progress bar stay in sync. |
+| Scenes | `buildScenes()` returns `{id, dur, say, render(t)}`. `t` is the scene's own 0..1 progress. |
+| Score | `createScore()` builds a Web Audio drone plus a D minor pentatonic arpeggio through a feedback delay, using lookahead scheduling. Written rather than licensed, so there is nothing to clear and no asset to ship. |
+| Narration | `speechSynthesis`, one utterance per scene, fired once. Ducks the music to 0.4 while speaking. Both music and voice are user-togglable in the transport. |
+
+**Timing rule, learned the hard way:** scene elements only ever *arrive*. `inOut(t, up)` is fade-in only, and the **player** applies the single fade-out envelope across the whole scene. An earlier version had elements carrying their own fade-out on top of a sub-range fade-in, and kickers silently vanished mid-scene. Never give an element its own fade-out.
+
+Land every reveal by about `t = 0.8`. The scene envelope starts closing at `0.93`, so a line that finishes revealing at `0.95` is legible for roughly 200ms.
+
+`storyCount` and `employerCount` are passed in live from the loaded library, so the counters in the library scene reflect real data.
 
 ## Interview AI system prompt policy
 
