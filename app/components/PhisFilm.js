@@ -218,6 +218,56 @@ function buildScenes({ storyCount, employerCount }) {
       ),
     },
     {
+      id: 'fill', dur: 7400,
+      say: 'And when there is a gap, I answer it once. The answer joins the library, so the next role that asks already has it.',
+      render: t => {
+        // Picks the gap bar up where the previous scene left it and closes it,
+        // so the two scenes read as one continuous motion.
+        const fill = easeOut(seg(t, 0.5, 0.76))
+        return (
+          <Stack gap={26}>
+            <Kicker text="So I answer it. Once." p={seg(t, 0, 0.3)} />
+            <div style={{ width: '100%', maxWidth: 560, opacity: inOut(t, 0.1) }}>
+              <Bar label="Reinsurance modelling" pct={54 + fill * 22} p={1} gap={fill < 0.5} />
+            </div>
+            <div style={{ width: '100%', maxWidth: 560, opacity: inOut(seg(t, 0.16, 1), 0.12) }}>
+              <TypeLines p={seg(t, 0.18, 0.48)} color={MIST} lines={[
+                'I have not modelled reinsurance directly. I built the capital model it feeds.',
+              ]} />
+            </div>
+            <div style={{ opacity: inOut(seg(t, 0.58, 1), 0.18) }}>
+              <Rise text="Answered once. In the library for good." p={seg(t, 0.6, 0.8)} size="clamp(13px, 1.8vw, 21px)" color={MARIGOLD} />
+            </div>
+          </Stack>
+        )
+      },
+    },
+    {
+      id: 'compound', dur: 6000,
+      say: 'Which means it gets sharper every time somebody uses it.',
+      render: t => {
+        const ticked = t > 0.48
+        // A small pop on the tick so the plus one registers without a caption.
+        const pop = 1 + easeOut(seg(t, 0.48, 0.56)) * 0.09 - easeOut(seg(t, 0.56, 0.7)) * 0.09
+        return (
+          <Stack gap={32}>
+            <div style={{ opacity: inOut(t, 0.1) }}>
+              <Rise text="Every question makes it sharper." p={seg(t, 0.02, 0.46)} size={H2} />
+            </div>
+            <div style={{ opacity: inOut(seg(t, 0.28, 1), 0.16), display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+              <div style={{ fontSize: 'clamp(38px, 6.4vw, 74px)', fontWeight: 300, lineHeight: 1, letterSpacing: '-0.02em', color: ticked ? MARIGOLD : PAPER, transform: 'scale(' + pop + ')' }}>
+                {storyCount + (ticked ? 1 : 0)}
+              </div>
+              <div style={{ fontSize: 'clamp(9px, 1.15vw, 13px)', fontWeight: 400, letterSpacing: '0.2em', textTransform: 'uppercase', color: MIST }}>Stories in the library</div>
+            </div>
+            <div style={{ opacity: inOut(seg(t, 0.6, 1), 0.18) }}>
+              <Rise text="That experience will not be missed again." p={seg(t, 0.62, 0.82)} size="clamp(13px, 1.8vw, 21px)" color={MIST} />
+            </div>
+          </Stack>
+        )
+      },
+    },
+    {
       id: 'write', dur: 6400,
       say: 'Then it writes, in my voice, using only what the record supports.',
       render: t => (
@@ -309,18 +359,20 @@ function buildScenes({ storyCount, employerCount }) {
 }
 
 // ── score ─────────────────────────────────────────────────
-// A generative ambient bed built with Web Audio: a low drone plus a slow
-// pentatonic arpeggio through a feedback delay. Written rather than licensed,
-// so there is no audio file to ship and nothing to clear.
+// Warm, major key, and moving. Deliberately NOT pentatonic: a minor pentatonic
+// scale played as plucked decaying tones reads as chinoiserie, which is what
+// the first version sounded like. This is a I-V-vi-IV progression in D major
+// with leading tones, a sustained pad and a soft bell melody over the top.
+// Written rather than licensed, so there is no audio file and nothing to clear.
 function createScore() {
   const AC = typeof window !== 'undefined' && (window.AudioContext || window.webkitAudioContext)
   if (!AC) return null
   const ctx = new AC()
-  const nodes = []
+  const running = []
 
   const master = ctx.createGain()
   master.gain.setValueAtTime(0.0001, ctx.currentTime)
-  master.gain.linearRampToValueAtTime(0.34, ctx.currentTime + 2.4)
+  master.gain.linearRampToValueAtTime(0.42, ctx.currentTime + 2.2)
   master.connect(ctx.destination)
 
   // Music sits under narration; `duck` pulls it down while a line is spoken.
@@ -328,65 +380,115 @@ function createScore() {
   bed.gain.value = 1
   bed.connect(master)
 
-  const lp = ctx.createBiquadFilter()
-  lp.type = 'lowpass'
-  lp.frequency.value = 340
-  lp.connect(bed)
-  const droneGain = ctx.createGain()
-  droneGain.gain.value = 0.075
-  droneGain.connect(lp)
-  ;[73.42, 74.1, 110.0].forEach(f => {
-    const o = ctx.createOscillator()
-    o.type = 'sine'
-    o.frequency.value = f
-    o.connect(droneGain)
-    o.start()
-    nodes.push(o)
-  })
-
-  const delay = ctx.createDelay(1.5)
-  delay.delayTime.value = 0.38
+  // Gentle air, low feedback. The first version leaned on a long feedback
+  // delay, which is what made the plucks read as a koto.
+  const delay = ctx.createDelay(1.0)
+  delay.delayTime.value = 0.3
   const fb = ctx.createGain()
-  fb.gain.value = 0.34
+  fb.gain.value = 0.22
   const wet = ctx.createGain()
-  wet.gain.value = 0.5
+  wet.gain.value = 0.3
   delay.connect(fb); fb.connect(delay); delay.connect(wet); wet.connect(bed)
 
-  function pluck(time, freq, vel) {
+  // Pad bus, opening slowly over the piece so the ending feels like a lift.
+  const padFilter = ctx.createBiquadFilter()
+  padFilter.type = 'lowpass'
+  padFilter.frequency.setValueAtTime(900, ctx.currentTime)
+  padFilter.frequency.linearRampToValueAtTime(2400, ctx.currentTime + 60)
+  padFilter.connect(bed)
+
+  // I - V - vi - IV in D major. The most reliably uplifting progression there is.
+  const CHORDS = [
+    { bass: 73.42, pad: [146.83, 220.0, 293.66, 369.99], mel: [440.0, 587.33, 493.88] },   // D
+    { bass: 110.0, pad: [164.81, 220.0, 277.18, 329.63], mel: [554.37, 659.25, 587.33] },  // A
+    { bass: 123.47, pad: [123.47, 185.0, 246.94, 293.66], mel: [493.88, 587.33, 739.99] }, // Bm
+    { bass: 98.0, pad: [146.83, 196.0, 246.94, 293.66], mel: [493.88, 659.25, 587.33] },   // G
+  ]
+  const CHORD_DUR = 4.2
+
+  function padVoice(time, freq, dur) {
     const o = ctx.createOscillator()
     o.type = 'triangle'
     o.frequency.value = freq
+    const det = ctx.createOscillator()
+    det.type = 'sine'
+    det.frequency.value = freq * 1.004
     const g = ctx.createGain()
     g.gain.setValueAtTime(0.0001, time)
-    g.gain.linearRampToValueAtTime(vel, time + 0.014)
-    g.gain.exponentialRampToValueAtTime(0.0001, time + 1.9)
-    o.connect(g); g.connect(bed); g.connect(delay)
-    o.start(time); o.stop(time + 2)
+    g.gain.linearRampToValueAtTime(0.055, time + 0.9)
+    g.gain.setValueAtTime(0.055, time + dur - 0.9)
+    g.gain.linearRampToValueAtTime(0.0001, time + dur + 0.5)
+    o.connect(g); det.connect(g); g.connect(padFilter)
+    o.start(time); det.start(time)
+    o.stop(time + dur + 0.7); det.stop(time + dur + 0.7)
   }
 
-  // D minor pentatonic. -1 is a rest.
-  const SCALE = [146.83, 174.61, 196.0, 220.0, 261.63, 293.66, 349.23, 392.0, 440.0]
-  const PATTERN = [0, 2, 4, -1, 3, 5, 4, -1, 2, 4, 6, -1, 5, 4, 2, -1, 0, 3, 5, -1, 4, 6, 7, -1, 5, 3, 2, -1, 1, 2, 0, -1]
-  const STEP = 0.42
-  let step = 0
-  let next = ctx.currentTime + 0.5
+  function bassVoice(time, freq, dur) {
+    const o = ctx.createOscillator()
+    o.type = 'sine'
+    o.frequency.value = freq
+    const g = ctx.createGain()
+    g.gain.setValueAtTime(0.0001, time)
+    g.gain.linearRampToValueAtTime(0.13, time + 0.35)
+    g.gain.linearRampToValueAtTime(0.0001, time + dur + 0.35)
+    o.connect(g); g.connect(bed)
+    o.start(time); o.stop(time + dur + 0.5)
+  }
+
+  // Soft bell rather than a plucked string. Sine core, short-ish tail.
+  function bell(time, freq, vel) {
+    const o = ctx.createOscillator()
+    o.type = 'sine'
+    o.frequency.value = freq
+    const shimmer = ctx.createOscillator()
+    shimmer.type = 'triangle'
+    shimmer.frequency.value = freq * 2
+    const sg = ctx.createGain()
+    sg.gain.value = 0.16
+    const g = ctx.createGain()
+    g.gain.setValueAtTime(0.0001, time)
+    g.gain.linearRampToValueAtTime(vel, time + 0.03)
+    g.gain.exponentialRampToValueAtTime(0.0001, time + 2.4)
+    const lp = ctx.createBiquadFilter()
+    lp.type = 'lowpass'
+    lp.frequency.value = 3000
+    o.connect(g); shimmer.connect(sg); sg.connect(g)
+    g.connect(lp); lp.connect(bed); lp.connect(delay)
+    o.start(time); shimmer.start(time)
+    o.stop(time + 2.6); shimmer.stop(time + 2.6)
+  }
+
+  let slot = 0
+  let next = ctx.currentTime + 0.4
   // Lookahead scheduling keeps the pulse steady even when the tab throttles timers.
   const timer = setInterval(() => {
     if (ctx.state !== 'running') return
-    while (next < ctx.currentTime + 0.35) {
-      const i = PATTERN[step % PATTERN.length]
-      if (i >= 0) pluck(next, SCALE[i], step % 8 === 0 ? 0.17 : 0.105)
-      next += STEP
-      step++
+    while (next < ctx.currentTime + 1.0) {
+      const c = CHORDS[slot % CHORDS.length]
+      padVoice(next, c.pad[0], CHORD_DUR)
+      padVoice(next, c.pad[1], CHORD_DUR)
+      padVoice(next, c.pad[2], CHORD_DUR)
+      padVoice(next, c.pad[3], CHORD_DUR)
+      bassVoice(next, c.bass, CHORD_DUR)
+      // Melody thickens as the piece builds rather than running flat throughout.
+      const lift = slot >= 4
+      const late = slot >= 11
+      if (lift) {
+        bell(next + 0.05, c.mel[0], 0.1)
+        bell(next + 1.45, c.mel[1], 0.085)
+        if (late) bell(next + 2.85, c.mel[2], 0.075)
+      }
+      next += CHORD_DUR
+      slot++
     }
-  }, 45)
+  }, 60)
 
   return {
     ctx,
     duck: on => {
       const now = ctx.currentTime
       bed.gain.cancelScheduledValues(now)
-      bed.gain.linearRampToValueAtTime(on ? 0.4 : 1, now + 0.35)
+      bed.gain.linearRampToValueAtTime(on ? 0.45 : 1, now + 0.35)
     },
     stop: () => {
       clearInterval(timer)
@@ -394,7 +496,7 @@ function createScore() {
         master.gain.cancelScheduledValues(ctx.currentTime)
         master.gain.linearRampToValueAtTime(0.0001, ctx.currentTime + 0.6)
       } catch (e) { /* context may already be closing */ }
-      setTimeout(() => { nodes.forEach(n => { try { n.stop() } catch (e) {} }); try { ctx.close() } catch (e) {} }, 750)
+      setTimeout(() => { running.forEach(n => { try { n.stop() } catch (e) {} }); try { ctx.close() } catch (e) {} }, 750)
     },
   }
 }

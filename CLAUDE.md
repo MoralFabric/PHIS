@@ -18,7 +18,7 @@ app/
   globals.css          # CSS variables (colors, font, borders) + splash and film keyframes
   opengraph-image.js   # Generated 1200x630 social card (next/og). Wires og:image automatically
   components/
-    PhisFilm.js        # ~65s generated motion piece played from the About tab
+    PhisFilm.js        # 1:21 generated motion piece played from the About tab
   api/
     claude/
       route.js         # Server-side Anthropic proxy — POST /api/claude
@@ -367,14 +367,22 @@ The boot effect loads stories first (they seed), then runs the other five reads 
 
 `GuestAboutView` (in `page.js`) is the fourth guest tab and is **ungated** on purpose: it is a pitch, not a tool, so it must not sit behind `GuestInfoGate`. Its narrative order is fixed by Adam: what PHIS is, why it exists, then who built it.
 
-`app/components/PhisFilm.js` is a ~67s motion piece. There is no video file, no footage and no third-party embed. Everything is generated:
+`app/components/PhisFilm.js` is a 13 scene, 1:21 motion piece. There is no video file, no footage and no third-party embed. Everything is generated:
 
 | Piece | How |
 |---|---|
 | Timeline | `requestAnimationFrame` accumulating into `elapsed`, not chained timeouts. This is what makes pause, seek and the progress bar stay in sync. |
 | Scenes | `buildScenes()` returns `{id, dur, say, render(t)}`. `t` is the scene's own 0..1 progress. |
-| Score | `createScore()` builds a Web Audio drone plus a D minor pentatonic arpeggio through a feedback delay, using lookahead scheduling. Written rather than licensed, so there is nothing to clear and no asset to ship. |
+| Score | `createScore()` builds a Web Audio pad, bass and bell melody over a I-V-vi-IV progression in D major, using lookahead scheduling. Written rather than licensed, so there is nothing to clear and no asset to ship. See the pentatonic warning below. |
 | Narration | `speechSynthesis`, one utterance per scene, fired once. Ducks the music to 0.4 while speaking. Both music and voice are user-togglable in the transport. |
+
+**Narration quality is the visitor's machine, not ours.** Chrome on Windows exposes only five legacy SAPI voices; Edge exposes roughly 100 cloud neural ones; macOS has its own set. `scoreVoice()` ranks whatever is present (neural and known-good names up, dated ones like David / Zira / Mark down, `en-CA` up because Adam is in Toronto) rather than matching exact names. Exact matching never hit on Windows or Edge, because real voice names look like `Microsoft Guy Online (Natural) - English (United States)`, so every lookup fell through to `pool[0]` and landed on Microsoft David.
+
+The transport exposes a picker and remembers the choice in `localStorage` under `phis.film.voice`. That only sets the default *for that visitor*; it cannot make a good voice exist on a machine that has none. If narration quality ever needs to be guaranteed rather than hoped for, the fix is pre-rendered audio files in `/public`, not more selection logic. Captions carry the whole message, so `narrate` can safely default to `false`.
+
+**Do not make the score pentatonic.** The first version used a D minor pentatonic arpeggio of decaying plucked triangle tones through a long feedback delay. That combination reads unmistakably as chinoiserie and had to be thrown out. The current score is a I-V-vi-IV progression in D major (D, A, Bm, G) with leading tones, a sustained pad on an opening lowpass, a sine bass, and a sparse bell melody that thickens after the fourth chord so the piece builds. Feedback is kept low, because a long delay tail is what made the plucks sound like a koto.
+
+**Narrative order is load bearing.** The middle of the film is: score the fit honestly including gaps, then *answer the gap once*, then *show the library compounding*. That middle beat is the actual product argument, not a flourish. The `fill` and `compound` scenes read the same bar the `score` scene ends on, so the three play as one continuous motion. Do not reorder or drop them.
 
 **Timing rule, learned the hard way:** scene elements only ever *arrive*. `inOut(t, up)` is fade-in only, and the **player** applies the single fade-out envelope across the whole scene. An earlier version had elements carrying their own fade-out on top of a sub-range fade-in, and kickers silently vanished mid-scene. Never give an element its own fade-out.
 
