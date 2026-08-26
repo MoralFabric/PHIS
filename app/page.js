@@ -5388,7 +5388,10 @@ function GuestInfoGate({ gpage, onSubmit }) {
 // Adam asked for: what PHIS is, why it exists, and who built it.
 function GuestAboutView({ stories, experience }) {
   const GP = "'Poppins', system-ui, sans-serif";
-  const [playing, setPlaying] = useState(false);
+  // Opens playing. GuestAboutView is unmounted when the tab is left, so
+  // returning to About starts the film again, and auto close will not loop
+  // because closing only sets state on the mounted instance.
+  const [playing, setPlaying] = useState(true);
   const storyCount = (stories || []).length;
   const employerCount = useMemo(() => {
     const fromStories = (stories || []).map(s => s.employer).filter(Boolean);

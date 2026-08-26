@@ -384,16 +384,27 @@ The boot effect loads stories first (they seed), then runs the other five reads 
 |---|---|
 | Timeline | `requestAnimationFrame` accumulating into `elapsed`, not chained timeouts. This is what makes pause, seek and the progress bar stay in sync. |
 | Scenes | `buildScenes()` returns `{id, dur, say, render(t)}`. `t` is the scene's own 0..1 progress. |
-| Score | `createScore()` builds a Web Audio pad, bass and bell melody over a I-V-vi-IV progression in D major, using lookahead scheduling. Written rather than licensed, so there is nothing to clear and no asset to ship. See the pentatonic warning below. |
+| Score | `createScore()` builds a Web Audio pad, bass, eighth note arpeggio and bell melody over an eight chord loop in D major, at 120bpm with lookahead scheduling. Written rather than licensed, so there is nothing to clear and no asset to ship. See the score warnings below. |
+| Playback | Autoplays when the About tab opens and closes itself 1.7s after the final frame, behind a 0.9s fade. There is no Replay control; the About poster is the way back in. |
 | Narration | `speechSynthesis`, one utterance per scene, fired once. Ducks the music to 0.4 while speaking. Both music and voice are user-togglable in the transport. |
 
 **Narration quality is the visitor's machine, not ours.** Chrome on Windows exposes only five legacy SAPI voices; Edge exposes roughly 100 cloud neural ones; macOS has its own set. `scoreVoice()` ranks whatever is present (neural and known-good names up, dated ones like David / Zira / Mark down, `en-CA` up because Adam is in Toronto) rather than matching exact names. Exact matching never hit on Windows or Edge, because real voice names look like `Microsoft Guy Online (Natural) - English (United States)`, so every lookup fell through to `pool[0]` and landed on Microsoft David.
 
 The transport exposes a picker and remembers the choice in `localStorage` under `phis.film.voice`. That only sets the default *for that visitor*; it cannot make a good voice exist on a machine that has none. If narration quality ever needs to be guaranteed rather than hoped for, the fix is pre-rendered audio files in `/public`, not more selection logic. Captions carry the whole message, so `narrate` can safely default to `false`.
 
-**Do not make the score pentatonic.** The first version used a D minor pentatonic arpeggio of decaying plucked triangle tones through a long feedback delay. That combination reads unmistakably as chinoiserie and had to be thrown out. The current score is a I-V-vi-IV progression in D major (D, A, Bm, G) with leading tones, a sustained pad on an opening lowpass, a sine bass, and a sparse bell melody that thickens after the fourth chord so the piece builds. Feedback is kept low, because a long delay tail is what made the plucks sound like a koto.
+**The score has been wrong twice; both failures are instructive.**
+
+*Version 1 was pentatonic.* A D minor pentatonic arpeggio of decaying plucked triangle tones through a long feedback delay reads unmistakably as chinoiserie. Never make the score pentatonic, and keep the delay feedback low, because a long tail is what turns plucks into a koto.
+
+*Version 2 was major and still depressing.* Correct harmony is not enough. It held each chord for 4.2 seconds with a 0.9s pad swell and had no rhythmic element at all, which is ambient film scoring, not a promotional piece. The fix was tempo and pulse, not harmony: a chord every 2 seconds at 120bpm, an eighth note arpeggio carrying the beat, pad attacks cut to 0.14s so chords land rather than bloom, and the lowpass opened from 1900Hz to 4400Hz instead of 900 to 2400. The arpeggio holds off for the first two chords so the opening line is not fighting a pulse, and the melody thickens partway through so the piece builds.
+
+**You cannot hear it, so verify it structurally.** Instrument `window.AudioContext` in Playwright to count `createOscillator` calls and read `ctx.state`. Roughly 9 notes per second with the context `running` is the current score working; around 1.5 was the old one.
 
 **Narrative order is load bearing.** The middle of the film is: score the fit honestly including gaps, then *answer the gap once*, then *show the library compounding*. That middle beat is the actual product argument, not a flourish. The `fill` and `compound` scenes read the same bar the `score` scene ends on, so the three play as one continuous motion. Do not reorder or drop them.
+
+**The auto close timer must not depend on the `onClose` prop.** `GuestAboutView` passes it as an inline arrow, so a new identity on any re-render tore the effect down and restarted the 1.7s timer, deferring the close indefinitely. It is held in `onCloseRef` and the effect depends only on the timeline.
+
+**Testing the overlay:** the About page stays mounted behind the film, so `body.innerText` cannot tell them apart, and the poster repeats the opening line so text matching is ambiguous either way. Detect the overlay element itself: `position: fixed` with `z-index: 200`.
 
 **Timing rule, learned the hard way:** scene elements only ever *arrive*. `inOut(t, up)` is fade-in only, and the **player** applies the single fade-out envelope across the whole scene. An earlier version had elements carrying their own fade-out on top of a sub-range fade-in, and kickers silently vanished mid-scene. Never give an element its own fade-out.
 

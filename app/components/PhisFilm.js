@@ -359,20 +359,20 @@ function buildScenes({ storyCount, employerCount }) {
 }
 
 // ── score ─────────────────────────────────────────────────
-// Warm, major key, and moving. Deliberately NOT pentatonic: a minor pentatonic
-// scale played as plucked decaying tones reads as chinoiserie, which is what
-// the first version sounded like. This is a I-V-vi-IV progression in D major
-// with leading tones, a sustained pad and a soft bell melody over the top.
+// Upbeat and driven, not ambient. The previous version held each chord for
+// 4.2s with a 0.9s swell and no rhythmic element at all, which reads as
+// mournful however major the harmony is. This one runs at 120bpm with a chord
+// every two seconds, an eighth note arpeggio carrying the pulse, short pad
+// attacks so chords land rather than bloom, and a bright filter.
 // Written rather than licensed, so there is no audio file and nothing to clear.
 function createScore() {
   const AC = typeof window !== 'undefined' && (window.AudioContext || window.webkitAudioContext)
   if (!AC) return null
   const ctx = new AC()
-  const running = []
 
   const master = ctx.createGain()
   master.gain.setValueAtTime(0.0001, ctx.currentTime)
-  master.gain.linearRampToValueAtTime(0.42, ctx.currentTime + 2.2)
+  master.gain.linearRampToValueAtTime(0.4, ctx.currentTime + 1.1)
   master.connect(ctx.destination)
 
   // Music sits under narration; `duck` pulls it down while a line is spoken.
@@ -380,123 +380,128 @@ function createScore() {
   bed.gain.value = 1
   bed.connect(master)
 
-  // Gentle air, low feedback. The first version leaned on a long feedback
-  // delay, which is what made the plucks read as a koto.
+  // Short, bright air. A long feedback tail smears the pulse and was part of
+  // what made the old version drag.
   const delay = ctx.createDelay(1.0)
-  delay.delayTime.value = 0.3
+  delay.delayTime.value = 0.25
   const fb = ctx.createGain()
-  fb.gain.value = 0.22
+  fb.gain.value = 0.17
   const wet = ctx.createGain()
-  wet.gain.value = 0.3
+  wet.gain.value = 0.22
   delay.connect(fb); fb.connect(delay); delay.connect(wet); wet.connect(bed)
 
-  // Pad bus, opening slowly over the piece so the ending feels like a lift.
   const padFilter = ctx.createBiquadFilter()
   padFilter.type = 'lowpass'
-  padFilter.frequency.setValueAtTime(900, ctx.currentTime)
-  padFilter.frequency.linearRampToValueAtTime(2400, ctx.currentTime + 60)
+  padFilter.frequency.setValueAtTime(1900, ctx.currentTime)
+  padFilter.frequency.linearRampToValueAtTime(4400, ctx.currentTime + 45)
   padFilter.connect(bed)
 
-  // I - V - vi - IV in D major. The most reliably uplifting progression there is.
-  const CHORDS = [
-    { bass: 73.42, pad: [146.83, 220.0, 293.66, 369.99], mel: [440.0, 587.33, 493.88] },   // D
-    { bass: 110.0, pad: [164.81, 220.0, 277.18, 329.63], mel: [554.37, 659.25, 587.33] },  // A
-    { bass: 123.47, pad: [123.47, 185.0, 246.94, 293.66], mel: [493.88, 587.33, 739.99] }, // Bm
-    { bass: 98.0, pad: [146.83, 196.0, 246.94, 293.66], mel: [493.88, 659.25, 587.33] },   // G
+  // Eight chord loop in D major: D G A D | Bm G A D. Only one minor, placed
+  // mid phrase, and it resolves home twice.
+  const CH = [
+    { root: 73.42, tri: [146.83, 220.00, 293.66], mel: [587.33, 440.00] },  // D
+    { root: 98.00, tri: [146.83, 196.00, 246.94], mel: [493.88, 587.33] },  // G
+    { root: 110.00, tri: [164.81, 220.00, 277.18], mel: [554.37, 659.25] }, // A
+    { root: 73.42, tri: [146.83, 220.00, 293.66], mel: [587.33, 493.88] },  // D
+    { root: 123.47, tri: [123.47, 185.00, 246.94], mel: [493.88, 369.99] }, // Bm
+    { root: 98.00, tri: [146.83, 196.00, 246.94], mel: [587.33, 493.88] },  // G
+    { root: 110.00, tri: [164.81, 220.00, 277.18], mel: [659.25, 554.37] }, // A
+    { root: 73.42, tri: [146.83, 220.00, 293.66], mel: [880.00, 587.33] },  // D
   ]
-  const CHORD_DUR = 4.2
+  const CHORD = 2.0                 // 120bpm, four beats to a chord
+  const EIGHTH = CHORD / 8
+  const ARP = [0, 1, 2, 1, 0, 2, 1, 2]   // index into tri
+  const ARP_OCT = [0, 0, 1, 0, 0, 1, 0, 1]
 
-  function padVoice(time, freq, dur) {
-    const o = ctx.createOscillator()
-    o.type = 'triangle'
-    o.frequency.value = freq
-    const det = ctx.createOscillator()
-    det.type = 'sine'
-    det.frequency.value = freq * 1.004
+  function pad(time, freq) {
+    const o = ctx.createOscillator(); o.type = 'triangle'; o.frequency.value = freq
+    const d = ctx.createOscillator(); d.type = 'sine'; d.frequency.value = freq * 1.005
     const g = ctx.createGain()
     g.gain.setValueAtTime(0.0001, time)
-    g.gain.linearRampToValueAtTime(0.055, time + 0.9)
-    g.gain.setValueAtTime(0.055, time + dur - 0.9)
-    g.gain.linearRampToValueAtTime(0.0001, time + dur + 0.5)
-    o.connect(g); det.connect(g); g.connect(padFilter)
-    o.start(time); det.start(time)
-    o.stop(time + dur + 0.7); det.stop(time + dur + 0.7)
+    g.gain.linearRampToValueAtTime(0.042, time + 0.14)      // lands, does not bloom
+    g.gain.setValueAtTime(0.042, time + CHORD - 0.25)
+    g.gain.linearRampToValueAtTime(0.0001, time + CHORD + 0.12)
+    o.connect(g); d.connect(g); g.connect(padFilter)
+    o.start(time); d.start(time)
+    o.stop(time + CHORD + 0.25); d.stop(time + CHORD + 0.25)
   }
 
-  function bassVoice(time, freq, dur) {
-    const o = ctx.createOscillator()
-    o.type = 'sine'
-    o.frequency.value = freq
+  function bass(time, freq) {
+    const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = freq
     const g = ctx.createGain()
     g.gain.setValueAtTime(0.0001, time)
-    g.gain.linearRampToValueAtTime(0.13, time + 0.35)
-    g.gain.linearRampToValueAtTime(0.0001, time + dur + 0.35)
+    g.gain.linearRampToValueAtTime(0.16, time + 0.02)
+    g.gain.exponentialRampToValueAtTime(0.0001, time + 0.85)
     o.connect(g); g.connect(bed)
-    o.start(time); o.stop(time + dur + 0.5)
+    o.start(time); o.stop(time + 0.95)
   }
 
-  // Soft bell rather than a plucked string. Sine core, short-ish tail.
-  function bell(time, freq, vel) {
-    const o = ctx.createOscillator()
-    o.type = 'sine'
-    o.frequency.value = freq
-    const shimmer = ctx.createOscillator()
-    shimmer.type = 'triangle'
-    shimmer.frequency.value = freq * 2
-    const sg = ctx.createGain()
-    sg.gain.value = 0.16
+  // The pulse. Short and quiet; it is felt more than heard.
+  function arp(time, freq, vel) {
+    const o = ctx.createOscillator(); o.type = 'triangle'; o.frequency.value = freq
     const g = ctx.createGain()
     g.gain.setValueAtTime(0.0001, time)
-    g.gain.linearRampToValueAtTime(vel, time + 0.03)
-    g.gain.exponentialRampToValueAtTime(0.0001, time + 2.4)
-    const lp = ctx.createBiquadFilter()
-    lp.type = 'lowpass'
-    lp.frequency.value = 3000
-    o.connect(g); shimmer.connect(sg); sg.connect(g)
-    g.connect(lp); lp.connect(bed); lp.connect(delay)
-    o.start(time); shimmer.start(time)
-    o.stop(time + 2.6); shimmer.stop(time + 2.6)
+    g.gain.linearRampToValueAtTime(vel, time + 0.008)
+    g.gain.exponentialRampToValueAtTime(0.0001, time + 0.3)
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 4000
+    o.connect(g); g.connect(lp); lp.connect(bed)
+    o.start(time); o.stop(time + 0.35)
+  }
+
+  function bell(time, freq, vel) {
+    const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = freq
+    const h = ctx.createOscillator(); h.type = 'triangle'; h.frequency.value = freq * 2
+    const hg = ctx.createGain(); hg.gain.value = 0.2
+    const g = ctx.createGain()
+    g.gain.setValueAtTime(0.0001, time)
+    g.gain.linearRampToValueAtTime(vel, time + 0.02)
+    g.gain.exponentialRampToValueAtTime(0.0001, time + 1.5)
+    o.connect(g); h.connect(hg); hg.connect(g)
+    g.connect(bed); g.connect(delay)
+    o.start(time); h.start(time)
+    o.stop(time + 1.6); h.stop(time + 1.6)
   }
 
   let slot = 0
-  let next = ctx.currentTime + 0.4
-  // Lookahead scheduling keeps the pulse steady even when the tab throttles timers.
+  let next = ctx.currentTime + 0.25
   const timer = setInterval(() => {
     if (ctx.state !== 'running') return
-    while (next < ctx.currentTime + 1.0) {
-      const c = CHORDS[slot % CHORDS.length]
-      padVoice(next, c.pad[0], CHORD_DUR)
-      padVoice(next, c.pad[1], CHORD_DUR)
-      padVoice(next, c.pad[2], CHORD_DUR)
-      padVoice(next, c.pad[3], CHORD_DUR)
-      bassVoice(next, c.bass, CHORD_DUR)
-      // Melody thickens as the piece builds rather than running flat throughout.
-      const lift = slot >= 4
-      const late = slot >= 11
-      if (lift) {
-        bell(next + 0.05, c.mel[0], 0.1)
-        bell(next + 1.45, c.mel[1], 0.085)
-        if (late) bell(next + 2.85, c.mel[2], 0.075)
+    while (next < ctx.currentTime + 0.6) {
+      const c = CH[slot % CH.length]
+      c.tri.forEach(f => pad(next, f))
+      bass(next, c.root)
+      bass(next + CHORD / 2, c.root)
+      // Hold the arpeggio back for the first two chords so the opening line
+      // is not fighting a pulse, then let it drive.
+      if (slot >= 2) {
+        for (let i = 0; i < 8; i++) {
+          const f = c.tri[ARP[i]] * (ARP_OCT[i] ? 2 : 1)
+          arp(next + i * EIGHTH, f, i % 2 === 0 ? 0.05 : 0.033)
+        }
       }
-      next += CHORD_DUR
+      if (slot >= 4) {
+        bell(next + 0.02, c.mel[0], 0.075)
+        if (slot >= 12) bell(next + CHORD / 2 + 0.02, c.mel[1], 0.055)
+      }
+      next += CHORD
       slot++
     }
-  }, 60)
+  }, 45)
 
   return {
     ctx,
     duck: on => {
       const now = ctx.currentTime
       bed.gain.cancelScheduledValues(now)
-      bed.gain.linearRampToValueAtTime(on ? 0.45 : 1, now + 0.35)
+      bed.gain.linearRampToValueAtTime(on ? 0.5 : 1, now + 0.3)
     },
     stop: () => {
       clearInterval(timer)
       try {
         master.gain.cancelScheduledValues(ctx.currentTime)
-        master.gain.linearRampToValueAtTime(0.0001, ctx.currentTime + 0.6)
+        master.gain.linearRampToValueAtTime(0.0001, ctx.currentTime + 0.5)
       } catch (e) { /* context may already be closing */ }
-      setTimeout(() => { running.forEach(n => { try { n.stop() } catch (e) {} }); try { ctx.close() } catch (e) {} }, 750)
+      setTimeout(() => { try { ctx.close() } catch (e) {} }, 650)
     },
   }
 }
@@ -566,6 +571,10 @@ export default function PhisFilm({ open, onClose, storyCount = 70, employerCount
   const score = useRef(null)
   const spoken = useRef(new Set())
   const hideTimer = useRef(null)
+  // Kept in a ref so the auto close timer does not restart when the parent
+  // hands us a fresh onClose identity on re-render.
+  const onCloseRef = useRef(onClose)
+  useEffect(() => { onCloseRef.current = onClose }, [onClose])
 
   const total = marks.total
   const idx = Math.min(marks.out.findIndex(s => elapsed < s.end), marks.out.length - 1)
@@ -642,8 +651,11 @@ export default function PhisFilm({ open, onClose, storyCount = 70, employerCount
   useEffect(() => {
     if (!open) return
     if (playing && sound) {
-      if (!score.current) score.current = createScore()
-      else if (score.current.ctx.state === 'suspended') score.current.ctx.resume()
+      if (!score.current) {
+        score.current = createScore()
+        // Autoplay can hand us a suspended context even with user activation.
+        if (score.current && score.current.ctx.state === 'suspended') score.current.ctx.resume()
+      } else if (score.current.ctx.state === 'suspended') score.current.ctx.resume()
     } else if (score.current) {
       if (!sound) { score.current.stop(); score.current = null }
       else score.current.ctx.suspend()
@@ -667,6 +679,14 @@ export default function PhisFilm({ open, onClose, storyCount = 70, employerCount
   }, [open, playing, narrate, scene, voiceURI])
 
   useEffect(() => { if (!narrate) stopSpeech() }, [narrate, stopSpeech])
+
+  // Close on its own once the closing frame has had a moment to land. The
+  // About poster is the way back in, so there is no Replay control.
+  useEffect(() => {
+    if (!open || !total || elapsed < total) return
+    const t = setTimeout(() => onCloseRef.current && onCloseRef.current(), 1700)
+    return () => clearTimeout(t)
+  }, [open, elapsed, total])
 
   const seek = useCallback(ms => {
     stopSpeech()
@@ -714,6 +734,7 @@ export default function PhisFilm({ open, onClose, storyCount = 70, employerCount
       style={{
         position: 'fixed', inset: 0, zIndex: 200, background: DEEP, fontFamily: GP,
         display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: showUI ? 'default' : 'none',
+        opacity: ended ? 0 : 1, transition: 'opacity .9s ease',
       }}
     >
       {/* subtle vignette so the type sits on a field rather than a flat block */}
@@ -724,15 +745,6 @@ export default function PhisFilm({ open, onClose, storyCount = 70, employerCount
           {scene && scene.render(t)}
         </div>
       </div>
-
-      {ended && (
-        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', paddingBottom: 'clamp(90px, 14vh, 150px)', pointerEvents: 'none' }}>
-          <button
-            onClick={e => { e.stopPropagation(); seek(0); setPlaying(true) }}
-            style={{ pointerEvents: 'auto', background: 'none', border: `1px solid rgba(255,255,255,0.3)`, color: PAPER, fontFamily: GP, fontSize: 12, letterSpacing: '0.16em', textTransform: 'uppercase', padding: '11px 22px', borderRadius: 3, cursor: 'pointer' }}
-          >Replay</button>
-        </div>
-      )}
 
       {/* controls */}
       <div
