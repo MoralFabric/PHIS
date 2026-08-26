@@ -399,19 +399,41 @@ function createScore() {
   }
 }
 
-// Prefer a natural sounding English voice when the platform offers one.
-function pickVoice() {
-  if (typeof window === 'undefined' || !window.speechSynthesis) return null
-  const voices = window.speechSynthesis.getVoices() || []
-  if (!voices.length) return null
-  const en = voices.filter(v => /^en(-|_|$)/i.test(v.lang))
-  const pool = en.length ? en : voices
-  const preferred = ['Google UK English Male', 'Microsoft Guy Online', 'Microsoft Ryan Online', 'Daniel', 'Alex', 'Google US English', 'Microsoft Aria Online', 'Samantha']
-  for (const name of preferred) {
-    const hit = pool.find(v => v.name === name)
-    if (hit) return hit
+// Voice quality is the visitor's machine, not ours: Chrome on Windows exposes
+// only the five legacy SAPI voices, Edge exposes ~100 cloud neural ones, macOS
+// has its own set. So score what is actually there rather than matching exact
+// names, and make sure we never fall through to Microsoft David by accident.
+const VOICE_GOOD = /natural|neural|online|premium|enhanced|siri/i
+const VOICE_NAMED = /\b(daniel|alex|samantha|serena|oliver|arthur|matilda|guy|ryan|aria|jenny|christopher)\b/i
+const VOICE_DATED = /\b(david|zira|mark|hazel|george|susan|linda|eva|catherine|james)\b/i
+
+function scoreVoice(v) {
+  let s = 0
+  if (VOICE_GOOD.test(v.name)) s += 100
+  if (VOICE_NAMED.test(v.name)) s += 45
+  if (VOICE_DATED.test(v.name)) s -= 40
+  if (/en-CA/i.test(v.lang)) s += 12          // Adam is in Toronto
+  else if (/en-GB/i.test(v.lang)) s += 6
+  else if (/en-AU|en-IE/i.test(v.lang)) s += 3
+  if (v.localService === false) s += 8         // cloud voices are usually the better ones
+  return s
+}
+
+function listVoices() {
+  if (typeof window === 'undefined' || !window.speechSynthesis) return []
+  const all = window.speechSynthesis.getVoices() || []
+  const en = all.filter(v => /^en(-|_|$)/i.test(v.lang))
+  return (en.length ? en : all).slice().sort((a, b) => scoreVoice(b) - scoreVoice(a))
+}
+
+function pickVoice(preferredURI) {
+  const pool = listVoices()
+  if (!pool.length) return null
+  if (preferredURI) {
+    const chosen = pool.find(v => v.voiceURI === preferredURI)
+    if (chosen) return chosen
   }
-  return pool.find(v => /natural|online|premium|enhanced/i.test(v.name)) || pool[0]
+  return pool[0]
 }
 
 const fmt = ms => {
@@ -434,6 +456,8 @@ export default function PhisFilm({ open, onClose, storyCount = 70, employerCount
   const [narrate, setNarrate] = useState(true)
   const [uiVisible, setUiVisible] = useState(true)
   const [reduced, setReduced] = useState(false)
+  const [voices, setVoices] = useState([])
+  const [voiceURI, setVoiceURI] = useState(null)
 
   const raf = useRef(0)
   const last = useRef(0)
@@ -450,8 +474,21 @@ export default function PhisFilm({ open, onClose, storyCount = 70, employerCount
   useEffect(() => {
     if (typeof window === 'undefined') return
     setReduced(window.matchMedia('(prefers-reduced-motion: reduce)').matches)
-    // Some browsers populate the voice list asynchronously.
-    if (window.speechSynthesis) window.speechSynthesis.getVoices()
+    if (!window.speechSynthesis) return
+    // Chrome populates the voice list asynchronously, so read it twice.
+    const load = () => {
+      const list = listVoices()
+      if (!list.length) return
+      setVoices(list)
+      setVoiceURI(cur => {
+        if (cur) return cur
+        const saved = window.localStorage.getItem('phis.film.voice')
+        return saved && list.some(v => v.voiceURI === saved) ? saved : list[0].voiceURI
+      })
+    }
+    load()
+    window.speechSynthesis.onvoiceschanged = load
+    return () => { window.speechSynthesis.onvoiceschanged = null }
   }, [])
 
   const stopSpeech = useCallback(() => {
@@ -518,14 +555,14 @@ export default function PhisFilm({ open, onClose, storyCount = 70, employerCount
     if (typeof window === 'undefined' || !window.speechSynthesis) return
     spoken.current.add(scene.id)
     const u = new SpeechSynthesisUtterance(scene.say)
-    const v = pickVoice()
+    const v = pickVoice(voiceURI)
     if (v) u.voice = v
     u.rate = 0.95
     u.pitch = 1
     if (score.current) score.current.duck(true)
     u.onend = () => { if (score.current) score.current.duck(false) }
     window.speechSynthesis.speak(u)
-  }, [open, playing, narrate, scene])
+  }, [open, playing, narrate, scene, voiceURI])
 
   useEffect(() => { if (!narrate) stopSpeech() }, [narrate, stopSpeech])
 
@@ -622,6 +659,23 @@ export default function PhisFilm({ open, onClose, storyCount = 70, employerCount
         </div>
         <button onClick={() => setSound(s => !s)} style={sound ? btn : off}>Music</button>
         <button onClick={() => setNarrate(n => !n)} style={narrate ? btn : off}>Voice</button>
+        {narrate && voices.length > 1 && (
+          <select
+            value={voiceURI || ''}
+            onChange={e => {
+              stopSpeech()
+              setVoiceURI(e.target.value)
+              try { window.localStorage.setItem('phis.film.voice', e.target.value) } catch (err) {}
+            }}
+            style={{ background: 'rgba(255,255,255,0.08)', color: PAPER, border: '1px solid rgba(255,255,255,0.18)', borderRadius: 3, fontFamily: GP, fontSize: 10, letterSpacing: '0.06em', padding: '5px 6px', maxWidth: 150, cursor: 'pointer' }}
+          >
+            {voices.map(v => (
+              <option key={v.voiceURI} value={v.voiceURI} style={{ background: NAVY }}>
+                {v.name.replace(/ - English.*$/, '').replace(/^Microsoft /, '')}
+              </option>
+            ))}
+          </select>
+        )}
         <button onClick={onClose} style={{ ...btn, opacity: 1 }}>Close</button>
       </div>
     </div>
