@@ -31,9 +31,15 @@ const TABLES = [
 ];
 
 async function count(table, key, label) {
+  // GET with Range 0-0, not HEAD: PostgREST 404s HEAD requests, which made an
+  // earlier version of this script report every table as missing.
   const res = await fetch(`${URL}/rest/v1/${table}?select=*`, {
-    method: 'HEAD',
-    headers: { apikey: key, Authorization: `Bearer ${key}`, Prefer: 'count=exact' },
+    headers: {
+      apikey: key,
+      Authorization: `Bearer ${key}`,
+      Prefer: 'count=exact',
+      Range: '0-0',
+    },
   });
   const range = res.headers.get('content-range');
   const n = range ? range.split('/')[1] : '?';

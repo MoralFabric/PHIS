@@ -5334,6 +5334,28 @@ function BrandSplash({ onDone, waiting }) {
   );
 }
 
+// Shown to visitors when the story library cannot be loaded. Deliberately a
+// holding card rather than a degraded profile: showing a recruiter 64 seed
+// stories with blank awards and education is worse than showing them nothing,
+// because they have no way to know it is wrong.
+function ServiceUnavailable() {
+  const GP = "'Poppins', system-ui, sans-serif";
+  return (
+    <div style={{ position: "fixed", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "var(--phis-navy)", fontFamily: GP, padding: "0 1.5rem", textAlign: "center" }}>
+      <PhisWordmark reversed height={38} />
+      <div style={{ fontSize: 17, fontWeight: 300, color: "#fff", marginTop: 26, maxWidth: 430, lineHeight: 1.55 }}>
+        PHIS is briefly offline while its library reconnects.
+      </div>
+      <div style={{ fontSize: 13, fontWeight: 300, color: "#9FB3C8", marginTop: 12, maxWidth: 430, lineHeight: 1.6 }}>
+        Rather than show you a partial version of Adam's record, it is showing you nothing. Please check back in a few minutes.
+      </div>
+      <a href="mailto:adam.c.waldman@gmail.com" style={{ fontSize: 12, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--phis-marigold)", marginTop: 30, textDecoration: "none", borderBottom: "1px solid rgba(234,106,26,0.45)", paddingBottom: 3 }}>
+        Reach Adam directly
+      </a>
+    </div>
+  );
+}
+
 // Lightweight info capture shown the first time a guest opens an AI tool
 // (fit / interview). Name required; organization and email optional.
 function GuestInfoGate({ gpage, onSubmit }) {
@@ -5508,12 +5530,23 @@ function GuestShell({ guest, stories, experience, awards, education, profileCont
 }
 
 // ─── APP ──────────────────────────────────────────────────
+// Reject rather than hang. An unreachable Supabase does not reliably fail
+// fast, so every boot call is raced against a deadline.
+function withTimeout(promise, ms) {
+  let timer;
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('timeout after ' + ms + 'ms')), ms); }),
+  ]).finally(() => clearTimeout(timer));
+}
+
 export default function App() {
   const [stories,setStories]=useState([]);
   const [loading,setLoading]=useState(true);
   const [page,setPage]=useState("home");
   const [mode, setMode] = useState("guest");
   const [splashDone, setSplashDone] = useState(false);
+  const [dataOk, setDataOk] = useState(true);
   const [guest, setGuest] = useState(null);
   const [guestSessionId, setGuestSessionId] = useState(null);
   const [selected,setSelected]=useState(null);
@@ -5530,17 +5563,29 @@ export default function App() {
 
   useEffect(()=>{
     (async()=>{
-      try{
-        const allBase=[...SEEDS,...EXTENDED_SOAR];
-        const loaded=await seedAndGetStories(allBase);
-        setStories(loaded.map(normalizeStory));
-      }catch(e){setStories([...SEEDS,...EXTENDED_SOAR].map(normalizeStory));}
+      // One retry before declaring the library unreachable, so a transient
+      // blip does not show a visitor the offline card.
+      const allBase=[...SEEDS,...EXTENDED_SOAR];
+      let loaded=null;
+      for(let attempt=0;attempt<2&&!loaded;attempt++){
+        try{ loaded=await withTimeout(seedAndGetStories(allBase), attempt===0?4000:3500); }
+        catch(e){ if(attempt===0) await new Promise(r=>setTimeout(r,800)); }
+      }
+      if(!loaded){
+        // The database is unreachable. The remaining reads would only add dead
+        // time in front of the offline card, so stop here.
+        setStories(allBase.map(normalizeStory));
+        setDataOk(false);
+        setLoading(false);
+        return;
+      }
+      setStories(loaded.map(normalizeStory));
       // These five reads are independent of each other and of the story load.
       // Running them together turns five sequential round trips into one.
       const settle=r=>r.status==="fulfilled"?r.value:null;
       const [exp,prof,aw,edu,ctx]=(await Promise.allSettled([
         getExperience(),getProfile(),getAwards(),getEducation(),getProfileContext(),
-      ])).map(settle);
+      ].map(p=>withTimeout(p,5000)))).map(settle);
       if(exp&&exp.length>0)setExperience(exp);
       if(prof)setProfile(p=>({...p,
         baseSalaryFrom: prof.base_salary_from ?? p.baseSalaryFrom,
@@ -5588,10 +5633,16 @@ export default function App() {
   );
 
   if (loading || !splashDone) return <BrandSplash waiting={loading} onDone={() => setSplashDone(true)} />;
+  if (mode === "guest" && !dataOk) return <ServiceUnavailable />;
   if (mode === "guest") return <GuestShell guest={guest} stories={stories} experience={experience} awards={awards} education={education} profileContext={profileContext} guestSessionId={guestSessionId} onCapture={(info) => { setGuest(info); createGuestSession(info).then(row => { if (row?.id) setGuestSessionId(row.id); }); }} onAdam={() => setMode("adam")} />;
 
   return(
     <div style={{display:"flex",fontFamily:"inherit",minHeight:600,borderTop:"3px solid var(--phis-marigold)"}}>
+      {!dataOk && (
+        <div style={{position:"fixed",top:0,left:0,right:0,zIndex:300,background:"#A32D2D",color:"#fff",fontSize:12,padding:"7px 14px",textAlign:"center",fontFamily:"'Poppins', system-ui, sans-serif"}}>
+          Database unreachable. Showing {SEEDS.length + EXTENDED_SOAR.length} local seed stories, not your library. Nothing on screen is trustworthy and visitors are seeing an offline card. Run <code style={{background:"rgba(255,255,255,0.18)",padding:"1px 5px",borderRadius:3}}>node scripts/check-supabase.js</code> to diagnose.
+        </div>
+      )}
       {/* Sidebar */}
       <div style={{width:196,flexShrink:0,borderRight:"1px solid var(--phis-hair)",paddingRight:"1rem",paddingTop:"1.25rem",display:"flex",flexDirection:"column",gap:0,background:"var(--phis-paper)"}}>
         <div style={{paddingLeft:"10px",marginBottom:6}}><PhisWordmark height={22}/></div>
