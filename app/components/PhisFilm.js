@@ -358,12 +358,13 @@ function buildScenes({ storyCount, employerCount }) {
 }
 
 // ── score ─────────────────────────────────────────────────
-// Driving. Three earlier versions were too slow, and the last two failed for a
-// reason BPM does not fix: the arpeggio ran in eighth notes and the pad held a
-// single sustained wash across the whole chord, which smooths over the pulse
-// no matter how fast the chords change. This version runs sixteenths, gives
-// the pad two stabs per chord so it re-articulates, and adds a real backbeat
-// on two and four. Written rather than licensed, so nothing to clear.
+// A different tune. The previous version was plain triads over D G A D, which
+// is correct and dull: triads alone read as stock corporate backing. This one
+// keeps the rhythmic engine that finally made it feel fast (sixteenth note
+// arpeggio, two pad stabs per chord, hat on eighths, backbeat on two and four)
+// and changes the music: a vi-IV-I-V shape with add9 and sus colour instead of
+// bare triads, and a syncopated four note hook rather than notes on the beat.
+// Written rather than licensed, so there is nothing to clear.
 function createScore() {
   const AC = typeof window !== 'undefined' && (window.AudioContext || window.webkitAudioContext)
   if (!AC) return null
@@ -378,43 +379,44 @@ function createScore() {
   bed.gain.value = 1
   bed.connect(master)
 
+  const CHORD = 1.4                 // 171bpm, four beats to a chord
+  const STEP = CHORD / 16
+
   const delay = ctx.createDelay(1.0)
-  delay.delayTime.value = 0.1875          // a sixteenth at 160bpm, so echoes land on the grid
-  const fb = ctx.createGain(); fb.gain.value = 0.15
-  const wet = ctx.createGain(); wet.gain.value = 0.2
+  delay.delayTime.value = STEP * 3   // dotted eighth, the classic bright pop echo
+  const fb = ctx.createGain(); fb.gain.value = 0.2
+  const wet = ctx.createGain(); wet.gain.value = 0.22
   delay.connect(fb); fb.connect(delay); delay.connect(wet); wet.connect(bed)
 
   const padFilter = ctx.createBiquadFilter()
   padFilter.type = 'lowpass'
-  padFilter.frequency.setValueAtTime(2200, ctx.currentTime)
-  padFilter.frequency.linearRampToValueAtTime(5200, ctx.currentTime + 26)
+  padFilter.frequency.setValueAtTime(2400, ctx.currentTime)
+  padFilter.frequency.linearRampToValueAtTime(5600, ctx.currentTime + 24)
   padFilter.connect(bed)
 
+  // vi - IV - I - V in D, with add9 and sus colour. The ninths are what stop it
+  // sounding like stock corporate backing; bare triads were the old problem.
+  // hook notes are played on a syncopated pattern, not on the beat.
   const CH = [
-    { root: 73.42, tri: [146.83, 220.00, 293.66], mel: [587.33, 440.00] },  // D
-    { root: 98.00, tri: [146.83, 196.00, 246.94], mel: [493.88, 587.33] },  // G
-    { root: 110.00, tri: [164.81, 220.00, 277.18], mel: [554.37, 659.25] }, // A
-    { root: 73.42, tri: [146.83, 220.00, 293.66], mel: [587.33, 493.88] },  // D
-    { root: 123.47, tri: [123.47, 185.00, 246.94], mel: [493.88, 369.99] }, // Bm
-    { root: 98.00, tri: [146.83, 196.00, 246.94], mel: [587.33, 493.88] },  // G
-    { root: 110.00, tri: [164.81, 220.00, 277.18], mel: [659.25, 554.37] }, // A
-    { root: 73.42, tri: [146.83, 220.00, 293.66], mel: [880.00, 587.33] },  // D
+    { root: 61.74, voi: [123.47, 293.66, 369.99, 440.00], hook: [587.33, 659.25, 493.88, 587.33] }, // Bm7
+    { root: 98.00, voi: [146.83, 220.00, 246.94, 293.66], hook: [493.88, 587.33, 659.25, 493.88] }, // Gadd9
+    { root: 73.42, voi: [146.83, 329.63, 369.99, 440.00], hook: [659.25, 587.33, 440.00, 587.33] }, // Dadd9
+    { root: 110.00, voi: [164.81, 246.94, 277.18, 329.63], hook: [554.37, 659.25, 587.33, 659.25] }, // Asus2
+    { root: 61.74, voi: [123.47, 293.66, 369.99, 493.88], hook: [739.99, 659.25, 587.33, 493.88] }, // Bm7 (open)
+    { root: 98.00, voi: [146.83, 220.00, 246.94, 329.63], hook: [587.33, 659.25, 739.99, 587.33] }, // Gadd9
+    { root: 110.00, voi: [164.81, 246.94, 277.18, 329.63], hook: [659.25, 554.37, 493.88, 554.37] }, // Asus2
+    { root: 73.42, voi: [146.83, 329.63, 369.99, 587.33], hook: [880.00, 739.99, 659.25, 587.33] }, // Dadd9 (high)
   ]
-  const CHORD = 1.5                 // 160bpm, four beats to a chord
-  const STEP = CHORD / 16           // sixteenth note
-  // Sixteenth note arpeggio. This is the change that makes it feel fast;
-  // eighths at the same tempo read as half the speed.
-  const ARP = [0, 1, 2, 1, 2, 1, 0, 1, 2, 1, 2, 0, 1, 2, 1, 2]
-  const OCT = [0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1]
 
-  // Pad stabs twice per chord rather than holding one wash, so the harmony
-  // re-articulates on the beat instead of blurring across it.
+  const ARP = [0, 2, 1, 3, 2, 0, 1, 2, 3, 1, 2, 0, 1, 3, 2, 1]
+  const HOOK_AT = [0, 3, 6, 10]      // syncopated, deliberately off the beat
+
   function stab(time, freq, len) {
     const o = ctx.createOscillator(); o.type = 'triangle'; o.frequency.value = freq
     const d = ctx.createOscillator(); d.type = 'sine'; d.frequency.value = freq * 1.005
     const g = ctx.createGain()
     g.gain.setValueAtTime(0.0001, time)
-    g.gain.linearRampToValueAtTime(0.05, time + 0.02)
+    g.gain.linearRampToValueAtTime(0.042, time + 0.02)
     g.gain.exponentialRampToValueAtTime(0.0001, time + len)
     o.connect(g); d.connect(g); g.connect(padFilter)
     o.start(time); d.start(time)
@@ -426,9 +428,9 @@ function createScore() {
     const g = ctx.createGain()
     g.gain.setValueAtTime(0.0001, time)
     g.gain.linearRampToValueAtTime(vel, time + 0.015)
-    g.gain.exponentialRampToValueAtTime(0.0001, time + 0.42)
+    g.gain.exponentialRampToValueAtTime(0.0001, time + 0.4)
     o.connect(g); g.connect(bed)
-    o.start(time); o.stop(time + 0.5)
+    o.start(time); o.stop(time + 0.48)
   }
 
   function arp(time, freq, vel) {
@@ -436,13 +438,12 @@ function createScore() {
     const g = ctx.createGain()
     g.gain.setValueAtTime(0.0001, time)
     g.gain.linearRampToValueAtTime(vel, time + 0.005)
-    g.gain.exponentialRampToValueAtTime(0.0001, time + 0.16)
-    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 5000
+    g.gain.exponentialRampToValueAtTime(0.0001, time + 0.15)
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 5200
     o.connect(g); g.connect(lp); lp.connect(bed); lp.connect(delay)
-    o.start(time); o.stop(time + 0.2)
+    o.start(time); o.stop(time + 0.19)
   }
 
-  // One noise buffer, reused for both the hat and the backbeat.
   const NOISE = (() => {
     const n = Math.ceil(ctx.sampleRate * 0.12)
     const b = ctx.createBuffer(1, n, ctx.sampleRate)
@@ -459,18 +460,16 @@ function createScore() {
     src.start(time)
   }
 
-  function bell(time, freq, vel) {
-    const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = freq
-    const h = ctx.createOscillator(); h.type = 'triangle'; h.frequency.value = freq * 2
-    const hg = ctx.createGain(); hg.gain.value = 0.22
+  // Plucked rather than belled, so the hook cuts through the arpeggio.
+  function hook(time, freq, vel) {
+    const o = ctx.createOscillator(); o.type = 'square'; o.frequency.value = freq
     const g = ctx.createGain()
     g.gain.setValueAtTime(0.0001, time)
-    g.gain.linearRampToValueAtTime(vel, time + 0.015)
-    g.gain.exponentialRampToValueAtTime(0.0001, time + 1.1)
-    o.connect(g); h.connect(hg); hg.connect(g)
-    g.connect(bed); g.connect(delay)
-    o.start(time); h.start(time)
-    o.stop(time + 1.2); h.stop(time + 1.2)
+    g.gain.linearRampToValueAtTime(vel, time + 0.008)
+    g.gain.exponentialRampToValueAtTime(0.0001, time + 0.45)
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2600
+    o.connect(g); g.connect(lp); lp.connect(bed); lp.connect(delay)
+    o.start(time); o.stop(time + 0.5)
   }
 
   let slot = 0
@@ -480,27 +479,26 @@ function createScore() {
     while (next < ctx.currentTime + 0.5) {
       const c = CH[slot % CH.length]
 
-      c.tri.forEach(f => stab(next, f, 0.6))
-      c.tri.forEach(f => stab(next + CHORD / 2, f, 0.6))
+      c.voi.forEach(f => stab(next, f, 0.55))
+      c.voi.forEach(f => stab(next + CHORD / 2, f, 0.55))
 
-      bass(next, c.root, 0.19)
+      bass(next, c.root, 0.2)
       bass(next + CHORD / 2, c.root, 0.15)
-      if (slot >= 2) bass(next + STEP * 14, c.root * 2, 0.09)   // push into the next bar
+      if (slot >= 2) bass(next + STEP * 14, c.root * 2, 0.09)
 
       if (slot >= 1) {
         for (let i = 0; i < 16; i++) {
-          const f = c.tri[ARP[i]] * (OCT[i] ? 2 : 1)
-          arp(next + i * STEP, f, i % 4 === 0 ? 0.046 : 0.028)
-          // Hat on every eighth, backbeat on two and four. The backbeat is what
-          // makes it read as a track rather than a bed.
+          arp(next + i * STEP, c.voi[ARP[i]], i % 4 === 0 ? 0.042 : 0.026)
           if (i % 2 === 0) hit(next + i * STEP, 0.022, 8000, 1.6)
           if (i === 4 || i === 12) hit(next + i * STEP, 0.075, 3200, 0.9)
         }
       }
 
       if (slot >= 3) {
-        bell(next + 0.01, c.mel[0], 0.08)
-        if (slot >= 8) bell(next + CHORD / 2 + 0.01, c.mel[1], 0.06)
+        HOOK_AT.forEach((step, k) => {
+          if (slot < 6 && k > 1) return          // hook fills out as the piece builds
+          hook(next + step * STEP, c.hook[k], k === 0 ? 0.07 : 0.052)
+        })
       }
 
       next += CHORD
@@ -548,10 +546,14 @@ function scoreVoice(v) {
   if (VOICE_GOOD.test(v.name)) s += 100
   if (VOICE_NAMED.test(v.name)) s += 25
   if (VOICE_DATED.test(v.name)) s -= 40
-  if (/en-CA/i.test(v.lang)) s += 14
-  else if (/en-US/i.test(v.lang)) s += 10
-  else if (VOICE_WRONG_ACCENT.test(v.lang)) s += 2
-  if (v.localService === false) s += 8         // cloud voices are usually the better ones
+  // North American with weight. Adam has rejected a non-North-American
+  // narrator twice, so this outranks a modest quality edge, though a genuinely
+  // neural voice (+100) can still win across locales.
+  if (/en-CA/i.test(v.lang)) s += 45
+  else if (/en-US/i.test(v.lang)) s += 38
+  else if (VOICE_WRONG_ACCENT.test(v.lang)) s -= 25
+  // Remote voices are consistently better than the legacy local SAPI set.
+  if (v.localService === false) s += 22
   return s
 }
 
@@ -696,6 +698,11 @@ export default function PhisFilm({ open, onClose, storyCount = 70, employerCount
     if (!open || !playing || !narrate || !scene || !scene.say) return
     if (spoken.current.has(scene.id)) return
     if (typeof window === 'undefined' || !window.speechSynthesis) return
+    // Wait for the voice list to settle. Chrome fills it asynchronously, and
+    // speaking before it lands gave the first scene a different voice from the
+    // rest of the film. voiceURI is a dependency, so this re-runs and speaks
+    // as soon as the list arrives.
+    if (!voiceURI) return
     spoken.current.add(scene.id)
     const u = new SpeechSynthesisUtterance(scene.say)
     const v = pickVoice(voiceURI)
