@@ -128,7 +128,7 @@ const H2 = 'clamp(19px, 3.1vw, 40px)'
 function buildScenes({ storyCount, employerCount }) {
   return [
     {
-      id: 'premise', dur: 6200,
+      id: 'premise', dur: 4500,
       say: 'Every career is a data set. Almost nobody treats it like one.',
       render: t => (
         <Stack gap={20}>
@@ -142,7 +142,7 @@ function buildScenes({ storyCount, employerCount }) {
       ),
     },
     {
-      id: 'build', dur: 4600,
+      id: 'build', dur: 3300,
       say: 'So I built a system that does.',
       render: t => (
         <Stack>
@@ -153,7 +153,7 @@ function buildScenes({ storyCount, employerCount }) {
       ),
     },
     {
-      id: 'mark', dur: 5400,
+      id: 'mark', dur: 3900,
       render: t => (
         <Stack gap={30}>
           <div style={{ opacity: inOut(t, 0.06) }}>
@@ -164,8 +164,8 @@ function buildScenes({ storyCount, employerCount }) {
       ),
     },
     {
-      id: 'library', dur: 6600,
-      say: 'Twenty years of work, structured so that every claim traces back to something that actually happened.',
+      id: 'library', dur: 4800,
+      say: 'Twenty years of work, structured so every claim traces to something real.',
       render: t => (
         <Stack gap={40}>
           <Kicker text="The library" p={seg(t, 0, 0.5)} />
@@ -181,7 +181,7 @@ function buildScenes({ storyCount, employerCount }) {
       ),
     },
     {
-      id: 'paste', dur: 5200,
+      id: 'paste', dur: 3700,
       say: 'Paste in a job description.',
       render: t => (
         <Stack gap={34}>
@@ -200,8 +200,8 @@ function buildScenes({ storyCount, employerCount }) {
       ),
     },
     {
-      id: 'score', dur: 7000,
-      say: 'It scores the fit against the real record. Including the gaps. Especially the gaps.',
+      id: 'score', dur: 5000,
+      say: 'It scores the fit against the record. Including the gaps.',
       render: t => (
         <Stack gap={32}>
           <Kicker text="Fit, scored against the record" p={seg(t, 0, 0.42)} />
@@ -218,8 +218,8 @@ function buildScenes({ storyCount, employerCount }) {
       ),
     },
     {
-      id: 'fill', dur: 7400,
-      say: 'And when there is a gap, I answer it once. The answer joins the library, so the next role that asks already has it.',
+      id: 'fill', dur: 5300,
+      say: 'When there is a gap, I answer it once. The next role that asks already has it.',
       render: t => {
         // Picks the gap bar up where the previous scene left it and closes it,
         // so the two scenes read as one continuous motion.
@@ -243,7 +243,7 @@ function buildScenes({ storyCount, employerCount }) {
       },
     },
     {
-      id: 'compound', dur: 6000,
+      id: 'compound', dur: 4300,
       say: 'Which means it gets sharper every time somebody uses it.',
       render: t => {
         const ticked = t > 0.48
@@ -268,7 +268,7 @@ function buildScenes({ storyCount, employerCount }) {
       },
     },
     {
-      id: 'write', dur: 6400,
+      id: 'write', dur: 4600,
       say: 'Then it writes, in my voice, using only what the record supports.',
       render: t => (
         <Stack gap={30}>
@@ -286,8 +286,8 @@ function buildScenes({ storyCount, employerCount }) {
       ),
     },
     {
-      id: 'ask', dur: 6400,
-      say: 'Or ask it anything, and it answers from the record. It will not invent a thing.',
+      id: 'ask', dur: 4600,
+      say: 'Or ask it anything. It answers from the record, and invents nothing.',
       render: t => (
         <Stack gap={26}>
           <div style={{ opacity: inOut(t, 0.12) }}>
@@ -307,7 +307,7 @@ function buildScenes({ storyCount, employerCount }) {
       ),
     },
     {
-      id: 'turn', dur: 5800,
+      id: 'turn', dur: 4200,
       say: 'There was no agency. No template. No development team.',
       render: t => {
         const items = ['No agency.', 'No template.', 'No dev team.']
@@ -324,7 +324,7 @@ function buildScenes({ storyCount, employerCount }) {
       },
     },
     {
-      id: 'made', dur: 6000,
+      id: 'made', dur: 4300,
       say: 'I designed it. I built it. I shipped it.',
       render: t => (
         <Stack gap={24}>
@@ -338,19 +338,18 @@ function buildScenes({ storyCount, employerCount }) {
       ),
     },
     {
-      id: 'close', dur: 7600,
-      say: 'Adam Waldman. I build the systems that turn information into decisions. You are already standing in one.',
+      id: 'close', dur: 5500,
+      say: 'I am Adam Waldman, and I turn data into decisions.',
       render: t => (
-        <Stack gap={26}>
+        <Stack gap={30}>
           <div style={{ opacity: inOut(t, 0.08) }}>
-            <FilmWordmark p={1} still height={54} />
+            <FilmWordmark p={1} still height={50} />
           </div>
-          <Kicker text="Adam Waldman, CFA" p={seg(t, 0.06, 0.3)} size={16} />
-          <div style={{ opacity: inOut(seg(t, 0.18, 1), 0.16) }}>
-            <Rise text="Builds the systems that turn information into decisions." p={seg(t, 0.2, 0.7)} size={H2} />
+          <div style={{ opacity: inOut(seg(t, 0.12, 1), 0.14) }}>
+            <Rise text="I am Adam Waldman" p={seg(t, 0.12, 0.42)} size={H} />
           </div>
-          <div style={{ opacity: inOut(seg(t, 0.46, 1), 0.18) }}>
-            <Rise text="You are already standing in one." p={seg(t, 0.5, 0.72)} size="clamp(13px, 1.8vw, 21px)" color={MIST} />
+          <div style={{ opacity: inOut(seg(t, 0.34, 1), 0.16) }}>
+            <Rise text="and I turn data into decisions." p={seg(t, 0.36, 0.68)} size={H} color={MARIGOLD} />
           </div>
         </Stack>
       ),
@@ -361,7 +360,7 @@ function buildScenes({ storyCount, employerCount }) {
 // ── score ─────────────────────────────────────────────────
 // Upbeat and driven, not ambient. The previous version held each chord for
 // 4.2s with a 0.9s swell and no rhythmic element at all, which reads as
-// mournful however major the harmony is. This one runs at 120bpm with a chord
+// mournful however major the harmony is. This one runs at 160bpm with a chord
 // every two seconds, an eighth note arpeggio carrying the pulse, short pad
 // attacks so chords land rather than bloom, and a bright filter.
 // Written rather than licensed, so there is no audio file and nothing to clear.
@@ -372,7 +371,7 @@ function createScore() {
 
   const master = ctx.createGain()
   master.gain.setValueAtTime(0.0001, ctx.currentTime)
-  master.gain.linearRampToValueAtTime(0.4, ctx.currentTime + 1.1)
+  master.gain.linearRampToValueAtTime(0.44, ctx.currentTime + 0.9)
   master.connect(ctx.destination)
 
   // Music sits under narration; `duck` pulls it down while a line is spoken.
@@ -393,7 +392,7 @@ function createScore() {
   const padFilter = ctx.createBiquadFilter()
   padFilter.type = 'lowpass'
   padFilter.frequency.setValueAtTime(1900, ctx.currentTime)
-  padFilter.frequency.linearRampToValueAtTime(4400, ctx.currentTime + 45)
+  padFilter.frequency.linearRampToValueAtTime(4600, ctx.currentTime + 30)
   padFilter.connect(bed)
 
   // Eight chord loop in D major: D G A D | Bm G A D. Only one minor, placed
@@ -408,7 +407,7 @@ function createScore() {
     { root: 110.00, tri: [164.81, 220.00, 277.18], mel: [659.25, 554.37] }, // A
     { root: 73.42, tri: [146.83, 220.00, 293.66], mel: [880.00, 587.33] },  // D
   ]
-  const CHORD = 2.0                 // 120bpm, four beats to a chord
+  const CHORD = 1.5                 // 160bpm, four beats to a chord
   const EIGHTH = CHORD / 8
   const ARP = [0, 1, 2, 1, 0, 2, 1, 2]   // index into tri
   const ARP_OCT = [0, 0, 1, 0, 0, 1, 0, 1]
@@ -448,6 +447,24 @@ function createScore() {
     o.start(time); o.stop(time + 0.35)
   }
 
+  // One noise buffer, reused. A tick per hit would allocate dozens.
+  const NOISE = (() => {
+    const n = Math.ceil(ctx.sampleRate * 0.05)
+    const b = ctx.createBuffer(1, n, ctx.sampleRate)
+    const d = b.getChannelData(0)
+    for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 3)
+    return b
+  })()
+
+  // Offbeat tick. Quiet and bright; it gives the pulse somewhere to land.
+  function tick(time, vel) {
+    const src = ctx.createBufferSource(); src.buffer = NOISE
+    const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 7000
+    const g = ctx.createGain(); g.gain.value = vel
+    src.connect(hp); hp.connect(g); g.connect(bed)
+    src.start(time)
+  }
+
   function bell(time, freq, vel) {
     const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = freq
     const h = ctx.createOscillator(); h.type = 'triangle'; h.frequency.value = freq * 2
@@ -477,11 +494,12 @@ function createScore() {
         for (let i = 0; i < 8; i++) {
           const f = c.tri[ARP[i]] * (ARP_OCT[i] ? 2 : 1)
           arp(next + i * EIGHTH, f, i % 2 === 0 ? 0.05 : 0.033)
+          if (slot >= 4) tick(next + i * EIGHTH, i % 2 === 1 ? 0.038 : 0.016)
         }
       }
       if (slot >= 4) {
         bell(next + 0.02, c.mel[0], 0.075)
-        if (slot >= 12) bell(next + CHORD / 2 + 0.02, c.mel[1], 0.055)
+        if (slot >= 10) bell(next + CHORD / 2 + 0.02, c.mel[1], 0.055)
       }
       next += CHORD
       slot++
@@ -671,7 +689,7 @@ export default function PhisFilm({ open, onClose, storyCount = 70, employerCount
     const u = new SpeechSynthesisUtterance(scene.say)
     const v = pickVoice(voiceURI)
     if (v) u.voice = v
-    u.rate = 0.95
+    u.rate = 1.05
     u.pitch = 1
     if (score.current) score.current.duck(true)
     u.onend = () => { if (score.current) score.current.duck(false) }

@@ -18,7 +18,7 @@ app/
   globals.css          # CSS variables (colors, font, borders) + splash and film keyframes
   opengraph-image.js   # Generated 1200x630 social card (next/og). Wires og:image automatically
   components/
-    PhisFilm.js        # 1:21 generated motion piece played from the About tab
+    PhisFilm.js        # 58s generated motion piece played from the About tab
   api/
     claude/
       route.js         # Server-side Anthropic proxy — POST /api/claude
@@ -378,13 +378,13 @@ The boot effect loads stories first (they seed), then runs the other five reads 
 
 `GuestAboutView` (in `page.js`) is the fourth guest tab and is **ungated** on purpose: it is a pitch, not a tool, so it must not sit behind `GuestInfoGate`. Its narrative order is fixed by Adam: what PHIS is, why it exists, then who built it.
 
-`app/components/PhisFilm.js` is a 13 scene, 1:21 motion piece. There is no video file, no footage and no third-party embed. Everything is generated:
+`app/components/PhisFilm.js` is a 13 scene, 58 second motion piece. There is no video file, no footage and no third-party embed. Everything is generated:
 
 | Piece | How |
 |---|---|
 | Timeline | `requestAnimationFrame` accumulating into `elapsed`, not chained timeouts. This is what makes pause, seek and the progress bar stay in sync. |
 | Scenes | `buildScenes()` returns `{id, dur, say, render(t)}`. `t` is the scene's own 0..1 progress. |
-| Score | `createScore()` builds a Web Audio pad, bass, eighth note arpeggio and bell melody over an eight chord loop in D major, at 120bpm with lookahead scheduling. Written rather than licensed, so there is nothing to clear and no asset to ship. See the score warnings below. |
+| Score | `createScore()` builds a Web Audio pad, bass, eighth note arpeggio and bell melody over an eight chord loop in D major, at 160bpm with lookahead scheduling. Written rather than licensed, so there is nothing to clear and no asset to ship. See the score warnings below. |
 | Playback | Autoplays when the About tab opens and closes itself 1.7s after the final frame, behind a 0.9s fade. There is no Replay control; the About poster is the way back in. |
 | Narration | `speechSynthesis`, one utterance per scene, fired once. Ducks the music to 0.4 while speaking. Both music and voice are user-togglable in the transport. |
 
@@ -396,9 +396,11 @@ The transport exposes a picker and remembers the choice in `localStorage` under 
 
 *Version 1 was pentatonic.* A D minor pentatonic arpeggio of decaying plucked triangle tones through a long feedback delay reads unmistakably as chinoiserie. Never make the score pentatonic, and keep the delay feedback low, because a long tail is what turns plucks into a koto.
 
-*Version 2 was major and still depressing.* Correct harmony is not enough. It held each chord for 4.2 seconds with a 0.9s pad swell and had no rhythmic element at all, which is ambient film scoring, not a promotional piece. The fix was tempo and pulse, not harmony: a chord every 2 seconds at 120bpm, an eighth note arpeggio carrying the beat, pad attacks cut to 0.14s so chords land rather than bloom, and the lowpass opened from 1900Hz to 4400Hz instead of 900 to 2400. The arpeggio holds off for the first two chords so the opening line is not fighting a pulse, and the melody thickens partway through so the piece builds.
+*Version 2 was major and still depressing.* Correct harmony is not enough. It held each chord for 4.2 seconds with a 0.9s pad swell and had no rhythmic element at all, which is ambient film scoring, not a promotional piece. The fix was tempo and pulse, not harmony: a chord every 1.5 seconds at 160bpm, an eighth note arpeggio carrying the beat, a bright offbeat tick from a single reused noise buffer, pad attacks cut to 0.14s so chords land rather than bloom, and the lowpass opened from 1900Hz to 4600Hz instead of 900 to 2400. It took three passes to get here: 120bpm still read as slow. When told the music is depressing, reach for tempo and percussion before harmony. The arpeggio holds off for the first two chords so the opening line is not fighting a pulse, and the melody thickens partway through so the piece builds.
 
-**You cannot hear it, so verify it structurally.** Instrument `window.AudioContext` in Playwright to count `createOscillator` calls and read `ctx.state`. Roughly 9 notes per second with the context `running` is the current score working; around 1.5 was the old one.
+**You cannot hear it, so verify it structurally.** Instrument `window.AudioContext` in Playwright to count `createOscillator` calls and read `ctx.state`. Roughly 12 notes per second plus 5 ticks per second, with the context `running`, is the current score working; around 1.5 notes per second was the original. Take timestamps inside the page with `performance.now()` rather than trusting `waitForTimeout`, and expect the measured rate to read about 10 percent slow because the scheduler runs 0.6s ahead of playback.
+
+**The closing line is "I am Adam Waldman and I turn data into decisions."** It previously closed on "You are already standing in one", which made the product the punchline and pegged Adam as the person who built a data tool. The close belongs to him, not to PHIS. Note this differs from `profile_context.header_tagline` ("Builds the systems that turn information into decisions"), which is still what the social card and the About page use.
 
 **Narrative order is load bearing.** The middle of the film is: score the fit honestly including gaps, then *answer the gap once*, then *show the library compounding*. That middle beat is the actual product argument, not a flourish. The `fill` and `compound` scenes read the same bar the `score` scene ends on, so the three play as one continuous motion. Do not reorder or drop them.
 

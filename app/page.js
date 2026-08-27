@@ -5424,7 +5424,7 @@ function GuestAboutView({ stories, experience }) {
           <span style={{ width: 44, height: 44, borderRadius: "50%", background: "var(--phis-marigold)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             <span style={{ width: 0, height: 0, borderTop: "8px solid transparent", borderBottom: "8px solid transparent", borderLeft: "13px solid #fff", marginLeft: 4 }} />
           </span>
-          <span style={{ fontSize: 11, fontWeight: 400, letterSpacing: "0.18em", textTransform: "uppercase", color: "#9FB3C8" }}>Play the film &middot; 1 min 21 sec</span>
+          <span style={{ fontSize: 11, fontWeight: 400, letterSpacing: "0.18em", textTransform: "uppercase", color: "#9FB3C8" }}>Play the film &middot; 58 sec</span>
         </div>
       </div>
 
