@@ -529,17 +529,26 @@ function createScore() {
 // has its own set. So score what is actually there rather than matching exact
 // names, and make sure we never fall through to Microsoft David by accident.
 const VOICE_GOOD = /natural|neural|online|premium|enhanced|siri/i
-const VOICE_NAMED = /\b(daniel|alex|samantha|serena|oliver|arthur|matilda|guy|ryan|aria|jenny|christopher)\b/i
+// North American given names only. Daniel, Oliver, Arthur and Matilda are
+// British or Australian and were part of how the narration ended up British.
+const VOICE_NAMED = /\b(liam|clara|alex|samantha|tom|guy|andrew|brian|christopher|eric|roger|steffan|davis|jenny|aria|michelle|ana)\b/i
 const VOICE_DATED = /\b(david|zira|mark|hazel|george|susan|linda|eva|catherine|james)\b/i
+// Anything that is audibly not North American.
+const VOICE_WRONG_ACCENT = /en-GB|en-AU|en-IE|en-ZA|en-IN|en-NZ/i
+const VOICE_WRONG_NAME = /\b(daniel|oliver|arthur|matilda|ryan|libby|maisie|thomas|hollie|natasha|william|neerja)\b/i
 
 function scoreVoice(v) {
   let s = 0
   if (VOICE_GOOD.test(v.name)) s += 100
-  if (VOICE_NAMED.test(v.name)) s += 45
+  if (VOICE_NAMED.test(v.name)) s += 25
   if (VOICE_DATED.test(v.name)) s -= 40
-  if (/en-CA/i.test(v.lang)) s += 12          // Adam is in Toronto
-  else if (/en-GB/i.test(v.lang)) s += 6
-  else if (/en-AU|en-IE/i.test(v.lang)) s += 3
+  // Accent is weighted above quality on purpose. A polished British voice
+  // reading Adam's words in the first person is worse than a plainer
+  // Canadian one, because the whole piece is him speaking.
+  if (/en-CA/i.test(v.lang)) s += 60
+  else if (/en-US/i.test(v.lang)) s += 45
+  else if (VOICE_WRONG_ACCENT.test(v.lang)) s -= 50
+  if (VOICE_WRONG_NAME.test(v.name)) s -= 50   // some voices carry the accent in the name only
   if (v.localService === false) s += 8         // cloud voices are usually the better ones
   return s
 }
@@ -799,11 +808,12 @@ export default function PhisFilm({ open, onClose, storyCount = 70, employerCount
               setVoiceURI(e.target.value)
               try { window.localStorage.setItem('phis.film.voice', e.target.value) } catch (err) {}
             }}
-            style={{ background: 'rgba(255,255,255,0.08)', color: PAPER, border: '1px solid rgba(255,255,255,0.18)', borderRadius: 3, fontFamily: GP, fontSize: 10, letterSpacing: '0.06em', padding: '5px 6px', maxWidth: 150, cursor: 'pointer' }}
+            style={{ background: 'rgba(255,255,255,0.08)', color: PAPER, border: '1px solid rgba(255,255,255,0.18)', borderRadius: 3, fontFamily: GP, fontSize: 10, letterSpacing: '0.06em', padding: '5px 6px', maxWidth: 170, cursor: 'pointer' }}
           >
             {voices.map(v => (
               <option key={v.voiceURI} value={v.voiceURI} style={{ background: NAVY }}>
-                {v.name.replace(/ - English.*$/, '').replace(/^Microsoft /, '')}
+                {v.name.replace(/ - English.*$/, '').replace(/^Microsoft /, '').replace(/ Online \(Natural\)/, '')}
+                {' '}({(v.lang.split(/[-_]/)[1] || 'EN').toUpperCase()})
               </option>
             ))}
           </select>
