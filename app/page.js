@@ -2433,7 +2433,7 @@ function AskView({stories}) {
     setMode(isInterviewQ?"interview":"library");
     try{
       if(isInterviewQ){
-        const ctx=stories.map(s=>`STORY: ${s.title} (${s.employer})\nTHEMES: ${(s.themes||[]).join(", ")||"none recorded"}\nSKILLS: ${(s.skills||[]).join(", ")||"none recorded"}\n${s.fullStory||[s.situation,s.obstacle,s.action,s.result].filter(Boolean).join(" ")}`).join("\n\n---\n\n");
+        const ctx=liveStories(stories).map(s=>`STORY: ${s.title} (${s.employer})\nTHEMES: ${(s.themes||[]).join(", ")||"none recorded"}\nSKILLS: ${(s.skills||[]).join(", ")||"none recorded"}\n${s.fullStory||[s.situation,s.obstacle,s.action,s.result].filter(Boolean).join(" ")}`).join("\n\n---\n\n");
         const ans=await callClaude(
           `STOP. Read these prohibitions completely before writing a single word of your answer. They are absolute and override everything below.
 
@@ -2612,7 +2612,7 @@ function InterviewView({ stories, guestSessionId, guttered = true }) {
     setTyping(true);
 
     try {
-      const ctx = stories.map(s =>
+      const ctx = liveStories(stories).map(s =>
         `STORY: ${s.title} (${s.employer})\nTHEMES: ${(s.themes||[]).join(", ")||"none recorded"}\nSKILLS: ${(s.skills||[]).join(", ")||"none recorded"}\n${s.fullStory || [s.situation, s.obstacle, s.action, s.result].filter(Boolean).join(" ")}`
       ).join("\n\n---\n\n");
 
@@ -3710,6 +3710,18 @@ function RescoreStep({active,jdAnalysis,cpsResult,gapResolutions,result,stories,
 // Resume and cover letter output is the path where an overclaim gets checked by a
 // reference, so both filter blocked stories and forward warnings as binding rules.
 // AskView / InterviewView deliberately keep the full library.
+// Retired entries are kept rather than deleted, per the library convention,
+// but they must not reach any AI surface. use_for does not cover this: it is
+// only consulted by resume and cover letter generation.
+function isRetired(story) {
+  const n = String((story && story.notes) || '').trimStart();
+  return /^RETIRED\b/i.test(n) || /^\s*RETIRED as a duplicate/i.test(n);
+}
+
+function liveStories(list) {
+  return (list || []).filter(s => !isRetired(s));
+}
+
 function isGenerationBlocked(story){
   // Unresolved TO CONFIRM placeholders: not fit for output until filled in.
   if(/^\s*NOT GENERATION READY/im.test((story&&story.notes)||'')) return true;

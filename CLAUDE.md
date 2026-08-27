@@ -414,6 +414,18 @@ Land every reveal by about `t = 0.8`. The scene envelope starts closing at `0.93
 
 `storyCount` and `employerCount` are passed in live from the loaded library, so the counters in the library scene reflect real data.
 
+## Story context: two things that are easy to get wrong
+
+**`result` is not sent to the model when `full_story` exists.** Both interview context builders do:
+
+```js
+`STORY: ${title} (${employer})\nTHEMES: ...\nSKILLS: ...\n${s.fullStory || [situation, obstacle, action, result].join(" ")}`
+```
+
+Nearly every entry has a `full_story`, so for those the situation / obstacle / action / **result** fields never reach the model at all. An outcome recorded only in `result` is invisible to the interview and ask surfaces. **Any outcome that matters must be written into `full_story` itself.** This is the mechanical half of Adam's noted habit of telling a story through the difficult middle and stopping before the resolution: if the win only lives in `result`, the model cannot tell it even if it wants to.
+
+**Retired entries must be filtered explicitly.** Retiring a record means adding a `RETIRED:` marker to `notes` and clearing `use_for`, per the data review workflow. But `use_for` is only consulted by resume and cover letter generation via `isGenerationBlocked`; `AskView` and `InterviewView` deliberately keep the full library. That meant 19 deliberately retired entries, including thin duplicates and content explicitly marked as unreliable seed material, were still being fed to the interview model. `isRetired(story)` and `liveStories(list)` now filter them at both context builders. Anything that reaches an AI surface in future needs the same filter.
+
 ## Interview AI system prompt policy
 
 Both `AskView.ask` (interview branch) and `InterviewView.ask` carry the **same** system prompt. Keep them identical; they are patched together for a reason.
