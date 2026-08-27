@@ -408,7 +408,9 @@ The transport exposes a picker and remembers the choice in `localStorage` under 
 
 **The closing line is "I am Adam Waldman and I turn data into decisions."** It previously closed on "You are already standing in one", which made the product the punchline and pegged Adam as the person who built a data tool. The close belongs to him, not to PHIS. Note this differs from `profile_context.header_tagline` ("Builds the systems that turn information into decisions"), which is still what the social card and the About page use.
 
-**Narrative order is load bearing.** The middle of the film is: score the fit honestly including gaps, then *answer the gap once*, then *show the library compounding*. That middle beat is the actual product argument, not a flourish. The `fill` and `compound` scenes read the same bar the `score` scene ends on, so the three play as one continuous motion. Do not reorder or drop them.
+**Narrative order is load bearing, and the film is about PHIS, not about Adam.** Scenes 1 to 10 are the product with no named person in them at all. Scene 11 says nobody was hired to build it, scene 12 narrows it to one person, and only scene 13 names who. Adam appears in exactly one narration line, the last one. An earlier cut named him in scene two and again through the middle, which asks a stranger to care about him before giving them a reason to, and turns the no-agency beat into a running boast rather than a reveal. Do not reintroduce his name earlier.
+
+The middle of the film is: score the fit honestly including gaps, then answer the gap once, then show the library compounding. That middle beat is the actual product argument, not a flourish. The fill and compound scenes read the same bar the score scene ends on, so the three play as one continuous motion. Do not reorder or drop them.
 
 **The auto close timer must not depend on the `onClose` prop.** `GuestAboutView` passes it as an inline arrow, so a new identity on any re-render tore the effect down and restarted the 1.7s timer, deferring the close indefinitely. It is held in `onCloseRef` and the effect depends only on the timeline.
 

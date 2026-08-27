@@ -143,11 +143,11 @@ function buildScenes({ storyCount, employerCount }) {
     },
     {
       id: 'build', dur: 3300,
-      say: 'So Adam Waldman built a system that does.',
+      say: 'So here is one that does.',
       render: t => (
         <Stack>
           <div style={{ opacity: inOut(t, 0.14) }}>
-            <Rise text="So Adam Waldman built a system that does." p={seg(t, 0.05, 0.62)} size={H} />
+            <Rise text="So here is one that does." p={seg(t, 0.05, 0.62)} size={H} />
           </div>
         </Stack>
       ),
@@ -219,14 +219,14 @@ function buildScenes({ storyCount, employerCount }) {
     },
     {
       id: 'fill', dur: 5300,
-      say: 'When there is a gap, Adam answers it once. The next role that asks already has it.',
+      say: 'A gap gets answered once. The next role that asks already has it.',
       render: t => {
         // Picks the gap bar up where the previous scene left it and closes it,
         // so the two scenes read as one continuous motion.
         const fill = easeOut(seg(t, 0.5, 0.76))
         return (
           <Stack gap={26}>
-            <Kicker text="So Adam answers it. Once." p={seg(t, 0, 0.3)} />
+            <Kicker text="So the gap gets answered. Once." p={seg(t, 0, 0.3)} />
             <div style={{ width: '100%', maxWidth: 560, opacity: inOut(t, 0.1) }}>
               <Bar label="Reinsurance modelling" pct={54 + fill * 22} p={1} gap={fill < 0.5} />
             </div>
@@ -269,7 +269,7 @@ function buildScenes({ storyCount, employerCount }) {
     },
     {
       id: 'write', dur: 4600,
-      say: 'Then it writes, in his own words, using only what the record supports.',
+      say: 'Then it writes, using only what the record supports.',
       render: t => (
         <Stack gap={30}>
           <div style={{ opacity: inOut(t, 0.12) }}>
@@ -325,14 +325,14 @@ function buildScenes({ storyCount, employerCount }) {
     },
     {
       id: 'made', dur: 4300,
-      say: 'Adam designed it, built it, and shipped it.',
+      say: 'Designed, built and shipped by one person.',
       render: t => (
         <Stack gap={24}>
           <div style={{ opacity: inOut(t, 0.1) }}>
             <Rise text="Designed it. Built it. Shipped it." p={seg(t, 0.02, 0.55)} size={H} />
           </div>
           <div style={{ opacity: inOut(seg(t, 0.5, 1), 0.2) }}>
-            <Rise text="Which may be the most honest thing on the resume." p={seg(t, 0.52, 0.78)} size="clamp(13px, 1.8vw, 21px)" color={MARIGOLD} />
+            <Rise text="By one person." p={seg(t, 0.52, 0.78)} size={H2} color={MARIGOLD} />
           </div>
         </Stack>
       ),
