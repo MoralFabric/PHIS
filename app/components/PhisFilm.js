@@ -143,11 +143,11 @@ function buildScenes({ storyCount, employerCount }) {
     },
     {
       id: 'build', dur: 3300,
-      say: 'So I built a system that does.',
+      say: 'So Adam Waldman built a system that does.',
       render: t => (
         <Stack>
           <div style={{ opacity: inOut(t, 0.14) }}>
-            <Rise text="So I built a system that does." p={seg(t, 0.05, 0.62)} size={H} />
+            <Rise text="So Adam Waldman built a system that does." p={seg(t, 0.05, 0.62)} size={H} />
           </div>
         </Stack>
       ),
@@ -219,14 +219,14 @@ function buildScenes({ storyCount, employerCount }) {
     },
     {
       id: 'fill', dur: 5300,
-      say: 'When there is a gap, I answer it once. The next role that asks already has it.',
+      say: 'When there is a gap, Adam answers it once. The next role that asks already has it.',
       render: t => {
         // Picks the gap bar up where the previous scene left it and closes it,
         // so the two scenes read as one continuous motion.
         const fill = easeOut(seg(t, 0.5, 0.76))
         return (
           <Stack gap={26}>
-            <Kicker text="So I answer it. Once." p={seg(t, 0, 0.3)} />
+            <Kicker text="So Adam answers it. Once." p={seg(t, 0, 0.3)} />
             <div style={{ width: '100%', maxWidth: 560, opacity: inOut(t, 0.1) }}>
               <Bar label="Reinsurance modelling" pct={54 + fill * 22} p={1} gap={fill < 0.5} />
             </div>
@@ -269,7 +269,7 @@ function buildScenes({ storyCount, employerCount }) {
     },
     {
       id: 'write', dur: 4600,
-      say: 'Then it writes, in my voice, using only what the record supports.',
+      say: 'Then it writes, in his own words, using only what the record supports.',
       render: t => (
         <Stack gap={30}>
           <div style={{ opacity: inOut(t, 0.12) }}>
@@ -325,31 +325,31 @@ function buildScenes({ storyCount, employerCount }) {
     },
     {
       id: 'made', dur: 4300,
-      say: 'I designed it. I built it. I shipped it.',
+      say: 'Adam designed it, built it, and shipped it.',
       render: t => (
         <Stack gap={24}>
           <div style={{ opacity: inOut(t, 0.1) }}>
-            <Rise text="I designed it. I built it. I shipped it." p={seg(t, 0.02, 0.55)} size={H} />
+            <Rise text="Designed it. Built it. Shipped it." p={seg(t, 0.02, 0.55)} size={H} />
           </div>
           <div style={{ opacity: inOut(seg(t, 0.5, 1), 0.2) }}>
-            <Rise text="Which may be the most honest thing on my resume." p={seg(t, 0.52, 0.78)} size="clamp(13px, 1.8vw, 21px)" color={MARIGOLD} />
+            <Rise text="Which may be the most honest thing on the resume." p={seg(t, 0.52, 0.78)} size="clamp(13px, 1.8vw, 21px)" color={MARIGOLD} />
           </div>
         </Stack>
       ),
     },
     {
       id: 'close', dur: 5500,
-      say: 'I am Adam Waldman, and I turn data into decisions.',
+      say: 'Adam Waldman turns data into decisions.',
       render: t => (
         <Stack gap={30}>
           <div style={{ opacity: inOut(t, 0.08) }}>
             <FilmWordmark p={1} still height={50} />
           </div>
           <div style={{ opacity: inOut(seg(t, 0.12, 1), 0.14) }}>
-            <Rise text="I am Adam Waldman" p={seg(t, 0.12, 0.42)} size={H} />
+            <Rise text="Adam Waldman" p={seg(t, 0.12, 0.42)} size={H} />
           </div>
           <div style={{ opacity: inOut(seg(t, 0.34, 1), 0.16) }}>
-            <Rise text="and I turn data into decisions." p={seg(t, 0.36, 0.68)} size={H} color={MARIGOLD} />
+            <Rise text="turns data into decisions." p={seg(t, 0.36, 0.68)} size={H} color={MARIGOLD} />
           </div>
         </Stack>
       ),
@@ -358,12 +358,12 @@ function buildScenes({ storyCount, employerCount }) {
 }
 
 // ── score ─────────────────────────────────────────────────
-// Upbeat and driven, not ambient. The previous version held each chord for
-// 4.2s with a 0.9s swell and no rhythmic element at all, which reads as
-// mournful however major the harmony is. This one runs at 160bpm with a chord
-// every two seconds, an eighth note arpeggio carrying the pulse, short pad
-// attacks so chords land rather than bloom, and a bright filter.
-// Written rather than licensed, so there is no audio file and nothing to clear.
+// Driving. Three earlier versions were too slow, and the last two failed for a
+// reason BPM does not fix: the arpeggio ran in eighth notes and the pad held a
+// single sustained wash across the whole chord, which smooths over the pulse
+// no matter how fast the chords change. This version runs sixteenths, gives
+// the pad two stabs per chord so it re-articulates, and adds a real backbeat
+// on two and four. Written rather than licensed, so nothing to clear.
 function createScore() {
   const AC = typeof window !== 'undefined' && (window.AudioContext || window.webkitAudioContext)
   if (!AC) return null
@@ -371,32 +371,25 @@ function createScore() {
 
   const master = ctx.createGain()
   master.gain.setValueAtTime(0.0001, ctx.currentTime)
-  master.gain.linearRampToValueAtTime(0.44, ctx.currentTime + 0.9)
+  master.gain.linearRampToValueAtTime(0.46, ctx.currentTime + 0.8)
   master.connect(ctx.destination)
 
-  // Music sits under narration; `duck` pulls it down while a line is spoken.
   const bed = ctx.createGain()
   bed.gain.value = 1
   bed.connect(master)
 
-  // Short, bright air. A long feedback tail smears the pulse and was part of
-  // what made the old version drag.
   const delay = ctx.createDelay(1.0)
-  delay.delayTime.value = 0.25
-  const fb = ctx.createGain()
-  fb.gain.value = 0.17
-  const wet = ctx.createGain()
-  wet.gain.value = 0.22
+  delay.delayTime.value = 0.1875          // a sixteenth at 160bpm, so echoes land on the grid
+  const fb = ctx.createGain(); fb.gain.value = 0.15
+  const wet = ctx.createGain(); wet.gain.value = 0.2
   delay.connect(fb); fb.connect(delay); delay.connect(wet); wet.connect(bed)
 
   const padFilter = ctx.createBiquadFilter()
   padFilter.type = 'lowpass'
-  padFilter.frequency.setValueAtTime(1900, ctx.currentTime)
-  padFilter.frequency.linearRampToValueAtTime(4600, ctx.currentTime + 30)
+  padFilter.frequency.setValueAtTime(2200, ctx.currentTime)
+  padFilter.frequency.linearRampToValueAtTime(5200, ctx.currentTime + 26)
   padFilter.connect(bed)
 
-  // Eight chord loop in D major: D G A D | Bm G A D. Only one minor, placed
-  // mid phrase, and it resolves home twice.
   const CH = [
     { root: 73.42, tri: [146.83, 220.00, 293.66], mel: [587.33, 440.00] },  // D
     { root: 98.00, tri: [146.83, 196.00, 246.94], mel: [493.88, 587.33] },  // G
@@ -408,58 +401,59 @@ function createScore() {
     { root: 73.42, tri: [146.83, 220.00, 293.66], mel: [880.00, 587.33] },  // D
   ]
   const CHORD = 1.5                 // 160bpm, four beats to a chord
-  const EIGHTH = CHORD / 8
-  const ARP = [0, 1, 2, 1, 0, 2, 1, 2]   // index into tri
-  const ARP_OCT = [0, 0, 1, 0, 0, 1, 0, 1]
+  const STEP = CHORD / 16           // sixteenth note
+  // Sixteenth note arpeggio. This is the change that makes it feel fast;
+  // eighths at the same tempo read as half the speed.
+  const ARP = [0, 1, 2, 1, 2, 1, 0, 1, 2, 1, 2, 0, 1, 2, 1, 2]
+  const OCT = [0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1]
 
-  function pad(time, freq) {
+  // Pad stabs twice per chord rather than holding one wash, so the harmony
+  // re-articulates on the beat instead of blurring across it.
+  function stab(time, freq, len) {
     const o = ctx.createOscillator(); o.type = 'triangle'; o.frequency.value = freq
     const d = ctx.createOscillator(); d.type = 'sine'; d.frequency.value = freq * 1.005
     const g = ctx.createGain()
     g.gain.setValueAtTime(0.0001, time)
-    g.gain.linearRampToValueAtTime(0.042, time + 0.14)      // lands, does not bloom
-    g.gain.setValueAtTime(0.042, time + CHORD - 0.25)
-    g.gain.linearRampToValueAtTime(0.0001, time + CHORD + 0.12)
+    g.gain.linearRampToValueAtTime(0.05, time + 0.02)
+    g.gain.exponentialRampToValueAtTime(0.0001, time + len)
     o.connect(g); d.connect(g); g.connect(padFilter)
     o.start(time); d.start(time)
-    o.stop(time + CHORD + 0.25); d.stop(time + CHORD + 0.25)
+    o.stop(time + len + 0.05); d.stop(time + len + 0.05)
   }
 
-  function bass(time, freq) {
+  function bass(time, freq, vel) {
     const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = freq
     const g = ctx.createGain()
     g.gain.setValueAtTime(0.0001, time)
-    g.gain.linearRampToValueAtTime(0.16, time + 0.02)
-    g.gain.exponentialRampToValueAtTime(0.0001, time + 0.85)
+    g.gain.linearRampToValueAtTime(vel, time + 0.015)
+    g.gain.exponentialRampToValueAtTime(0.0001, time + 0.42)
     o.connect(g); g.connect(bed)
-    o.start(time); o.stop(time + 0.95)
+    o.start(time); o.stop(time + 0.5)
   }
 
-  // The pulse. Short and quiet; it is felt more than heard.
   function arp(time, freq, vel) {
     const o = ctx.createOscillator(); o.type = 'triangle'; o.frequency.value = freq
     const g = ctx.createGain()
     g.gain.setValueAtTime(0.0001, time)
-    g.gain.linearRampToValueAtTime(vel, time + 0.008)
-    g.gain.exponentialRampToValueAtTime(0.0001, time + 0.3)
-    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 4000
-    o.connect(g); g.connect(lp); lp.connect(bed)
-    o.start(time); o.stop(time + 0.35)
+    g.gain.linearRampToValueAtTime(vel, time + 0.005)
+    g.gain.exponentialRampToValueAtTime(0.0001, time + 0.16)
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 5000
+    o.connect(g); g.connect(lp); lp.connect(bed); lp.connect(delay)
+    o.start(time); o.stop(time + 0.2)
   }
 
-  // One noise buffer, reused. A tick per hit would allocate dozens.
+  // One noise buffer, reused for both the hat and the backbeat.
   const NOISE = (() => {
-    const n = Math.ceil(ctx.sampleRate * 0.05)
+    const n = Math.ceil(ctx.sampleRate * 0.12)
     const b = ctx.createBuffer(1, n, ctx.sampleRate)
     const d = b.getChannelData(0)
-    for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 3)
+    for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 4)
     return b
   })()
 
-  // Offbeat tick. Quiet and bright; it gives the pulse somewhere to land.
-  function tick(time, vel) {
-    const src = ctx.createBufferSource(); src.buffer = NOISE
-    const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 7000
+  function hit(time, vel, hz, rate) {
+    const src = ctx.createBufferSource(); src.buffer = NOISE; src.playbackRate.value = rate || 1
+    const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = hz
     const g = ctx.createGain(); g.gain.value = vel
     src.connect(hp); hp.connect(g); g.connect(bed)
     src.start(time)
@@ -468,43 +462,51 @@ function createScore() {
   function bell(time, freq, vel) {
     const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = freq
     const h = ctx.createOscillator(); h.type = 'triangle'; h.frequency.value = freq * 2
-    const hg = ctx.createGain(); hg.gain.value = 0.2
+    const hg = ctx.createGain(); hg.gain.value = 0.22
     const g = ctx.createGain()
     g.gain.setValueAtTime(0.0001, time)
-    g.gain.linearRampToValueAtTime(vel, time + 0.02)
-    g.gain.exponentialRampToValueAtTime(0.0001, time + 1.5)
+    g.gain.linearRampToValueAtTime(vel, time + 0.015)
+    g.gain.exponentialRampToValueAtTime(0.0001, time + 1.1)
     o.connect(g); h.connect(hg); hg.connect(g)
     g.connect(bed); g.connect(delay)
     o.start(time); h.start(time)
-    o.stop(time + 1.6); h.stop(time + 1.6)
+    o.stop(time + 1.2); h.stop(time + 1.2)
   }
 
   let slot = 0
-  let next = ctx.currentTime + 0.25
+  let next = ctx.currentTime + 0.2
   const timer = setInterval(() => {
     if (ctx.state !== 'running') return
-    while (next < ctx.currentTime + 0.6) {
+    while (next < ctx.currentTime + 0.5) {
       const c = CH[slot % CH.length]
-      c.tri.forEach(f => pad(next, f))
-      bass(next, c.root)
-      bass(next + CHORD / 2, c.root)
-      // Hold the arpeggio back for the first two chords so the opening line
-      // is not fighting a pulse, then let it drive.
-      if (slot >= 2) {
-        for (let i = 0; i < 8; i++) {
-          const f = c.tri[ARP[i]] * (ARP_OCT[i] ? 2 : 1)
-          arp(next + i * EIGHTH, f, i % 2 === 0 ? 0.05 : 0.033)
-          if (slot >= 4) tick(next + i * EIGHTH, i % 2 === 1 ? 0.038 : 0.016)
+
+      c.tri.forEach(f => stab(next, f, 0.6))
+      c.tri.forEach(f => stab(next + CHORD / 2, f, 0.6))
+
+      bass(next, c.root, 0.19)
+      bass(next + CHORD / 2, c.root, 0.15)
+      if (slot >= 2) bass(next + STEP * 14, c.root * 2, 0.09)   // push into the next bar
+
+      if (slot >= 1) {
+        for (let i = 0; i < 16; i++) {
+          const f = c.tri[ARP[i]] * (OCT[i] ? 2 : 1)
+          arp(next + i * STEP, f, i % 4 === 0 ? 0.046 : 0.028)
+          // Hat on every eighth, backbeat on two and four. The backbeat is what
+          // makes it read as a track rather than a bed.
+          if (i % 2 === 0) hit(next + i * STEP, 0.022, 8000, 1.6)
+          if (i === 4 || i === 12) hit(next + i * STEP, 0.075, 3200, 0.9)
         }
       }
-      if (slot >= 4) {
-        bell(next + 0.02, c.mel[0], 0.075)
-        if (slot >= 10) bell(next + CHORD / 2 + 0.02, c.mel[1], 0.055)
+
+      if (slot >= 3) {
+        bell(next + 0.01, c.mel[0], 0.08)
+        if (slot >= 8) bell(next + CHORD / 2 + 0.01, c.mel[1], 0.06)
       }
+
       next += CHORD
       slot++
     }
-  }, 45)
+  }, 40)
 
   return {
     ctx,
@@ -539,16 +541,16 @@ const VOICE_WRONG_NAME = /\b(daniel|oliver|arthur|matilda|ryan|libby|maisie|thom
 
 function scoreVoice(v) {
   let s = 0
+  // Quality leads. The script is third person now, so the narrator is not
+  // claiming to be Adam and a polished non-Canadian voice is fine. Accent is
+  // kept as a mild tiebreak rather than the penalty it was when the narration
+  // was written in the first person.
   if (VOICE_GOOD.test(v.name)) s += 100
   if (VOICE_NAMED.test(v.name)) s += 25
   if (VOICE_DATED.test(v.name)) s -= 40
-  // Accent is weighted above quality on purpose. A polished British voice
-  // reading Adam's words in the first person is worse than a plainer
-  // Canadian one, because the whole piece is him speaking.
-  if (/en-CA/i.test(v.lang)) s += 60
-  else if (/en-US/i.test(v.lang)) s += 45
-  else if (VOICE_WRONG_ACCENT.test(v.lang)) s -= 50
-  if (VOICE_WRONG_NAME.test(v.name)) s -= 50   // some voices carry the accent in the name only
+  if (/en-CA/i.test(v.lang)) s += 14
+  else if (/en-US/i.test(v.lang)) s += 10
+  else if (VOICE_WRONG_ACCENT.test(v.lang)) s += 2
   if (v.localService === false) s += 8         // cloud voices are usually the better ones
   return s
 }
