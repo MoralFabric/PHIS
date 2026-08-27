@@ -814,11 +814,19 @@ export default function PhisFilm({ open, onClose, storyCount = 70, employerCount
             value={voiceURI || ''}
             onChange={e => {
               stopSpeech()
+              // The sentinel clears the stored pick and returns to whatever
+              // scoreVoice ranks highest on this machine.
+              if (e.target.value === '__best__') {
+                try { window.localStorage.removeItem('phis.film.voice') } catch (err) {}
+                setVoiceURI(voices.length ? voices[0].voiceURI : null)
+                return
+              }
               setVoiceURI(e.target.value)
               try { window.localStorage.setItem('phis.film.voice', e.target.value) } catch (err) {}
             }}
             style={{ background: 'rgba(255,255,255,0.08)', color: PAPER, border: '1px solid rgba(255,255,255,0.18)', borderRadius: 3, fontFamily: GP, fontSize: 10, letterSpacing: '0.06em', padding: '5px 6px', maxWidth: 170, cursor: 'pointer' }}
           >
+            <option value="__best__" style={{ background: NAVY }}>Best available</option>
             {voices.map(v => (
               <option key={v.voiceURI} value={v.voiceURI} style={{ background: NAVY }}>
                 {v.name.replace(/ - English.*$/, '').replace(/^Microsoft /, '').replace(/ Online \(Natural\)/, '')}
